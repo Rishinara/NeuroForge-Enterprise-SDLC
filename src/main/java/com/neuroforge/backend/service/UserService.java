@@ -4,6 +4,9 @@ import com.neuroforge.backend.dto.LoginRequest;
 import com.neuroforge.backend.dto.RegisterRequest;
 import com.neuroforge.backend.entity.Role;
 import com.neuroforge.backend.entity.User;
+import com.neuroforge.backend.exception.DuplicateResourceException;
+import com.neuroforge.backend.exception.InvalidRequestException;
+import com.neuroforge.backend.exception.ResourceNotFoundException;
 import com.neuroforge.backend.repository.UserRepository;
 import com.neuroforge.backend.security.JwtService;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -27,10 +30,14 @@ public class UserService {
         this.jwtService = jwtService;
     }
 
-    public User registerUser(RegisterRequest request) {
+    public String registerUser(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new DuplicateResourceException("Email already exists");
+        }
+
+        if (userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
+            throw new DuplicateResourceException("Phone number already exists");
         }
 
         User user = new User();
@@ -40,17 +47,22 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.DEVELOPER);
         user.setCreatedAt(LocalDateTime.now());
+        user.setPhoneNumber(request.getPhoneNumber());
 
-        return userRepository.save(user);
+         userRepository.save(user);
+         return "Registered Successfully";
     }
 
     public String loginUser(LoginRequest request) {
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new BadCredentialsException("Invalid Password");
+        }
+        if (!user.isEnabled()) {
+            throw new InvalidRequestException("Your account has been disabled.");
         }
 
         return jwtService.generateToken(user);

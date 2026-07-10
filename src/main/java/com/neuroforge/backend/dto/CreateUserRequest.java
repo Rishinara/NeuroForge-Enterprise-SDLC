@@ -3,7 +3,8 @@ package com.neuroforge.backend.dto;
 import com.neuroforge.backend.entity.Role;
 import jakarta.validation.constraints.*;
 
-public class RegisterRequest {
+
+public class CreateUserRequest {
 
     @NotBlank(message = "Full name is required")
     private String fullName;
@@ -16,12 +17,15 @@ public class RegisterRequest {
     @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
 
+    @NotNull(message = "Role is required")
+    private Role role;
+
     @NotBlank(message = "Phone number is required")
     @Pattern(regexp = "^[6-9]\\d{9}$",
             message = "Phone number must be a valid 10-digit Indian mobile number")
     private String phoneNumber;
 
-    public RegisterRequest() {
+    public CreateUserRequest() {
     }
 
     public String getFullName() {
@@ -46,6 +50,14 @@ public class RegisterRequest {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
     }
 
     public String getPhoneNumber() {return phoneNumber;}

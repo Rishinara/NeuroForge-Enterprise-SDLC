@@ -29,8 +29,14 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @Column(name = "phone_number", unique = true, nullable = false)
+    private String phoneNumber;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    private boolean enabled = true;
 
     public User() {
     }
@@ -91,7 +97,13 @@ public class User implements UserDetails {
         this.createdAt = createdAt;
     }
 
-    // ---------------- Spring Security ----------------
+    public void setEnabled(boolean enabled) {this.enabled = enabled;}
+
+    public String getPhoneNumber() {return phoneNumber;}
+
+    public void setPhoneNumber(String phoneNumber) {this.phoneNumber = phoneNumber;}
+
+// ---------------- Spring Security ----------------
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -115,6 +127,6 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return enabled;
     }
 }

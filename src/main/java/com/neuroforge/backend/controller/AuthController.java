@@ -4,6 +4,7 @@ import com.neuroforge.backend.dto.LoginRequest;
 import com.neuroforge.backend.dto.RegisterRequest;
 import com.neuroforge.backend.entity.User;
 import com.neuroforge.backend.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -17,12 +18,12 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public User register(@RequestBody RegisterRequest request) {
+    public String register(@Valid @RequestBody RegisterRequest request) {
         return userService.registerUser(request);
     }
 
     @PostMapping("/login")
-    public String login(@RequestBody LoginRequest request) {
+    public String login(@Valid @RequestBody LoginRequest request) {
         return userService.loginUser(request);
     }
 }
