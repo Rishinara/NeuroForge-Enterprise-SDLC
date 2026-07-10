@@ -26,9 +26,15 @@ public class JwtService {
     }
 
     public String generateToken(User user) {
-        return Jwts.builder()
+        io.jsonwebtoken.JwtBuilder builder = Jwts.builder()
                 .subject(user.getEmail())
-                .claim("role", user.getRole().name())
+                .claim("role", user.getRole().name());
+
+        if (user.getOrganization() != null) {
+            builder.claim("orgId", user.getOrganization().getId());
+        }
+
+        return builder
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)

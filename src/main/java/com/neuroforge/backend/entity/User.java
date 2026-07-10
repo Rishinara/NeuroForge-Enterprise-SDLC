@@ -32,6 +32,20 @@ public class User implements UserDetails {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "org_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private Organization organization;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "team_members",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "team_id")
+    )
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private List<Team> teams = new java.util.ArrayList<>();
+
     public User() {
     }
 
@@ -89,6 +103,22 @@ public class User implements UserDetails {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Organization getOrganization() {
+        return organization;
+    }
+
+    public void setOrganization(Organization organization) {
+        this.organization = organization;
+    }
+
+    public List<Team> getTeams() {
+        return teams;
+    }
+
+    public void setTeams(List<Team> teams) {
+        this.teams = teams;
     }
 
     // ---------------- Spring Security ----------------
