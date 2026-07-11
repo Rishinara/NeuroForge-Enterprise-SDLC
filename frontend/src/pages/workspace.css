@@ -1,0 +1,167 @@
+.wk-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.wk-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.wk-page-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--nf-ink);
+  margin: 0 0 4px;
+}
+
+.wk-page-subtitle {
+  color: var(--nf-slate);
+  font-size: 13.5px;
+  margin: 0;
+}
+
+.wk-card {
+  background: #fff;
+  border: 1px solid #e6e8f0;
+  border-radius: 14px;
+  padding: 22px;
+  margin-bottom: 20px;
+}
+
+.wk-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #e6e8f0;
+  margin-bottom: 20px;
+}
+
+.wk-tab {
+  background: none;
+  border: none;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--nf-slate);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.wk-tab-active {
+  color: var(--nf-indigo);
+  border-bottom-color: var(--nf-indigo);
+}
+
+.wk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.wk-table th {
+  text-align: left;
+  color: var(--nf-slate);
+  font-weight: 600;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #eef0f5;
+}
+
+.wk-table td {
+  padding: 10px;
+  border-bottom: 1px solid #f3f4f8;
+  color: #2c3040;
+}
+
+.wk-empty {
+  text-align: center;
+  color: #b0b4c2;
+  padding: 28px;
+  font-size: 13px;
+}
+
+.wk-badge {
+  background: #eef0fb;
+  color: var(--nf-indigo);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.wk-inline-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.wk-inline-form .nf-input {
+  flex: 1;
+}
+
+.nf-btn-text-danger {
+  background: none;
+  border: none;
+  color: #d33b2c;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nf-btn-text-danger:hover {
+  text-decoration: underline;
+}
+
+/* Modal (used by Modal.jsx) */
+.wk-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 20, 28, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  padding: 20px;
+}
+
+.wk-modal-card {
+  background: #fff;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+}
+
+.wk-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid #eef0f5;
+}
+
+.wk-modal-title {
+  margin: 0;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.wk-modal-close {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: var(--nf-slate);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.wk-modal-body {
+  padding: 20px;
+}
