@@ -22,23 +22,33 @@ public class Invite {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private Organization organization;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private Team team;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status; // PENDING, ACCEPTED, EXPIRED
+    private InviteStatus status;// PENDING, ACCEPTED, EXPIRED
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     public Invite() {}
-    public Invite(String email, String token, Organization organization, Role role) {
+    public Invite(String email, String token, Organization organization,
+                  Team team,
+                  Role role) {
+
         this.email = email;
         this.token = token;
         this.organization = organization;
+        this.team = team;
         this.role = role;
-        this.status = "PENDING";
+        this.status = InviteStatus.PENDING;
         this.createdAt = LocalDateTime.now();
     }
 
@@ -51,8 +61,10 @@ public class Invite {
     public void setOrganization(Organization organization) { this.organization = organization; }
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public InviteStatus getStatus() {return status;}
+    public void setStatus(InviteStatus status) {this.status = status;}
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Team getTeam() {return team;}
+    public void setTeam(Team team) {this.team = team;}
 }

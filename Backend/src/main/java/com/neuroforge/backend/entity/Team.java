@@ -2,9 +2,15 @@ package com.neuroforge.backend.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "teams")
+@Table(name = "teams",uniqueConstraints = {
+        @UniqueConstraint(
+                columnNames = {"org_id", "name"}
+        )
+})
 public class Team {
 
     @Id
@@ -18,6 +24,10 @@ public class Team {
     @JoinColumn(name = "org_id", nullable = false)
     @com.fasterxml.jackson.annotation.JsonIgnore
     private Organization organization;
+
+    @ManyToMany(mappedBy = "teams")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private List<User> users = new ArrayList<>();
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -37,4 +47,7 @@ public class Team {
     public void setOrganization(Organization organization) { this.organization = organization; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public List<User> getUsers() {return users;}
+    public void setUsers(List<User> users) {this.users = users;}
+
 }
