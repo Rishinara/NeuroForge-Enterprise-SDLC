@@ -1,5 +1,4 @@
 package com.neuroforge.backend.security;
-
 import com.neuroforge.backend.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
