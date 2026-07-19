@@ -1,5 +1,6 @@
 package com.neuroforge.backend.service;
 
+
 import com.neuroforge.backend.dto.*;
 import com.neuroforge.backend.entity.OtpToken;
 import com.neuroforge.backend.entity.Organization;
@@ -15,6 +16,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.Random;
@@ -121,6 +123,55 @@ public class UserService {
 
         otpToken.setUsed(true);
         otpTokenRepository.save(otpToken);
+    }
+    @Transactional(readOnly = true)
+    public ProfileResponse getProfile(String email) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        ProfileResponse response = new ProfileResponse();
+        response.setId(user.getId());
+        response.setFullName(user.getFullName());
+        response.setEmail(user.getEmail());
+        response.setPhoneNumber(user.getPhoneNumber());
+        response.setRole(user.getRole());
+        response.setCreatedAt(user.getCreatedAt());
+
+        if (user.getOrganization() != null) {
+            response.setOrganizationName(user.getOrganization().getName());
+        }
+
+        return response;
+    }
+
+    @Transactional
+    public ProfileResponse updateProfile(String email, UpdateProfileRequest request) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        user.setFullName(request.getFullName());
+        user.setPhoneNumber(request.getPhoneNumber());
+
+        userRepository.save(user);
+
+        return getProfile(email);
+    }
+
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Old password is incorrect");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+
+        userRepository.save(user);
     }
 
     // ---- helpers ----
