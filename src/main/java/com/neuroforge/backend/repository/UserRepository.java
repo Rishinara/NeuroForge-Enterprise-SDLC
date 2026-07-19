@@ -13,4 +13,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
+    @org.springframework.data.jpa.repository.Query("SELECT u FROM User u JOIN u.teams t WHERE t.id = :teamId")
+    java.util.List<User> findByTeamId(@org.springframework.data.repository.query.Param("teamId") Long teamId);
 }
