@@ -1,0 +1,73 @@
+.pc-card {
+  display: block;
+  background: #fff;
+  border: 1px solid #e6e8f0;
+  border-radius: 14px;
+  padding: 18px;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.15s, transform 0.05s;
+}
+
+.pc-card:hover {
+  box-shadow: 0 12px 28px -10px rgba(18, 20, 28, 0.15);
+  transform: translateY(-1px);
+}
+
+.pc-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.pc-name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--nf-ink);
+  margin: 0;
+}
+
+.pc-meta {
+  font-size: 12.5px;
+  color: var(--nf-slate);
+  margin: 0 0 12px;
+}
+
+.pc-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.pc-tag {
+  font-size: 10.5px;
+  font-weight: 600;
+  background: #f1f2fb;
+  color: var(--nf-indigo);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.pc-progress-track {
+  height: 6px;
+  background: #eef0f5;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.pc-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--nf-ember), var(--nf-indigo));
+  border-radius: 999px;
+}
+
+.pc-progress-label {
+  font-size: 11px;
+  color: var(--nf-slate);
+  margin: 0;
+}
