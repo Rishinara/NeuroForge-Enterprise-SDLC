@@ -1,0 +1,231 @@
+.dh-page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 28px 32px 64px;
+}
+
+
+
+.dh-hero {
+  background: var(--wk-surface);
+  border: 1px solid var(--wk-border);
+  border-left: 3px solid var(--wk-accent);
+  border-radius: 10px;
+  padding: 24px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.dh-hero-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--wk-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 8px;
+}
+
+.dh-hero-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--wk-ink);
+  margin: 0 0 6px;
+  max-width: 480px;
+  line-height: 1.3;
+}
+
+.dh-hero-copy {
+  font-size: 13px;
+  color: var(--wk-slate);
+  margin: 0;
+}
+
+.dh-hero-cta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--wk-accent);
+  color: #fff;
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.dh-hero-cta:hover {
+  background: var(--wk-accent-hover);
+}
+
+/* ---------- Stat cards ---------- */
+
+.dh-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.dh-stat-card {
+  background: var(--wk-surface);
+  border: 1px solid var(--wk-border);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dh-stat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dh-icon-neutral { background: var(--wk-accent-soft); color: var(--wk-accent); }
+.dh-icon-good { background: var(--wk-success-soft); color: var(--wk-success); }
+.dh-icon-warn { background: var(--wk-warning-soft); color: var(--wk-warning); }
+.dh-icon-bad { background: var(--wk-danger-soft); color: var(--wk-danger); }
+
+.dh-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--wk-ink);
+  line-height: 1.1;
+}
+
+.dh-stat-label {
+  font-size: 11.5px;
+  color: var(--wk-slate);
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .dh-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ---------- Project overview card ---------- */
+
+.dh-card {
+  background: var(--wk-surface);
+  border: 1px solid var(--wk-border);
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.dh-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.dh-card-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--wk-ink);
+  margin: 0;
+}
+
+.dh-view-all {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--wk-accent);
+  text-decoration: none;
+}
+
+.dh-empty {
+  text-align: center;
+  color: #9ca3af;
+  padding: 28px;
+  font-size: 13px;
+}
+
+.dh-project-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.dh-project-row {
+  display: grid;
+  grid-template-columns: 1.6fr 2fr 40px auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 4px;
+  border-bottom: 1px solid #f3f4f6;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 6px;
+}
+
+.dh-project-row:last-child {
+  border-bottom: none;
+}
+
+.dh-project-row:hover {
+  background: var(--wk-bg);
+}
+
+.dh-project-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dh-project-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--wk-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dh-project-meta {
+  font-size: 11.5px;
+  color: var(--wk-slate);
+}
+
+.dh-project-progress-track {
+  height: 5px;
+  background: #eceef1;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.dh-project-progress-fill {
+  height: 100%;
+  background: var(--wk-accent);
+  border-radius: 999px;
+}
+
+.dh-project-percent {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--wk-slate);
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .dh-project-row {
+    grid-template-columns: 1fr auto;
+    row-gap: 8px;
+  }
+  .dh-project-progress-track {
+    display: none;
+  }
+}
