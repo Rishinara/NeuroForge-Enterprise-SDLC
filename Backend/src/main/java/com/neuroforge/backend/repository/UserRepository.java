@@ -1,6 +1,7 @@
 package com.neuroforge.backend.repository;
 
 import com.neuroforge.backend.entity.User;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -13,4 +14,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
     boolean existsByPhoneNumber(String phoneNumber);
     List<User> findByOrganizationId(Long orgId);
+
+    @EntityGraph(attributePaths = "organization")
+    User findUserById(Long id);
 }

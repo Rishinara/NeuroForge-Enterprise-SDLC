@@ -55,11 +55,24 @@ export default function SignupPage() {
   }
 
   function validate() {
-    if (!form.fullName.trim()) return 'Enter your full name.'
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) return 'Enter a valid email address.'
-    if (!PHONE_PATTERN.test(form.phone)) return 'Enter a valid phone number.'
+    if (!form.fullName || !form.fullName.trim()) return 'Enter your full name.'
+    if (!form.email || !/^\S+@\S+\.\S+$/.test(form.email)) return 'Enter a valid email address.'
+    if (!form.phone || !PHONE_PATTERN.test(form.phone)) return 'Enter a valid phone number.'
     if (!form.role) return 'Select a role to continue.'
-    if (form.password.length < 8) return 'Password must be at least 8 characters.'
+
+    if (!form.password || form.password.length < 8) {
+      return 'Password must be at least 8 characters long.'
+    }
+    if (!/[A-Z]/.test(form.password)) {
+      return 'Password must contain at least one uppercase letter.'
+    }
+    if (!/[0-9]/.test(form.password)) {
+      return 'Password must contain at least one number.'
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(form.password)) {
+      return 'Password must contain at least one special character.'
+    }
+
     if (form.password !== form.confirmPassword) return 'Passwords do not match.'
     return ''
   }
@@ -84,6 +97,7 @@ export default function SignupPage() {
       })
       navigate('/dashboard', { replace: true })
     } catch (err) {
+      // Extracts clear text error from backend response (avoids ambiguous errors)
       setError(extractErrorMessage(err))
     } finally {
       setSubmitting(false)
@@ -93,117 +107,117 @@ export default function SignupPage() {
   const selectedRole = ROLE_OPTIONS.find((r) => r.value === form.role)
 
   return (
-    <AuthLayout
-      eyebrow="Create account"
-      title="Set up your workspace"
-      subtitle="Tell us who you are and how you'll be using NeuroForge."
-      footer={
-        <>
-          Already have an account? <Link to="/login">Sign in</Link>
-        </>
-      }
-    >
-      <form onSubmit={handleSubmit} noValidate>
-        {error && <p className="nf-alert nf-alert-error">{error}</p>}
+      <AuthLayout
+          eyebrow="Create account"
+          title="Set up your workspace"
+          subtitle="Tell us who you are and how you'll be using NeuroForge."
+          footer={
+            <>
+              Already have an account? <Link to="/login">Sign in</Link>
+            </>
+          }
+      >
+        <form onSubmit={handleSubmit} noValidate>
+          {error && <p className="nf-alert nf-alert-error">{error}</p>}
 
-        <div className="nf-field">
-          <label className="nf-label" htmlFor="fullName">
-            Full name
-          </label>
-          <input
-            id="fullName"
-            type="text"
-            className="nf-input"
-            autoComplete="name"
-            placeholder="Jordan Lee"
-            value={form.fullName}
-            onChange={update('fullName')}
-          />
-        </div>
+          <div className="nf-field">
+            <label className="nf-label" htmlFor="fullName">
+              Full name
+            </label>
+            <input
+                id="fullName"
+                type="text"
+                className="nf-input"
+                autoComplete="name"
+                placeholder="Jordan Lee"
+                value={form.fullName}
+                onChange={update('fullName')}
+            />
+          </div>
 
-        <div className="nf-field">
-          <label className="nf-label" htmlFor="email">
-            Email address
-          </label>
-          <input
-            id="email"
-            type="email"
-            className="nf-input"
-            autoComplete="email"
-            placeholder="you@company.com"
-            value={form.email}
-            onChange={update('email')}
-          />
-        </div>
+          <div className="nf-field">
+            <label className="nf-label" htmlFor="email">
+              Email address
+            </label>
+            <input
+                id="email"
+                type="email"
+                className="nf-input"
+                autoComplete="email"
+                placeholder="you@company.com"
+                value={form.email}
+                onChange={update('email')}
+            />
+          </div>
 
-        <div className="nf-field">
-          <label className="nf-label" htmlFor="phone">
-            Phone number
-          </label>
-          <input
-            id="phone"
-            type="tel"
-            className="nf-input"
-            autoComplete="tel"
-            placeholder="+1 (555) 123-4567"
-            value={form.phone}
-            onChange={update('phone')}
-          />
-        </div>
+          <div className="nf-field">
+            <label className="nf-label" htmlFor="phone">
+              Phone number
+            </label>
+            <input
+                id="phone"
+                type="tel"
+                className="nf-input"
+                autoComplete="tel"
+                placeholder="+1 (555) 123-4567"
+                value={form.phone}
+                onChange={update('phone')}
+            />
+          </div>
 
-        <div className="nf-field">
-          <label className="nf-label" htmlFor="role">
-            Your role
-          </label>
-          <select id="role" className="nf-select" value={form.role} onChange={update('role')}>
-            <option value="" disabled>
-              Select a role…
-            </option>
-            {ROLE_OPTIONS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
+          <div className="nf-field">
+            <label className="nf-label" htmlFor="role">
+              Your role
+            </label>
+            <select id="role" className="nf-select" value={form.role} onChange={update('role')}>
+              <option value="" disabled>
+                Select a role…
               </option>
-            ))}
-          </select>
-          {selectedRole && <p className="nf-role-hint">{selectedRole.hint}</p>}
-        </div>
-
-        <div className="nf-row-2">
-          <div className="nf-field">
-            <label className="nf-label" htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              className="nf-input"
-              autoComplete="new-password"
-              placeholder="At least 8 characters"
-              value={form.password}
-              onChange={update('password')}
-            />
+              {ROLE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+              ))}
+            </select>
+            {selectedRole && <p className="nf-role-hint">{selectedRole.hint}</p>}
           </div>
 
-          <div className="nf-field">
-            <label className="nf-label" htmlFor="confirmPassword">
-              Confirm password
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              className="nf-input"
-              autoComplete="new-password"
-              placeholder="Re-enter password"
-              value={form.confirmPassword}
-              onChange={update('confirmPassword')}
-            />
-          </div>
-        </div>
+          <div className="nf-row-2">
+            <div className="nf-field">
+              <label className="nf-label" htmlFor="password">
+                Password
+              </label>
+              <input
+                  id="password"
+                  type="password"
+                  className="nf-input"
+                  autoComplete="new-password"
+                  placeholder="8+ chars, upper, num, special"
+                  value={form.password}
+                  onChange={update('password')}
+              />
+            </div>
 
-        <button className="nf-btn nf-btn-primary" type="submit" disabled={submitting}>
-          {submitting ? 'Creating account…' : 'Create account & continue'}
-        </button>
-      </form>
-    </AuthLayout>
+            <div className="nf-field">
+              <label className="nf-label" htmlFor="confirmPassword">
+                Confirm password
+              </label>
+              <input
+                  id="confirmPassword"
+                  type="password"
+                  className="nf-input"
+                  autoComplete="new-password"
+                  placeholder="Re-enter password"
+                  value={form.confirmPassword}
+                  onChange={update('confirmPassword')}
+              />
+            </div>
+          </div>
+
+          <button className="nf-btn nf-btn-primary" type="submit" disabled={submitting}>
+            {submitting ? 'Creating account…' : 'Create account & continue'}
+          </button>
+        </form>
+      </AuthLayout>
   )
 }

@@ -1,8 +1,11 @@
 package com.neuroforge.backend.controller;
 
 import com.neuroforge.backend.dto.*;
+import com.neuroforge.backend.entity.Organization;
 import com.neuroforge.backend.service.OrgService;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -18,49 +21,87 @@ public class OrgController {
         this.orgService = orgService;
     }
 
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/api/organizations")
+    public Organization createOrganization(@Valid @RequestBody CreateOrgRequest request) {
+        return orgService.createOrganization(request);
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/api/organizations")
+    public List<Organization> getAllOrganizations() {
+        return orgService.getAllOrganizations();
+    }
+
     // ---- Teams ----
 
-    @GetMapping("/api/orgs/{orgId}/teams")
-    public List<TeamResponse> listTeams(@PathVariable Long orgId) {
-        return orgService.listTeams(orgId);
-    }
-
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @PostMapping("/api/orgs/{orgId}/teams")
-    public TeamResponse createTeam(@PathVariable Long orgId, @Valid @RequestBody TeamRequest request) {
-        return orgService.createTeam(orgId, request.getName());
+    public TeamResponse createTeam(
+            @PathVariable Long orgId,
+            @Valid @RequestBody TeamRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return orgService.createTeam(orgId, request.getName(), userDetails.getUsername());
     }
 
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/api/orgs/{orgId}/teams")
+    public List<TeamResponse> listTeams(
+            @PathVariable Long orgId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return orgService.listTeams(orgId, userDetails.getUsername());
+    }
+
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @DeleteMapping("/api/orgs/{orgId}/teams/{teamId}")
-    public void deleteTeam(@PathVariable Long orgId, @PathVariable Long teamId) {
-        orgService.deleteTeam(orgId, teamId);
+    public ResponseEntity<Void> deleteTeam(
+            @PathVariable Long orgId,
+            @PathVariable Long teamId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        orgService.deleteTeam(orgId, teamId, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
     }
 
     // ---- Members ----
 
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER')")
     @GetMapping("/api/orgs/{orgId}/members")
-    public List<MemberResponse> listMembers(@PathVariable Long orgId) {
-        return orgService.listMembers(orgId);
+    public List<MemberResponse> listMembers(
+            @PathVariable Long orgId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return orgService.listMembers(orgId, userDetails.getUsername());
     }
 
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @PutMapping("/api/orgs/{orgId}/members/{memberId}/role")
-    public MemberResponse updateMemberRole(@PathVariable Long orgId,
-                                           @PathVariable Long memberId,
-                                           @RequestBody UpdateMemberRoleRequest request) {
-        return orgService.updateMemberRole(orgId, memberId, request.getRole());
+    public MemberResponse updateMemberRole(
+            @PathVariable Long orgId,
+            @PathVariable Long memberId,
+            @RequestBody UpdateMemberRoleRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return orgService.updateMemberRole(orgId, memberId, request.getRole(), userDetails.getUsername());
     }
 
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @DeleteMapping("/api/orgs/{orgId}/members/{memberId}")
-    public void removeMember(@PathVariable Long orgId, @PathVariable Long memberId) {
-        orgService.removeMember(orgId, memberId);
+    public ResponseEntity<Void> removeMember(
+            @PathVariable Long orgId,
+            @PathVariable Long memberId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        orgService.removeMember(orgId, memberId, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
     }
 
     // ---- Invites ----
 
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER')")
     @PostMapping("/api/orgs/{orgId}/invites")
-    public void inviteMember(@PathVariable Long orgId,
-                             @Valid @RequestBody InviteRequest request,
-                             @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<Void> inviteMember(
+            @PathVariable Long orgId,
+            @Valid @RequestBody InviteRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
         orgService.inviteMember(orgId, request, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/api/invites/{token}")
@@ -68,22 +109,30 @@ public class OrgController {
         return orgService.getInvitePreview(token);
     }
 
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/api/invites/{token}/accept")
-    public AuthResponse acceptInvite(@PathVariable String token,
-                                     @AuthenticationPrincipal UserDetails userDetails) {
+    public AuthResponse acceptInvite(
+            @PathVariable String token,
+            @AuthenticationPrincipal UserDetails userDetails) {
         return orgService.acceptInvite(token, userDetails.getUsername());
     }
 
     // ---- Org Settings ----
 
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @GetMapping("/api/orgs/{orgId}/settings")
-    public OrgSettingsRequest getOrgSettings(@PathVariable Long orgId) {
-        return orgService.getOrgSettings(orgId);
+    public OrgSettingsRequest getOrgSettings(
+            @PathVariable Long orgId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return orgService.getOrgSettings(orgId, userDetails.getUsername());
     }
 
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @PutMapping("/api/orgs/{orgId}/settings")
-    public OrgSettingsRequest updateOrgSettings(@PathVariable Long orgId,
-                                                @RequestBody OrgSettingsRequest request) {
-        return orgService.updateOrgSettings(orgId, request);
+    public OrgSettingsRequest updateOrgSettings(
+            @PathVariable Long orgId,
+            @RequestBody OrgSettingsRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return orgService.updateOrgSettings(orgId, request, userDetails.getUsername());
     }
 }

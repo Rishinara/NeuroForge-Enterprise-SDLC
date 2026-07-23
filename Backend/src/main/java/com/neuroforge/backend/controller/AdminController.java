@@ -4,9 +4,9 @@ import com.neuroforge.backend.dto.CreateUserRequest;
 import com.neuroforge.backend.dto.UpdateRoleRequest;
 import com.neuroforge.backend.dto.UpdateStatusRequest;
 import com.neuroforge.backend.dto.UserResponse;
-import com.neuroforge.backend.entity.User;
 import com.neuroforge.backend.service.AdminService;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,10 +23,9 @@ public class AdminController {
     }
 
     @PostMapping("/create-user")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")     //only superadmin can access this page
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public UserResponse createUser(@Valid @RequestBody CreateUserRequest request) {
         return adminService.createUser(request);
-
     }
 
     @GetMapping("/users")
@@ -46,7 +45,6 @@ public class AdminController {
     public UserResponse updateUserRole(
             @PathVariable Long id,
             @RequestBody UpdateRoleRequest request) {
-
         return adminService.updateUserRole(id, request);
     }
 
@@ -55,17 +53,13 @@ public class AdminController {
     public UserResponse updateUserStatus(
             @PathVariable Long id,
             @RequestBody UpdateStatusRequest request) {
-
         return adminService.updateUserStatus(id, request);
     }
 
     @DeleteMapping("/users/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public String deleteUser(@PathVariable Long id) {
-
-        return adminService.deleteUser(id);
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        adminService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
-
-
-
 }

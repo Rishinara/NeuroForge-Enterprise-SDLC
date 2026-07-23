@@ -11,16 +11,21 @@ import com.neuroforge.backend.repository.OtpTokenRepository;
 import com.neuroforge.backend.repository.OrganizationRepository;
 import com.neuroforge.backend.repository.UserRepository;
 import com.neuroforge.backend.security.JwtService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.Random;
 
 @Service
 public class UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
     private final OrganizationRepository organizationRepository;
@@ -49,7 +54,11 @@ public class UserService {
             throw new DuplicateResourceException("Phone number already exists");
         }
 
-        // ORG_ADMIN gets a new organization; others join via invite
+        // Prevent self-assignment of privileged roles via public signup
+        if (request.getRole() == com.neuroforge.backend.entity.Role.SUPER_ADMIN) {
+            throw new InvalidRequestException("SUPER_ADMIN role cannot be self-assigned.");
+        }
+
         Organization org = null;
         if (request.getRole().name().equals("ORG_ADMIN")) {
             org = organizationRepository.save(new Organization(request.getFullName() + "'s Org"));
@@ -93,14 +102,12 @@ public class UserService {
 
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
-        // Silently succeed even if email not found (security best practice)
         userRepository.findByEmail(request.getEmail()).ifPresent(user -> {
             otpTokenRepository.deleteByEmail(request.getEmail());
-            String otp = String.format("%06d", new Random().nextInt(999999));
+            String otp = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
             otpTokenRepository.save(new OtpToken(request.getEmail(), otp, LocalDateTime.now().plusMinutes(15)));
-
-            // Log OTP to console (replace with real email sender in production)
-            System.out.println("=== PASSWORD RESET OTP for " + request.getEmail() + " : " + otp + " ===");
+            log.info("PASSWORD RESET OTP for [{}] generated",
+                    request.getEmail().replaceAll("(?<=.{3}).(?=.*@)", "*"));
         });
     }
 
@@ -123,6 +130,50 @@ public class UserService {
         otpTokenRepository.save(otpToken);
     }
 
+    @Transactional(readOnly = true)
+    public ProfileResponse getProfile(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        ProfileResponse response = new ProfileResponse();
+        response.setId(user.getId());
+        response.setFullName(user.getFullName());
+        response.setEmail(user.getEmail());
+        response.setPhoneNumber(user.getPhoneNumber());
+        response.setRole(user.getRole());
+        response.setCreatedAt(user.getCreatedAt());
+
+        if (user.getOrganization() != null) {
+            response.setOrganizationName(user.getOrganization().getName());
+        }
+        return response;
+    }
+
+    @Transactional
+    public ProfileResponse updateProfile(String email, UpdateProfileRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        user.setFullName(request.getFullName());
+        if (request.getPhoneNumber() != null) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+        userRepository.save(user);
+        return getProfile(email);
+    }
+
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Old password is incorrect");
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
     // ---- helpers ----
 
     private AuthResponse buildAuthResponse(String token, User user) {
@@ -130,8 +181,10 @@ public class UserService {
     }
 
     private AuthResponse.UserPayload toPayload(User user) {
+        user = userRepository.findUserById(user.getId());
         Long orgId = user.getOrganization() != null ? user.getOrganization().getId() : null;
         String orgName = user.getOrganization() != null ? user.getOrganization().getName() : null;
-        return new AuthResponse.UserPayload(user.getId(), user.getEmail(), user.getFullName(), orgId, orgName, user.getRole());
+        return new AuthResponse.UserPayload(
+                user.getId(), user.getEmail(), user.getFullName(), orgId, orgName, user.getRole());
     }
 }

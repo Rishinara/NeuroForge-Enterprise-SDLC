@@ -2,9 +2,13 @@ package com.neuroforge.backend.security;
 
 import com.neuroforge.backend.entity.User;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +18,8 @@ import java.util.Date;
 
 @Service
 public class JwtService {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 
     @Value("${jwt.secret}")
     private String secret;
@@ -49,9 +55,12 @@ public class JwtService {
         try {
             getClaims(token);
             return true;
-        } catch (Exception e) {
-            return false;
+        } catch (ExpiredJwtException e) {
+            log.debug("JWT token expired", e);
+        } catch (JwtException e) {
+            log.debug("JWT token invalid: {}", e.getClass().getSimpleName(), e);
         }
+        return false;
     }
 
     private Claims getClaims(String token) {
