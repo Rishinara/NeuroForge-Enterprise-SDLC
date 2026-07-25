@@ -1,6 +1,7 @@
 package com.neuroforge.controller;
 
-import com.neuroforge.dto.*;
+import com.neuroforge.dto.auth.AuthResponse;
+import com.neuroforge.dto.organization.*;
 import com.neuroforge.entity.Organization;
 import com.neuroforge.service.OrgService;
 import jakarta.validation.Valid;

@@ -1,9 +1,12 @@
 package com.neuroforge.service;
 
-import com.neuroforge.dto.*;
+import com.neuroforge.dto.auth.*;
+import com.neuroforge.dto.project.ProfileResponse;
+import com.neuroforge.dto.project.UpdateProfileRequest;
 import com.neuroforge.entity.OtpToken;
 import com.neuroforge.entity.Organization;
 import com.neuroforge.entity.User;
+import com.neuroforge.enums.Role;
 import com.neuroforge.exception.DuplicateResourceException;
 import com.neuroforge.exception.InvalidRequestException;
 import com.neuroforge.exception.ResourceNotFoundException;
@@ -58,7 +61,7 @@ public class UserService {
         }
 
         // Prevent self-assignment of privileged roles via public signup
-        if (request.getRole() == com.neuroforge.entity.Role.SUPER_ADMIN) {
+        if (request.getRole() == Role.SUPER_ADMIN) {
             throw new InvalidRequestException("SUPER_ADMIN role cannot be self-assigned.");
         }
 

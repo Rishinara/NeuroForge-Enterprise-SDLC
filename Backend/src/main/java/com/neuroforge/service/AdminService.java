@@ -1,10 +1,10 @@
 package com.neuroforge.service;
 
-import com.neuroforge.dto.CreateUserRequest;
-import com.neuroforge.dto.UpdateRoleRequest;
-import com.neuroforge.dto.UpdateStatusRequest;
-import com.neuroforge.dto.UserResponse;
-import com.neuroforge.entity.Role;
+import com.neuroforge.dto.auth.CreateUserRequest;
+import com.neuroforge.dto.auth.UpdateRoleRequest;
+import com.neuroforge.dto.auth.UpdateStatusRequest;
+import com.neuroforge.dto.auth.UserResponse;
+import com.neuroforge.enums.Role;
 import com.neuroforge.entity.User;
 import com.neuroforge.exception.DuplicateResourceException;
 import com.neuroforge.exception.InvalidRequestException;

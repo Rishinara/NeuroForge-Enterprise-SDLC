@@ -1,11 +1,11 @@
 package com.neuroforge.service;
 
-import com.neuroforge.dto.ForgotPasswordRequest;
-import com.neuroforge.dto.ResetPasswordRequest;
-import com.neuroforge.dto.SignInRequest;
-import com.neuroforge.dto.SignupRequest;
-import com.neuroforge.dto.JwtAuthenticationResponse;
-import com.neuroforge.entity.Role;
+import com.neuroforge.dto.auth.ForgotPasswordRequest;
+import com.neuroforge.dto.auth.ResetPasswordRequest;
+import com.neuroforge.dto.auth.SignInRequest;
+import com.neuroforge.dto.auth.SignupRequest;
+import com.neuroforge.dto.auth.JwtAuthenticationResponse;
+import com.neuroforge.enums.Role;
 import com.neuroforge.entity.User;
 import com.neuroforge.entity.PasswordResetToken;
 import com.neuroforge.repository.UserRepository;

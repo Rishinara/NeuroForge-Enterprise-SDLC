@@ -45,7 +45,10 @@ public class SecurityConfig {
                     ref.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/v1/auth/**", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", "/api/v1/api-docs/**").permitAll()
+                .requestMatchers("/api/auth/**", "/api/v1/auth/**",
+                        "/swagger-ui/**", "/v3/api-docs/**",
+                        "/swagger-ui.html", "/api/v1/api-docs/**",
+                        "/ws/**", "/ws").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/invites/**").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 .anyRequest().authenticated()

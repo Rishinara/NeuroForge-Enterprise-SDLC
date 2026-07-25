@@ -1,8 +1,8 @@
 package com.neuroforge.controller;
 
-import com.neuroforge.dto.ChangePasswordRequest;
-import com.neuroforge.dto.ProfileResponse;
-import com.neuroforge.dto.UpdateProfileRequest;
+import com.neuroforge.dto.auth.ChangePasswordRequest;
+import com.neuroforge.dto.project.ProfileResponse;
+import com.neuroforge.dto.project.UpdateProfileRequest;
 import com.neuroforge.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

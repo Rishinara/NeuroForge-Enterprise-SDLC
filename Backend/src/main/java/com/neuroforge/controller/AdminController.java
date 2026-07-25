@@ -1,9 +1,9 @@
 package com.neuroforge.controller;
 
-import com.neuroforge.dto.CreateUserRequest;
-import com.neuroforge.dto.UpdateRoleRequest;
-import com.neuroforge.dto.UpdateStatusRequest;
-import com.neuroforge.dto.UserResponse;
+import com.neuroforge.dto.auth.CreateUserRequest;
+import com.neuroforge.dto.auth.UpdateRoleRequest;
+import com.neuroforge.dto.auth.UpdateStatusRequest;
+import com.neuroforge.dto.auth.UserResponse;
 import com.neuroforge.service.AdminService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

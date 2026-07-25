@@ -1,5 +1,6 @@
 package com.neuroforge.entity;
 
+import com.neuroforge.enums.Role;
 import jakarta.persistence.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
