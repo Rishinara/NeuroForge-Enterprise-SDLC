@@ -1,7 +1,6 @@
-package com.neuroforge.dto;
+package com.neuroforge.dto.auth;
 
 import com.neuroforge.entity.Role;
-
 import java.time.LocalDateTime;
 
 public class ProfileResponse {

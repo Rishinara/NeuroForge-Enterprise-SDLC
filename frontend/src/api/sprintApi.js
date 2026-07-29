@@ -11,9 +11,9 @@ export const sprintApi = {
   listProjectSprints: (projectId) => api.get(`/projects/${projectId}/sprints`),
 
   
-  getBoard: (sprintId) => api.get(`/sprints/${sprintId}/board`),
+  getBoard: (sprintId, projectId) => api.get(`/sprints/${sprintId}/board`, { params: projectId ? { projectId } : {} }),
 
  
   captureSnapshot: (sprintId) => api.post(`/sprints/${sprintId}/snapshot`),
-  getBurndown: (sprintId) => api.get(`/sprints/${sprintId}/burndown`),
+  getBurndown: (sprintId, projectId) => api.get(`/sprints/${sprintId}/burndown`, { params: projectId ? { projectId } : {} }),
 }

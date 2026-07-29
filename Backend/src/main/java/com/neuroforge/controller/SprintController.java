@@ -1,5 +1,6 @@
 package com.neuroforge.controller;
 
+import com.neuroforge.dto.board.BoardResponse;
 import com.neuroforge.dto.snapshot.BurndownResponse;
 import com.neuroforge.dto.sprint.CreateSprintRequest;
 import com.neuroforge.dto.sprint.SprintResponse;
@@ -116,12 +117,40 @@ public class SprintController {
     @GetMapping("/{sprintId}/burndown")
     @PreAuthorize("isAuthenticated()")
     public BurndownResponse getBurndown(
-            @PathVariable Long sprintId,
+            @PathVariable String sprintId,
+            @RequestParam(required = false) Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
+        Long id = resolveSprintId(sprintId, projectId);
         return sprintService.getBurndown(
-                sprintId,
+                id,
                 userDetails.getUsername());
     }
 
+    @GetMapping("/{sprintId}/board")
+    @PreAuthorize("isAuthenticated()")
+    public BoardResponse getSprintBoard(
+            @PathVariable String sprintId,
+            @RequestParam(required = false) Long projectId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        Long id = resolveSprintId(sprintId, projectId);
+        return sprintService.getSprintBoard(
+                id,
+                userDetails.getUsername());
+    }
+
+    private Long resolveSprintId(String sprintIdStr, Long projectId) {
+        if ("current".equalsIgnoreCase(sprintIdStr)) {
+            if (projectId == null) {
+                throw new com.neuroforge.exception.InvalidRequestException("Project ID is required to resolve current sprint");
+            }
+            return sprintService.getActiveSprintId(projectId);
+        }
+        try {
+            return Long.parseLong(sprintIdStr);
+        } catch (NumberFormatException e) {
+            throw new com.neuroforge.exception.InvalidRequestException("Invalid sprint ID format: " + sprintIdStr);
+        }
+    }
 }

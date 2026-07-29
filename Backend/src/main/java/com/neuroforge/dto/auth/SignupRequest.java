@@ -1,6 +1,6 @@
 package com.neuroforge.dto.auth;
 
-import com.neuroforge.enums.Role;
+import com.neuroforge.entity.Role;
 import jakarta.validation.constraints.*;
 
 public class SignupRequest {

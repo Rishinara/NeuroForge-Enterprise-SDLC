@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -91,9 +92,40 @@ public class TaskController {
                 userDetails.getUsername());
     }
 
+    @PatchMapping("/{taskId}/assign-sprint")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    public TaskResponse assignTaskToSprintPatch(
+            @PathVariable Long taskId,
+            @RequestBody Map<String, Object> body,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        Object sprintIdVal = body.get("sprintId");
+        Long sprintId = null;
+        if (sprintIdVal instanceof Number) {
+            sprintId = ((Number) sprintIdVal).longValue();
+        } else if (sprintIdVal instanceof String) {
+            sprintId = Long.parseLong((String) sprintIdVal);
+        }
+        return taskService.assignTaskToSprint(
+                taskId,
+                sprintId,
+                userDetails.getUsername());
+    }
+
     @PostMapping("/{taskId}/remove-sprint")
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
     public TaskResponse removeTaskFromSprint(
+            @PathVariable Long taskId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        return taskService.removeTaskFromSprint(
+                taskId,
+                userDetails.getUsername());
+    }
+
+    @PatchMapping("/{taskId}/remove-sprint")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    public TaskResponse removeTaskFromSprintPatch(
             @PathVariable Long taskId,
             @AuthenticationPrincipal UserDetails userDetails) {
 

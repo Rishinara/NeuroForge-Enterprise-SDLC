@@ -18,4 +18,6 @@ public interface ProjectService {
             Long projectId,
             UpdateProjectRequest request
     );
+
+    void deleteProject(Long projectId);
 }

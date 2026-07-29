@@ -1,6 +1,7 @@
 package com.neuroforge.service;
 
-import com.neuroforge.dto.*;
+import com.neuroforge.dto.auth.*;
+import com.neuroforge.dto.organization.*;
 import com.neuroforge.entity.*;
 import com.neuroforge.exception.DuplicateResourceException;
 import com.neuroforge.exception.InvalidRequestException;

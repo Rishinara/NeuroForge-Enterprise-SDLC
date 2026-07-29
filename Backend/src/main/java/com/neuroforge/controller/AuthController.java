@@ -1,6 +1,7 @@
 package com.neuroforge.controller;
 
-import com.neuroforge.dto.*;
+import com.neuroforge.dto.auth.*;
+import com.neuroforge.dto.organization.*;
 import com.neuroforge.service.UserService;
 import com.neuroforge.service.RefreshTokenService;
 import com.neuroforge.security.JwtService;

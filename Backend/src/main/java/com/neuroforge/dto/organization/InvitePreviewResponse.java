@@ -1,6 +1,6 @@
 package com.neuroforge.dto.organization;
 
-import com.neuroforge.enums.Role;
+import com.neuroforge.entity.Role;
 
 public class InvitePreviewResponse {
     private boolean valid;

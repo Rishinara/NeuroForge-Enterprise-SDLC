@@ -12,6 +12,9 @@ import java.time.LocalDateTime;
         name = "story_point_snapshots",
         uniqueConstraints = {
                 @UniqueConstraint(columnNames = {"sprint_id", "snapshot_date"})
+        },
+        indexes = {
+                @Index(name = "idx_snapshot_sprint_id", columnList = "sprint_id")
         }
 )
 @Getter

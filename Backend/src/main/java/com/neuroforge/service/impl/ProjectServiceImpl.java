@@ -239,4 +239,13 @@ public class ProjectServiceImpl implements ProjectService {
         return mapToProjectResponse(updatedProject);
     }
 
+    @Override
+    @Transactional
+    public void deleteProject(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Project not found with id : " + projectId));
+        projectRepository.delete(project);
+    }
+
 }

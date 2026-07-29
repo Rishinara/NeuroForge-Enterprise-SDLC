@@ -1,4 +1,4 @@
-package com.neuroforge.dto;
+package com.neuroforge.dto.auth;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;

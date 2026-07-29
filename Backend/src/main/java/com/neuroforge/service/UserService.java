@@ -1,6 +1,7 @@
 package com.neuroforge.service;
 
-import com.neuroforge.dto.*;
+import com.neuroforge.dto.auth.*;
+import com.neuroforge.dto.organization.*;
 import com.neuroforge.entity.OtpToken;
 import com.neuroforge.entity.Organization;
 import com.neuroforge.entity.User;

@@ -1,6 +1,6 @@
 package com.neuroforge.dto.auth;
 
-import com.neuroforge.enums.Role;
+import com.neuroforge.entity.Role;
 import java.time.LocalDateTime;
 
 public class UserResponse {

@@ -459,4 +459,12 @@ public class SprintServiceImpl implements SprintService {
         return response;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Long getActiveSprintId(Long projectId) {
+        return sprintRepository.findByProjectIdAndStatus(projectId, SprintStatus.ACTIVE)
+                .map(Sprint::getId)
+                .orElseThrow(() -> new ResourceNotFoundException("No active sprint found for project : " + projectId));
+    }
+
 }
