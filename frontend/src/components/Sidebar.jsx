@@ -4,30 +4,37 @@ import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import Avatar from './Avatar.jsx'
 import './sidebar.css'
 
-const NAV_SECTIONS = [
-  {
-    label: 'Workspace',
-    items: [
-      { to: '/dashboard', label: 'Dashboard', icon: IconDashboard, roles: null },
-      { to: '/projects', label: 'Projects', icon: IconProjects, roles: null },
-    ],
-  },
-  {
-    label: 'Organization',
-    items: [
-      { to: '/org/teams', label: 'Teams & Members', icon: IconUsers, roles: [ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN] },
-      { to: '/org/settings', label: 'Org Settings', icon: IconSettings, roles: [ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN] },
-    ],
-  },
-]
+function getNavSections(currentProjectId) {
+  return [
+    {
+      label: 'Workspace',
+      items: [
+        { to: '/dashboard', label: 'Dashboard', icon: IconDashboard, roles: null },
+        { to: '/projects', label: 'Projects', icon: IconProjects, roles: null },
+        { to: `/projects/${currentProjectId}/specs`, label: 'Specs', icon: IconProjects, roles: null },
+        { to: `/projects/${currentProjectId}/backlog`, label: 'Backlog & Board', icon: IconDashboard, roles: null },
+      ],
+    },
+    {
+      label: 'Organization',
+      items: [
+        { to: '/org/teams', label: 'Teams & Members', icon: IconUsers, roles: [ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN] },
+        { to: '/org/settings', label: 'Org Settings', icon: IconSettings, roles: [ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN] },
+      ],
+    },
+  ]
+}
 
 export default function Sidebar() {
   const { user, role, logout } = useAuth()
+  const currentProjectId = user?.currentProjectId || 'p1'
 
-  const visibleSections = NAV_SECTIONS.map((section) => ({
-    ...section,
-    items: section.items.filter((item) => !item.roles || item.roles.includes(role)),
-  })).filter((section) => section.items.length > 0)
+  const visibleSections = getNavSections(currentProjectId)
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !item.roles || item.roles.includes(role)),
+    }))
+    .filter((section) => section.items.length > 0)
 
   const canCreateProject = [ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN].includes(role)
 

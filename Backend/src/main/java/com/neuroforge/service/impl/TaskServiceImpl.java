@@ -1,0 +1,471 @@
+package com.neuroforge.service.impl;
+
+import com.neuroforge.dto.task.*;
+import com.neuroforge.dto.websocket.TaskStatusUpdateEvent;
+import com.neuroforge.entity.*;
+import com.neuroforge.enums.SprintStatus;
+import com.neuroforge.enums.TaskStatus;
+import com.neuroforge.exception.InvalidRequestException;
+import com.neuroforge.exception.ResourceNotFoundException;
+import com.neuroforge.repository.*;
+import com.neuroforge.service.TaskService;
+import com.neuroforge.websocket.TaskEventPublisher;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class TaskServiceImpl implements TaskService {
+
+    private final TaskEventPublisher taskEventPublisher;
+    private final TaskRepository taskRepository;
+    private final ProjectRepository projectRepository;
+    private final SprintRepository sprintRepository;
+    private final UserRepository userRepository;
+    private final TaskStatusHistoryRepository taskStatusHistoryRepository;
+
+    private TaskResponse mapToResponse(Task task) {
+
+        TaskResponse response = new TaskResponse();
+
+        response.setId(task.getId());
+        response.setTitle(task.getTitle());
+        response.setDescription(task.getDescription());
+
+        response.setStatus(task.getStatus());
+        response.setPriority(task.getPriority());
+
+        response.setStoryPoints(task.getStoryPoints());
+
+        response.setLabels(task.getLabels());
+
+        response.setRequirementId(task.getRequirementId());
+
+        response.setProjectId(task.getProject().getId());
+        response.setProjectName(task.getProject().getName());
+
+        if (task.getSprint() != null) {
+            response.setSprintId(task.getSprint().getId());
+            response.setSprintName(task.getSprint().getName());
+        }
+
+        if (task.getAssignee() != null) {
+            response.setAssigneeId(task.getAssignee().getId());
+            response.setAssigneeName(task.getAssignee().getFullName());
+        }
+
+        response.setReporterId(task.getReporter().getId());
+        response.setReporterName(task.getReporter().getFullName());
+
+        response.setCreatedAt(task.getCreatedAt());
+        response.setUpdatedAt(task.getUpdatedAt());
+
+        return response;
+    }
+
+    private TaskStatusHistoryResponse mapToHistoryResponse(
+            TaskStatusHistory history) {
+
+        TaskStatusHistoryResponse response =
+                new TaskStatusHistoryResponse();
+
+        response.setId(history.getId());
+
+        response.setOldStatus(history.getOldStatus());
+
+        response.setNewStatus(history.getNewStatus());
+
+        response.setChangedById(history.getChangedBy().getId());
+
+        response.setChangedByName(
+                history.getChangedBy().getFullName());
+
+        response.setChangedAt(history.getChangedAt());
+
+        return response;
+    }
+
+
+    @Override
+    public TaskResponse createTask(CreateTaskRequest request,
+                                   String loggedInEmail) {
+
+        User reporter = userRepository.findByEmail(loggedInEmail)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
+
+        Project project = projectRepository.findById(request.getProjectId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Project not found"));
+
+        Sprint sprint = null;
+
+        if (request.getSprintId() != null) {
+
+            sprint = sprintRepository.findSprintById(request.getSprintId())
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("Sprint not found"));
+
+            if (!sprint.getProject().getId().equals(project.getId())) {
+                throw new InvalidRequestException(
+                        "Sprint does not belong to the selected project");
+            }
+
+            if (sprint.getStatus() == SprintStatus.COMPLETED) {
+                throw new InvalidRequestException(
+                        "Cannot add task to completed sprint");
+            }
+        }
+
+        User assignee = null;
+
+        if (request.getAssigneeId() != null) {
+
+            assignee = userRepository.findById(request.getAssigneeId())
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("Assignee not found"));
+        }
+
+        Task task = new Task();
+
+        task.setTitle(request.getTitle());
+        task.setDescription(request.getDescription());
+
+        task.setPriority(request.getPriority());
+        task.setStatus(TaskStatus.TODO);
+
+        task.setStoryPoints(request.getStoryPoints());
+
+        task.setRequirementId(request.getRequirementId());
+
+        task.setLabels(
+                request.getLabels() == null
+                        ? new ArrayList<>()
+                        : request.getLabels()
+        );
+
+        task.setProject(project);
+        task.setSprint(sprint);
+
+        task.setReporter(reporter);
+        task.setAssignee(assignee);
+
+        Task savedTask = taskRepository.save(task);
+
+        Task loadedTask = taskRepository.findTaskById(savedTask.getId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Task not found"));
+
+        return mapToResponse(loadedTask);
+
+    }
+
+    @Override
+    public TaskResponse updateTask(Long taskId,
+                                   UpdateTaskRequest request,
+                                   String loggedInEmail) {
+
+        userRepository.findByEmail(loggedInEmail)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
+
+        Task task = taskRepository.findTaskById(taskId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Task not found"));
+
+        Sprint sprint = null;
+
+        if (request.getSprintId() != null) {
+
+            sprint = sprintRepository.findSprintById(request.getSprintId())
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("Sprint not found"));
+
+            if (!sprint.getProject().getId().equals(task.getProject().getId())) {
+                throw new InvalidRequestException(
+                        "Sprint does not belong to the task project");
+            }
+
+            if (sprint.getStatus() == SprintStatus.COMPLETED) {
+                throw new InvalidRequestException(
+                        "Cannot move task to completed sprint");
+            }
+        }
+
+        User assignee = null;
+
+        if (request.getAssigneeId() != null) {
+
+            assignee = userRepository.findById(request.getAssigneeId())
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("Assignee not found"));
+        }
+
+        task.setTitle(request.getTitle());
+        task.setDescription(request.getDescription());
+        task.setPriority(request.getPriority());
+        task.setStatus(request.getStatus());
+        task.setStoryPoints(request.getStoryPoints());
+        task.setRequirementId(request.getRequirementId());
+
+        task.setLabels(
+                request.getLabels() == null
+                        ? new ArrayList<>()
+                        : request.getLabels()
+        );
+
+        task.setSprint(sprint);
+        task.setAssignee(assignee);
+
+        taskRepository.save(task);
+
+        Task updatedTask = taskRepository.findTaskById(task.getId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Task not found"));
+
+        return mapToResponse(updatedTask);
+    }
+
+    @Override
+    public void deleteTask(Long taskId,
+                           String loggedInEmail) {
+
+        userRepository.findByEmail(loggedInEmail)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
+
+        Task task = taskRepository.findTaskById(taskId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Task not found"));
+
+        taskRepository.delete(task);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TaskResponse getTaskById(Long taskId,
+                                    String loggedInEmail) {
+
+        userRepository.findByEmail(loggedInEmail)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
+
+        Task task = taskRepository.findTaskById(taskId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Task not found"));
+
+
+        return mapToResponse(task);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TaskResponse> getProjectBacklog(Long projectId,
+                                                String loggedInEmail) {
+
+        userRepository.findByEmail(loggedInEmail)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
+
+        projectRepository.findById(projectId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Project not found"));
+
+        return taskRepository.findByProjectIdAndSprintIsNull(projectId)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public TaskResponse assignTaskToSprint(Long taskId,
+                                           Long sprintId,
+                                           String loggedInEmail) {
+
+        userRepository.findByEmail(loggedInEmail)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
+
+        Task task = taskRepository.findTaskById(taskId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Task not found"));
+
+        Sprint sprint = sprintRepository.findSprintById(sprintId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Sprint not found"));
+
+        if (!task.getProject().getId().equals(sprint.getProject().getId())) {
+            throw new InvalidRequestException(
+                    "Task and Sprint belong to different projects");
+        }
+
+        if (sprint.getStatus() == SprintStatus.COMPLETED) {
+            throw new InvalidRequestException(
+                    "Cannot assign task to completed sprint");
+        }
+
+        task.setSprint(sprint);
+
+        taskRepository.save(task);
+
+        Task updatedTask = taskRepository.findTaskById(task.getId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Task not found"));
+
+        return mapToResponse(updatedTask);
+    }
+
+    @Override
+    @Transactional
+    public TaskResponse removeTaskFromSprint(Long taskId,
+                                             String loggedInEmail) {
+
+        userRepository.findByEmail(loggedInEmail)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
+
+        Task task = taskRepository.findTaskById(taskId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Task not found"));
+
+        if (task.getSprint() == null) {
+            throw new InvalidRequestException(
+                    "Task is already in the backlog");
+        }
+
+        task.setSprint(null);
+
+        taskRepository.save(task);
+
+        Task updatedTask = taskRepository.findTaskById(task.getId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Task not found"));
+
+        return mapToResponse(updatedTask);
+    }
+
+    //<---------------------------kanban-board-------------------->
+
+    private boolean isValidStatusTransition(TaskStatus current,
+                                            TaskStatus next) {
+
+        if (current == next) {return true;}
+
+        return switch (current) {
+
+            case TODO ->
+                    next == TaskStatus.IN_PROGRESS;
+
+            case IN_PROGRESS ->
+                    next == TaskStatus.TODO ||
+                            next == TaskStatus.CODE_REVIEW;
+
+            case CODE_REVIEW ->
+                    next == TaskStatus.IN_PROGRESS ||
+                            next == TaskStatus.TESTING;
+
+            case TESTING ->
+                    next == TaskStatus.CODE_REVIEW ||
+                            next == TaskStatus.DONE;
+
+            case DONE ->
+                    next == TaskStatus.TESTING;
+        };
+    }
+
+    @Override
+    @Transactional
+    public TaskResponse updateTaskStatus(Long taskId,
+                                         UpdateTaskStatusRequest request,
+                                         String loggedInEmail) {
+
+        User user = userRepository.findByEmail(loggedInEmail)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
+
+        Task task = taskRepository.findTaskById(taskId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Task not found"));
+
+        if (!isValidStatusTransition(task.getStatus(),
+                request.getStatus())) {
+
+            throw new InvalidRequestException(
+                    "Invalid task status transition");
+        }
+        if (task.getStatus() == request.getStatus()) {
+            throw new InvalidRequestException(
+                    "Task is already in the selected status");
+        }
+
+        TaskStatus oldStatus = task.getStatus();
+
+        task.setStatus(request.getStatus());
+
+        taskRepository.save(task);
+
+        TaskStatusHistory history = new TaskStatusHistory();
+
+        history.setTask(task);
+        history.setOldStatus(oldStatus);
+        history.setNewStatus(request.getStatus());
+        history.setChangedBy(user);
+
+        taskStatusHistoryRepository.save(history);
+
+        TaskStatusUpdateEvent event = new TaskStatusUpdateEvent();
+
+        event.setTaskId(task.getId());
+        event.setTaskTitle(task.getTitle());
+
+        event.setProjectId(task.getProject().getId());
+
+        if (task.getSprint() != null) {
+            event.setSprintId(task.getSprint().getId());
+        }
+
+        event.setOldStatus(oldStatus);
+        event.setNewStatus(task.getStatus());
+
+        event.setUpdatedById(user.getId());
+        event.setUpdatedByName(user.getFullName());
+
+        if (event.getSprintId() != null) {
+            taskEventPublisher.publishTaskStatusUpdate(event);
+        }
+
+        Task updatedTask = taskRepository.findTaskById(taskId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Task not found"));
+
+        return mapToResponse(updatedTask);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TaskStatusHistoryResponse> getTaskStatusHistory(
+            Long taskId,
+            String loggedInEmail) {
+
+        userRepository.findByEmail(loggedInEmail)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
+
+        taskRepository.findTaskById(taskId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Task not found"));
+
+        return taskStatusHistoryRepository
+                .findByTaskIdOrderByChangedAtAsc(taskId)
+                .stream()
+                .map(this::mapToHistoryResponse)
+                .toList();
+    }
+
+}

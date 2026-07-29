@@ -14,7 +14,10 @@ import OrgSettingsPage from './pages/OrgSettingsPage.jsx'
 import ProjectsPortfolioPage from './pages/ProjectsPortfolioPage.jsx'
 import CreateProjectPage from './pages/CreateProjectPage.jsx'
 import ProjectDetailPage from './pages/ProjectDetailPage.jsx'
-
+import SpecsListPage from './pages/SpecsListPage.jsx'
+import SpecEditorPage from './pages/SpecEditorPage.jsx'
+import BacklogPage from './pages/BacklogPage.jsx'
+import KanbanBoardPage from './pages/KanbanBoardPage.jsx'
 export default function App() {
   return (
     <AuthProvider>
@@ -40,6 +43,11 @@ export default function App() {
             <Route path="/projects" element={<ProjectsPortfolioPage />} />
             <Route path="/projects/new" element={<CreateProjectPage />} />
             <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+            <Route path="/projects/:projectId/specs" element={<SpecsListPage />} />
+<Route path="/projects/:projectId/specs/new" element={<SpecEditorPage />} />
+<Route path="/projects/:projectId/specs/:specId" element={<SpecEditorPage />} />
+<Route path="/projects/:projectId/backlog" element={<BacklogPage />} />
+<Route path="/projects/:projectId/board" element={<KanbanBoardPage />} />
           </Route>
 
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
