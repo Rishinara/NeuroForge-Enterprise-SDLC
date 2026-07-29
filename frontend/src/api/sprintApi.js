@@ -8,10 +8,10 @@ export const sprintApi = {
   deleteSprint: (id) => api.delete(`/sprints/${id}`),
   startSprint: (id) => api.post(`/sprints/${id}/start`),
   completeSprint: (id) => api.post(`/sprints/${id}/complete`),
-  listProjectSprints: (projectId) => api.get(`/projects/${projectId}/sprints`),
+  listProjectSprints: (projectId) => api.get(`/sprints/project/${projectId}`),
 
   
-  getBoard: (sprintId, projectId) => api.get(`/sprints/${sprintId}/board`, { params: projectId ? { projectId } : {} }),
+  getBoard: (sprintId, projectId) => api.get(`/tasks/${sprintId}/board`, { params: projectId ? { projectId } : {} }),
 
  
   captureSnapshot: (sprintId) => api.post(`/sprints/${sprintId}/snapshot`),

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { sprintApi } from '../api/sprintApi.js'
 import { taskApi } from '../api/taskApi.js'
 import { aiApi } from '../api/aiApi.js'
+import { projectApi } from '../api/projectApi.js'
 import { extractErrorMessage } from '../api/client.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import Avatar from '../components/Avatar.jsx'
@@ -97,7 +98,8 @@ function normalizeBoardResponse(data) {
 
 export default function KanbanBoardPage() {
   const { projectId = 'p1', sprintId = 'current' } = useParams()
-  const { role } = useAuth()
+  const { user, role } = useAuth()
+  const navigate = useNavigate()
   const [tasks, setTasks] = useState([])
   const [burndown, setBurndown] = useState([])
   const [loading, setLoading] = useState(true)
@@ -114,7 +116,47 @@ export default function KanbanBoardPage() {
 
   const [activeSprintId, setActiveSprintId] = useState(null)
 
+  useEffect(() => {
+    if (projectId && isNaN(Number(projectId))) {
+      projectApi.listProjects(user?.orgId)
+        .then((res) => {
+          const firstProj = res.data?.[0]
+          if (firstProj?.id) {
+            navigate(`/projects/${firstProj.id}/board`, { replace: true })
+          } else {
+            navigate('/projects', { replace: true })
+          }
+        })
+        .catch(() => {
+          navigate('/projects', { replace: true })
+        })
+      return
+    }
+
+    if (sprintId === 'current') {
+      sprintApi.listProjectSprints(projectId)
+        .then((res) => {
+          if (Array.isArray(res.data) && res.data.length > 0) {
+            const active = res.data.find(s => s.status === 'ACTIVE')
+            const planned = res.data.find(s => s.status === 'PLANNED')
+            const resolved = active || planned || res.data[0]
+            if (resolved?.id) {
+              navigate(`/projects/${projectId}/sprints/${resolved.id}/board`, { replace: true })
+              return
+            }
+          }
+          setLoading(false)
+          setError('No sprints found for this project. Please create a sprint in the Backlog first.')
+        })
+        .catch((err) => {
+          setLoading(false)
+          setError(extractErrorMessage(err))
+        })
+    }
+  }, [projectId, sprintId, user?.orgId, navigate])
+
   const load = useCallback(async () => {
+    if (!projectId || isNaN(Number(projectId)) || !sprintId || sprintId === 'current') return
     setLoading(true)
     setError('')
     try {
@@ -133,6 +175,7 @@ export default function KanbanBoardPage() {
   }, [sprintId, projectId])
 
   const loadBurndown = useCallback(async () => {
+    if (!projectId || isNaN(Number(projectId)) || !sprintId || sprintId === 'current') return
     setBurndownError('')
     try {
       const numericProjId = Number(projectId) || null

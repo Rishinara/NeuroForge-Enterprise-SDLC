@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { taskApi } from '../api/taskApi.js'
+import { projectApi } from '../api/projectApi.js'
 import { aiApi } from '../api/aiApi.js'
 import { api, extractErrorMessage } from '../api/client.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
@@ -18,13 +19,31 @@ const CAN_MANAGE = [ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]
 
 export default function BacklogPage() {
   const { projectId = 'p1' } = useParams()
-  const { role } = useAuth()
+  const navigate = useNavigate()
+  const { user, role } = useAuth()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [endpointMissing, setEndpointMissing] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ title: '', points: 3, priority: 'Medium', labels: '' })
+
+  useEffect(() => {
+    if (projectId && isNaN(Number(projectId))) {
+      projectApi.listProjects(user?.orgId)
+        .then((res) => {
+          const firstProj = res.data?.[0]
+          if (firstProj?.id) {
+            navigate(window.location.pathname.replace(projectId, firstProj.id), { replace: true })
+          } else {
+            navigate('/projects', { replace: true })
+          }
+        })
+        .catch(() => {
+          navigate('/projects', { replace: true })
+        })
+    }
+  }, [projectId, user?.orgId, navigate])
 
   // AI Copilot state
   const [showAiCopilot, setShowAiCopilot] = useState(false)
@@ -35,11 +54,12 @@ export default function BacklogPage() {
   const [aiError, setAiError] = useState('')
 
   const load = useCallback(async () => {
+    if (!projectId || isNaN(Number(projectId))) return
     setLoading(true)
     setError('')
     setEndpointMissing(false)
     try {
-      const res = await api.get(`/projects/${projectId}/tasks`)
+      const res = await api.get(`/tasks/project/${projectId}/backlog`)
       if (!Array.isArray(res.data)) throw new Error('Unexpected response shape')
       setItems(res.data)
     } catch (err) {
@@ -165,7 +185,7 @@ export default function BacklogPage() {
       {endpointMissing && (
         <p className="wk-alert wk-alert-info">
           Your backend doesn't have a "list tasks by project" endpoint yet
-          (tried <code>GET /api/projects/{'{projectId}'}/tasks</code>, got 404).
+          (tried <code>GET /api/tasks/project/{'{projectId}'}/backlog</code>, got 404).
           Ask your backend developer to add one — until then this list stays empty,
           though adding new items still works via the real <code>POST /api/tasks</code> endpoint.
         </p>

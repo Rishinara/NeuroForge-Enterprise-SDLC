@@ -80,6 +80,7 @@ public class OrgService {
 
     // ---- Teams ----
 
+    @Transactional(readOnly = true)
     public List<TeamResponse> listTeams(Long orgId, String loggedInEmail) {
         validateOrganizationAccess(orgId, loggedInEmail);
         List<User> orgUsers = userRepository.findByOrganizationId(orgId);
@@ -134,6 +135,7 @@ public class OrgService {
 
     // ---- Members ----
 
+    @Transactional(readOnly = true)
     public List<MemberResponse> listMembers(Long orgId, String loggedInEmail) {
 
         validateOrganizationAccess(orgId, loggedInEmail);

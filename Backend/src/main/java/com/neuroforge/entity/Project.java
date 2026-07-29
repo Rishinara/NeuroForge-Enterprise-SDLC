@@ -55,7 +55,7 @@ public class Project {
             mappedBy = "project",
             cascade = CascadeType.ALL,
             orphanRemoval = true,
-            fetch = FetchType.EAGER
+            fetch = FetchType.LAZY
     )
     private List<ProjectMember> members = new ArrayList<>();
 

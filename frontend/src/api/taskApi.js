@@ -6,7 +6,7 @@ export const taskApi = {
   updateTask: (id, payload) => api.put(`/tasks/${id}`, payload),
   deleteTask: (id) => api.delete(`/tasks/${id}`),
   updateStatus: (id, status) => api.patch(`/tasks/${id}/status`, { status }),
-  assignSprint: (id, sprintId) => api.patch(`/tasks/${id}/assign-sprint`, { sprintId }),
-  removeSprint: (id) => api.patch(`/tasks/${id}/remove-sprint`),
+  assignSprint: (id, sprintId) => api.post(`/tasks/${id}/assign-sprint/${sprintId}`),
+  removeSprint: (id) => api.post(`/tasks/${id}/remove-sprint`),
 
 }

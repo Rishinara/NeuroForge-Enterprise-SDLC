@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { specApi } from '../api/specApi.js'
+import { projectApi } from '../api/projectApi.js'
 import { extractErrorMessage } from '../api/client.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import Can from '../components/Can.jsx'
@@ -9,13 +10,32 @@ import './specs.css'
 
 export default function SpecsListPage() {
   const { projectId = 'p1' } = useParams()
-  const { role } = useAuth()
+  const { user, role } = useAuth()
+  const navigate = useNavigate()
   const [specs, setSpecs] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
 
+  useEffect(() => {
+    if (projectId && isNaN(Number(projectId))) {
+      projectApi.listProjects(user?.orgId)
+        .then((res) => {
+          const firstProj = res.data?.[0]
+          if (firstProj?.id) {
+            navigate(`/projects/${firstProj.id}/specs`, { replace: true })
+          } else {
+            navigate('/projects', { replace: true })
+          }
+        })
+        .catch(() => {
+          navigate('/projects', { replace: true })
+        })
+    }
+  }, [projectId, user?.orgId, navigate])
+
   const load = useCallback(async () => {
+    if (!projectId || isNaN(Number(projectId))) return
     setLoading(true)
     setError('')
     try {

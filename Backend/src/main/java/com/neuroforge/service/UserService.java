@@ -1,8 +1,7 @@
 package com.neuroforge.service;
 
 import com.neuroforge.dto.auth.*;
-import com.neuroforge.dto.project.ProfileResponse;
-import com.neuroforge.dto.project.UpdateProfileRequest;
+
 import com.neuroforge.entity.OtpToken;
 import com.neuroforge.entity.Organization;
 import com.neuroforge.entity.User;
