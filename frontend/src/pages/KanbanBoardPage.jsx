@@ -12,8 +12,28 @@ import './agile.css'
 
 const COLUMNS = ['To Do', 'In Progress', 'Code Review', 'Testing', 'Done']
 
-const PRIORITY_DOT = { High: '#dc2626', Medium: '#d97706', Low: '#9ca3af' }
+const PRIORITY_DOT = {
+  HIGH: '#dc2626',
+  High: '#dc2626',
+  MEDIUM: '#d97706',
+  Medium: '#d97706',
+  LOW: '#9ca3af',
+  Low: '#9ca3af',
+  CRITICAL: '#991b1b',
+}
 
+const STATUS_ENUM_TO_UI = {
+  TODO: 'To Do',
+  IN_PROGRESS: 'In Progress',
+  CODE_REVIEW: 'Code Review',
+  TESTING: 'Testing',
+  DONE: 'Done',
+  'To Do': 'To Do',
+  'In Progress': 'In Progress',
+  'Code Review': 'Code Review',
+  'Testing': 'Testing',
+  'Done': 'Done',
+}
 
 class SimpleStompClient {
   constructor(url, onMessage) {
@@ -87,13 +107,15 @@ class SimpleStompClient {
 }
 
 function normalizeBoardResponse(data) {
-  if (Array.isArray(data)) return data
-  if (data && typeof data === 'object') {
-    return Object.entries(data).flatMap(([status, tasks]) =>
+  let list = []
+  if (Array.isArray(data)) {
+    list = data
+  } else if (data && typeof data === 'object') {
+    list = Object.entries(data).flatMap(([status, tasks]) =>
       Array.isArray(tasks) ? tasks.map((t) => ({ ...t, status: t.status || status })) : []
     )
   }
-  return []
+  return list.map((t) => ({ ...t, status: STATUS_ENUM_TO_UI[t.status] || t.status }))
 }
 
 export default function KanbanBoardPage() {

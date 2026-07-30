@@ -90,7 +90,13 @@ export default function CreateProjectPage() {
     setError('')
     setSubmitting(true)
     try {
-      const res = await projectApi.createProject({ ...form, orgId: user.orgId })
+      const numericOrgId = Number(user?.orgId)
+      const payload = {
+        ...form,
+        orgId: isNaN(numericOrgId) ? null : numericOrgId,
+        teamMemberIds: form.teamMemberIds.map((id) => Number(id)).filter((id) => !isNaN(id)),
+      }
+      const res = await projectApi.createProject(payload)
       const newId = res?.data?.id
       navigate(newId ? `/projects/${newId}` : '/projects')
     } catch (err) {

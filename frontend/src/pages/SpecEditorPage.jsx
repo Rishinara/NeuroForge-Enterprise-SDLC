@@ -143,11 +143,24 @@ export default function SpecEditorPage() {
     setError('')
     setSaving(true)
     try {
+      const payload = {
+        title: spec.title || '',
+        description: spec.description || '',
+        userStories: (spec.userStories || []).map((s) => ({
+          id: String(s.id),
+          asA: s.asA || '',
+          iWant: s.iWant || '',
+          soThat: s.soThat || '',
+          criteria: (s.criteria || []).filter(Boolean),
+        })),
+        functionalRequirements: (spec.functionalRequirements || []).filter(Boolean),
+        nonFunctionalRequirements: (spec.nonFunctionalRequirements || []).filter(Boolean),
+      }
       if (isNew) {
-        const res = await specApi.createSpec(projectId, spec)
+        const res = await specApi.createSpec(projectId, payload)
         navigate(`/projects/${projectId}/specs/${res.data.id}`)
       } else {
-        await specApi.updateSpec(specId, spec)
+        await specApi.updateSpec(specId, payload)
         setSavedNote('Draft saved.')
       }
     } catch (err) {

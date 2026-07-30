@@ -9,9 +9,13 @@ import Can from '../components/Can.jsx'
 import './agile.css'
 
 const PRIORITY_STYLE = {
+  HIGH: { bg: '#fee2e2', color: '#991b1b' },
   High: { bg: '#fee2e2', color: '#991b1b' },
+  MEDIUM: { bg: '#fef3c7', color: '#92400e' },
   Medium: { bg: '#fef3c7', color: '#92400e' },
+  LOW: { bg: '#f3f4f6', color: '#4b5563' },
   Low: { bg: '#f3f4f6', color: '#4b5563' },
+  CRITICAL: { bg: '#fef2f2', color: '#7f1d1d' },
 }
 
 const CAN_MANAGE = [ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]
@@ -81,12 +85,13 @@ export default function BacklogPage() {
   async function handleAdd(e) {
     e.preventDefault()
     if (!form.title.trim()) return
+    const numericProjId = Number(projectId)
     const payload = {
       title: form.title.trim(),
-      points: Number(form.points) || 0,
-      priority: form.priority,
+      storyPoints: Math.max(1, Math.min(13, Number(form.points) || 1)),
+      priority: (form.priority || 'MEDIUM').toUpperCase(),
       labels: form.labels.split(',').map((l) => l.trim()).filter(Boolean),
-      projectId,
+      projectId: isNaN(numericProjId) ? null : numericProjId,
       sprintId: null, 
     }
     try {
@@ -254,7 +259,7 @@ export default function BacklogPage() {
                   const pStyle = PRIORITY_STYLE[item.priority] || PRIORITY_STYLE.Medium
                   return (
                     <div key={item.id} className="ag-backlog-row">
-                      <span className="ag-points-chip">{item.points}</span>
+                      <span className="ag-points-chip">{item.storyPoints ?? item.points ?? 0}</span>
                       <div className="ag-backlog-main">
                         <span className="ag-backlog-title">{item.title}</span>
                         {item.specTitle && <span className="ag-backlog-spec">Traces to: {item.specTitle}</span>}

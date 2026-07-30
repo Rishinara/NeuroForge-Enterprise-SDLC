@@ -28,10 +28,15 @@ api.interceptors.response.use(
 
 
 export function extractErrorMessage(err) {
-  return (
-    err?.response?.data?.message ||
-    err?.response?.data?.error ||
-    err?.message ||
-    'Something went wrong. Please try again.'
-  )
+  const data = err?.response?.data
+  if (data) {
+    if (typeof data === 'string') return data
+    if (data.message) return data.message
+    if (data.error) return data.error
+    if (typeof data === 'object') {
+      const values = Object.values(data).filter((v) => typeof v === 'string')
+      if (values.length > 0) return values.join('. ')
+    }
+  }
+  return err?.message || 'Something went wrong. Please try again.'
 }

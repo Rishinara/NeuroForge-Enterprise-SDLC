@@ -33,7 +33,8 @@ const ROLE_OPTIONS = [
   },
 ]
 
-const PHONE_PATTERN = /^[0-9+\-\s()]{7,20}$/
+const PHONE_PATTERN = /^[6-9]\d{9}$/
+const PASSWORD_PATTERN = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).*$/
 
 export default function SignupPage() {
   const { signup } = useAuth()
@@ -55,11 +56,12 @@ export default function SignupPage() {
   }
 
   function validate() {
-    if (!form.fullName.trim()) return 'Enter your full name.'
+    if (!form.fullName.trim() || form.fullName.trim().length < 3) return 'Full name must be at least 3 characters.'
     if (!/^\S+@\S+\.\S+$/.test(form.email)) return 'Enter a valid email address.'
-    if (!PHONE_PATTERN.test(form.phone)) return 'Enter a valid phone number.'
+    if (!PHONE_PATTERN.test(form.phone)) return 'Enter a valid 10-digit mobile number starting with 6-9.'
     if (!form.role) return 'Select a role to continue.'
     if (form.password.length < 8) return 'Password must be at least 8 characters.'
+    if (!PASSWORD_PATTERN.test(form.password)) return 'Password must contain uppercase, lowercase, digit, and special character (@$!%*?&).'
     if (form.password !== form.confirmPassword) return 'Passwords do not match.'
     return ''
   }
