@@ -7,13 +7,11 @@ import Can from '../components/Can.jsx'
 import ProjectCard from '../components/ProjectCard.jsx'
 import './workspace.css'
 
-const FILTERS = ['All', 'On Track', 'At Risk', 'Delayed']
-
-const SAMPLE_PROJECTS = [
-  { id: 'p1', name: 'Checkout Revamp', health: 'On Track', methodology: 'Agile', teamSize: 6, techStack: ['React', 'Spring Boot', 'PostgreSQL'], progressPercent: 72 },
-  { id: 'p2', name: 'Mobile App v3', health: 'At Risk', methodology: 'Agile', teamSize: 5, techStack: ['React Native', 'Node'], progressPercent: 45 },
-  { id: 'p3', name: 'Data Platform', health: 'Delayed', methodology: 'Waterfall', teamSize: 8, techStack: ['Python', 'Kafka', 'Snowflake'], progressPercent: 28 },
-  { id: 'p4', name: 'Internal Tools', health: 'On Track', methodology: 'Agile', teamSize: 3, techStack: ['React', 'Express'], progressPercent: 88 },
+const FILTERS = [
+  { key: 'ALL', label: 'All' },
+  { key: 'ON_TRACK', label: 'On Track' },
+  { key: 'AT_RISK', label: 'At Risk' },
+  { key: 'DELAYED', label: 'Delayed' },
 ]
 
 export default function ProjectsPortfolioPage() {
@@ -21,22 +19,19 @@ export default function ProjectsPortfolioPage() {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [filter, setFilter] = useState('All')
+  const [filter, setFilter] = useState('ALL')
   const [search, setSearch] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const res = await projectApi.listProjects(user.orgId)
-      if (!Array.isArray(res.data)) {
-        throw new Error('Unexpected response shape from server')
-      }
+      const res = await projectApi.listOrgProjects(user.orgId)
+      if (!Array.isArray(res.data)) throw new Error('Unexpected response shape')
       setProjects(res.data)
     } catch (err) {
       setError(extractErrorMessage(err))
-      // Sample data so the page stays demoable without a live backend
-      setProjects(SAMPLE_PROJECTS)
+      setProjects([])
     } finally {
       setLoading(false)
     }
@@ -48,7 +43,7 @@ export default function ProjectsPortfolioPage() {
 
   const filtered = useMemo(() => {
     return projects
-      .filter((p) => filter === 'All' || p.health === filter)
+      .filter((p) => filter === 'ALL' || p.healthStatus === filter)
       .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
   }, [projects, filter, search])
 
@@ -56,7 +51,7 @@ export default function ProjectsPortfolioPage() {
     <div className="wk-page">
       <div className="wk-page-header" style={{ justifyContent: 'flex-end' }}>
         <Can roles={[ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]}>
-          <Link to="/projects/new" className="wk-btn wk-btn-primary" style={{ width: 'auto', padding: '10px 18px', textDecoration: 'none' }}>
+          <Link to="/projects/new" className="wk-btn wk-btn-primary" style={{ textDecoration: 'none' }}>
             New project
           </Link>
         </Can>
@@ -64,7 +59,7 @@ export default function ProjectsPortfolioPage() {
 
       {error && (
         <p className="wk-alert wk-alert-error">
-          Live data unavailable — showing sample data instead. ({error})
+          Could not load projects. ({error})
         </p>
       )}
 
@@ -72,19 +67,16 @@ export default function ProjectsPortfolioPage() {
         <div style={{ display: 'flex', gap: 6 }}>
           {FILTERS.map((f) => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
+              key={f.key}
+              onClick={() => setFilter(f.key)}
               className="wk-btn"
               style={{
-                width: 'auto',
-                padding: '7px 14px',
-                fontSize: 12.5,
-                background: filter === f ? 'var(--wk-accent)' : '#fff',
-                color: filter === f ? '#fff' : '#334155',
-                border: '1px solid #e2e4ec',
+                background: filter === f.key ? 'var(--wk-accent)' : '#fff',
+                color: filter === f.key ? '#fff' : '#334155',
+                border: '1px solid var(--wk-border)',
               }}
             >
-              {f}
+              {f.label}
             </button>
           ))}
         </div>

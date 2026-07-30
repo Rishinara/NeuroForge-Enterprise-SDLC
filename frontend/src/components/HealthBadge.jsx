@@ -1,11 +1,11 @@
 const STYLES = {
-  'On Track': { bg: '#dcfce7', color: '#166534' },
-  'At Risk': { bg: '#fef3c7', color: '#92400e' },
-  'Delayed': { bg: '#fee2e2', color: '#991b1b' },
+  ON_TRACK: { bg: '#dcfce7', color: '#166534', label: 'On Track' },
+  AT_RISK: { bg: '#fef3c7', color: '#92400e', label: 'At Risk' },
+  DELAYED: { bg: '#fee2e2', color: '#991b1b', label: 'Delayed' },
 }
 
 export default function HealthBadge({ status }) {
-  const style = STYLES[status] || { bg: '#f1f5f9', color: '#475569' }
+  const style = STYLES[status] || { bg: '#f1f5f9', color: '#475569', label: status || 'Unknown' }
   return (
     <span
       style={{
@@ -17,7 +17,7 @@ export default function HealthBadge({ status }) {
         borderRadius: 999,
       }}
     >
-      {status}
+      {style.label}
     </span>
   )
 }
