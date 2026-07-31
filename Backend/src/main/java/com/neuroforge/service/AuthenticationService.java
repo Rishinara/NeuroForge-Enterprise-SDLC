@@ -5,7 +5,7 @@ import com.neuroforge.dto.auth.ResetPasswordRequest;
 import com.neuroforge.dto.auth.SignInRequest;
 import com.neuroforge.dto.auth.SignupRequest;
 import com.neuroforge.dto.auth.JwtAuthenticationResponse;
-import com.neuroforge.entity.Role;
+import com.neuroforge.enums.Role;
 import com.neuroforge.entity.User;
 import com.neuroforge.entity.PasswordResetToken;
 import com.neuroforge.repository.UserRepository;
@@ -41,7 +41,7 @@ public class AuthenticationService {
         user.setFullName((request.getFirstName() != null ? request.getFirstName() : "") + " " + (request.getLastName() != null ? request.getLastName() : ""));
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(Role.ROLE_USER);
+        user.setRole(Role.DEVELOPER);
         
         userRepository.save(user);
         

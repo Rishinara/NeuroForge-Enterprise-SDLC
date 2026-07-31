@@ -1,6 +1,6 @@
 package com.neuroforge.dto.auth;
 
-import com.neuroforge.entity.Role;
+import com.neuroforge.enums.Role;
 
 public class AuthResponse {
 

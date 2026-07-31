@@ -6,7 +6,6 @@ public enum Role {
     PROJECT_MANAGER,
     DEVELOPER,
     QA_TESTER,
-    CLIENT,
-    ROLE_USER,
-    ROLE_ADMIN
+    CLIENT
+    // ROLE_USER and ROLE_ADMIN removed — legacy V1 values
 }

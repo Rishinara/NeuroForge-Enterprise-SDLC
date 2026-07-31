@@ -1,5 +1,7 @@
 package com.neuroforge.entity;
 
+import com.neuroforge.enums.InviteStatus;
+import com.neuroforge.enums.Role;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -67,4 +69,17 @@ public class Invite {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Team getTeam() {return team;}
     public void setTeam(Team team) {this.team = team;}
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Invite)) return false;
+        Invite other = (Invite) o;
+        return getId() != null && getId().equals(other.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 }

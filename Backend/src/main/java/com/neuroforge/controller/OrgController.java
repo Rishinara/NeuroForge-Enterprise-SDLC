@@ -1,6 +1,6 @@
 package com.neuroforge.controller;
 
-import com.neuroforge.dto.auth.*;
+import com.neuroforge.dto.auth.AuthResponse;
 import com.neuroforge.dto.organization.*;
 import com.neuroforge.entity.Organization;
 import com.neuroforge.service.OrgService;
@@ -24,13 +24,13 @@ public class OrgController {
 
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     @PostMapping("/api/organizations")
-    public Organization createOrganization(@Valid @RequestBody CreateOrgRequest request) {
+    public OrgResponse createOrganization(@Valid @RequestBody CreateOrgRequest request) {
         return orgService.createOrganization(request);
     }
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/api/organizations")
-    public List<Organization> getAllOrganizations() {
+    public List<OrgResponse> getAllOrganizations() {
         return orgService.getAllOrganizations();
     }
 

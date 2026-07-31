@@ -1,10 +1,11 @@
 package com.neuroforge.service;
 
 import com.neuroforge.dto.auth.*;
-import com.neuroforge.dto.organization.*;
+
 import com.neuroforge.entity.OtpToken;
 import com.neuroforge.entity.Organization;
 import com.neuroforge.entity.User;
+import com.neuroforge.enums.Role;
 import com.neuroforge.exception.DuplicateResourceException;
 import com.neuroforge.exception.InvalidRequestException;
 import com.neuroforge.exception.ResourceNotFoundException;
@@ -59,7 +60,7 @@ public class UserService {
         }
 
         // Prevent self-assignment of privileged roles via public signup
-        if (request.getRole() == com.neuroforge.entity.Role.SUPER_ADMIN) {
+        if (request.getRole() == Role.SUPER_ADMIN) {
             throw new InvalidRequestException("SUPER_ADMIN role cannot be self-assigned.");
         }
 
@@ -72,7 +73,7 @@ public class UserService {
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole());
+        user.setRole(request.getRole() != null ? request.getRole() : Role.DEVELOPER);
         user.setPhoneNumber(request.getPhone());
         user.setCreatedAt(LocalDateTime.now());
         user.setOrganization(org);
@@ -96,6 +97,18 @@ public class UserService {
 
         String token = jwtService.generateToken(user);
         return buildAuthResponse(token, user);
+    }
+
+    public AuthResponse refreshTokenV2(java.util.Map<String, String> body) {
+        String expiredToken = body.get("token");
+        String email = jwtService.extractEmailFromExpiredToken(expiredToken);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (!user.isEnabled()) {
+            throw new InvalidRequestException("Account disabled");
+        }
+        String newToken = jwtService.generateToken(user);
+        return buildAuthResponse(newToken, user);
     }
 
     public AuthResponse.UserPayload getMe(String email) {
@@ -186,7 +199,6 @@ public class UserService {
     }
 
     private AuthResponse.UserPayload toPayload(User user) {
-        user = userRepository.findUserById(user.getId());
         Long orgId = user.getOrganization() != null ? user.getOrganization().getId() : null;
         String orgName = user.getOrganization() != null ? user.getOrganization().getName() : null;
         return new AuthResponse.UserPayload(

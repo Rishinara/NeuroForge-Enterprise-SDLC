@@ -18,6 +18,7 @@ public interface ProjectService {
             Long projectId,
             UpdateProjectRequest request
     );
+    void deleteProject(Long projectId, String username);
 
-    void deleteProject(Long projectId);
+    List<ProjectResponse> getProjectsForUser(String username);
 }

@@ -1,7 +1,6 @@
 package com.neuroforge.controller;
 
 import com.neuroforge.dto.auth.*;
-import com.neuroforge.dto.organization.*;
 import com.neuroforge.service.UserService;
 import com.neuroforge.service.RefreshTokenService;
 import com.neuroforge.security.JwtService;
@@ -59,28 +58,60 @@ public class AuthController {
         userService.resetPassword(request);
     }
 
-    // ---- V1 API Endpoints ----
+    @PostMapping("/api/auth/refresh")
+    public AuthResponse refreshTokenV2(@RequestBody java.util.Map<String, String> body) {
+        return userService.refreshTokenV2(body);
+    }
 
+
+    // ── V1 API Endpoints (DEPRECATED – use V2 /api/auth/* instead) ──
+
+    /**
+     * @deprecated Use {@link #signupV2(SignupRequest)} at {@code POST /api/auth/signup} instead.
+     * Scheduled for removal in the next major release.
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
     @PostMapping("/api/v1/auth/signup")
     public JwtAuthenticationResponse signupV1(@Valid @RequestBody SignupRequest request) {
         return authenticationService.signup(request);
     }
 
+    /**
+     * @deprecated Use {@link #loginV2(LoginRequest)} at {@code POST /api/auth/login} instead.
+     * Scheduled for removal in the next major release.
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
     @PostMapping("/api/v1/auth/signin")
     public JwtAuthenticationResponse signinV1(@Valid @RequestBody SignInRequest request) {
         return authenticationService.signin(request);
     }
 
+    /**
+     * @deprecated Use {@code POST /api/auth/forgot-password} instead.
+     * Scheduled for removal in the next major release.
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
     @PostMapping("/api/v1/auth/forgot-password")
     public void forgotPasswordV1(@Valid @RequestBody ForgotPasswordRequest request) {
         authenticationService.forgotPassword(request);
     }
 
+    /**
+     * @deprecated Use {@code POST /api/auth/reset-password} instead.
+     * Scheduled for removal in the next major release.
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
     @PostMapping("/api/v1/auth/reset-password")
     public void resetPasswordV1(@Valid @RequestBody ResetPasswordRequest request) {
         authenticationService.resetPassword(request);
     }
 
+    /**
+     * @deprecated Token refresh via V1 is deprecated. The V2 auth flow uses
+     * long-lived tokens with re-authentication on expiry.
+     * Scheduled for removal in the next major release.
+     */
+    @Deprecated(since = "2.0", forRemoval = true)
     @PostMapping("/api/v1/auth/refresh")
     public ResponseEntity<JwtAuthenticationResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
         return refreshTokenService.findByToken(request.getRefreshToken())

@@ -39,4 +39,17 @@ public class OtpToken {
     public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }
     public boolean isUsed() { return used; }
     public void setUsed(boolean used) { this.used = used; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof OtpToken)) return false;
+        OtpToken other = (OtpToken) o;
+        return getId() != null && getId().equals(other.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 }

@@ -241,11 +241,34 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional
-    public void deleteProject(Long projectId) {
+    public void deleteProject(Long projectId, String username) {
+
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Project not found with id : " + projectId));
+                        new ResourceNotFoundException(
+                                "Project not found with id : " + projectId));
+
         projectRepository.delete(project);
     }
 
+    @Override
+    public List<ProjectResponse> getProjectsForUser(String username) {
+
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
+
+        // Get projects from all organizations the user belongs to
+        List<Project> projects;
+        if (user.getOrganization() != null) {
+            projects = projectRepository.findByOrganizationIdOrderByCreatedAtDesc(
+                    user.getOrganization().getId());
+        } else {
+            projects = List.of();
+        }
+
+        return projects.stream()
+                .map(this::mapToProjectResponse)
+                .toList();
+    }
 }

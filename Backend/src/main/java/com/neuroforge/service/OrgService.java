@@ -1,8 +1,10 @@
 package com.neuroforge.service;
 
-import com.neuroforge.dto.auth.*;
+import com.neuroforge.dto.auth.AuthResponse;
 import com.neuroforge.dto.organization.*;
 import com.neuroforge.entity.*;
+import com.neuroforge.enums.InviteStatus;
+import com.neuroforge.enums.Role;
 import com.neuroforge.exception.DuplicateResourceException;
 import com.neuroforge.exception.InvalidRequestException;
 import com.neuroforge.exception.ResourceNotFoundException;
@@ -43,17 +45,20 @@ public class OrgService {
 
     //---Organization---
 
-    public Organization createOrganization(CreateOrgRequest request) {
+    public OrgResponse createOrganization(CreateOrgRequest request) {
         Organization organization = new Organization();
         organization.setName(request.getName());
         organization.setDescription(request.getDescription());
         organization.setSupportEmail(request.getSupportEmail());
         organization.setCreatedAt(LocalDateTime.now());
-        return organizationRepository.save(organization);
+        Organization saved = organizationRepository.save(organization);
+        return new OrgResponse(saved.getId(), saved.getName(), saved.getDescription(), saved.getSupportEmail(), saved.getCreatedAt());
     }
 
-    public List<Organization> getAllOrganizations() {
-        return organizationRepository.findAll();
+    public List<OrgResponse> getAllOrganizations() {
+        return organizationRepository.findAll().stream()
+                .map(org -> new OrgResponse(org.getId(), org.getName(), org.getDescription(), org.getSupportEmail(), org.getCreatedAt()))
+                .toList();
     }
 
     private User validateOrganizationAccess(Long orgId, String email) {
@@ -78,6 +83,7 @@ public class OrgService {
 
     // ---- Teams ----
 
+    @Transactional(readOnly = true)
     public List<TeamResponse> listTeams(Long orgId, String loggedInEmail) {
         validateOrganizationAccess(orgId, loggedInEmail);
         List<User> orgUsers = userRepository.findByOrganizationId(orgId);
@@ -132,6 +138,7 @@ public class OrgService {
 
     // ---- Members ----
 
+    @Transactional(readOnly = true)
     public List<MemberResponse> listMembers(Long orgId, String loggedInEmail) {
 
         validateOrganizationAccess(orgId, loggedInEmail);

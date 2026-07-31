@@ -1,6 +1,8 @@
-import { NavLink } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import { IconDashboard, IconProjects, IconUsers, IconSettings, IconLogout, IconPlus } from './icons.jsx'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
+import { projectApi } from '../api/projectApi.js'
 import Avatar from './Avatar.jsx'
 import './sidebar.css'
 
@@ -26,9 +28,38 @@ function getNavSections(currentProjectId) {
 }
 
 export default function Sidebar() {
+  const { pathname } = useLocation()
   const { user, role, logout } = useAuth()
-  const currentProjectId = user?.currentProjectId || 'p1'
+  const [currentProjectId, setCurrentProjectId] = useState(() => {
+    const match = window.location.pathname.match(/^\/projects\/([^/]+)/)
+    const pathId = match && match[1] !== 'new' && !isNaN(Number(match[1])) ? match[1] : null
+    if (pathId) return pathId
+    const cached = localStorage.getItem('neuroforge_current_project_id')
+    return cached && !isNaN(Number(cached)) ? cached : (user?.currentProjectId || 'p1')
+  })
 
+  useEffect(() => {
+    const match = pathname.match(/^\/projects\/([^/]+)/)
+    const pathProjectId = match && match[1] !== 'new' && !isNaN(Number(match[1])) ? match[1] : null
+    
+    if (pathProjectId) {
+      localStorage.setItem('neuroforge_current_project_id', pathProjectId)
+      setCurrentProjectId(pathProjectId)
+    } else {
+      const cached = localStorage.getItem('neuroforge_current_project_id')
+      if (cached && !isNaN(Number(cached))) {
+        setCurrentProjectId(cached)
+      } else if (user?.orgId) {
+        projectApi.listProjects(user.orgId).then((res) => {
+          const firstProj = res.data?.[0]
+          if (firstProj?.id) {
+            localStorage.setItem('neuroforge_current_project_id', firstProj.id)
+            setCurrentProjectId(firstProj.id)
+          }
+        }).catch(() => {})
+      }
+    }
+  }, [pathname, user?.orgId])
   const visibleSections = getNavSections(currentProjectId)
     .map((section) => ({
       ...section,

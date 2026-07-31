@@ -1,10 +1,11 @@
 import { z } from 'zod';
 
 export const signUpSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().optional(),
+  fullName: z.string().min(1, 'Full name is required'),
   email: z.string().email('Invalid email address'),
+  phone: z.string().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters long'),
+  role: z.string().optional(),
 });
 
 export const signInSchema = z.object({
@@ -16,13 +17,20 @@ export const tokenRefreshSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required'),
 });
 
-export const jwtAuthResponseSchema = z.object({
-  accessToken: z.string(),
-  refreshToken: z.string(),
+export const authResponseSchema = z.object({
+  token: z.string(),
+  user: z.object({
+    userId: z.number(),
+    email: z.string(),
+    fullName: z.string(),
+    orgId: z.number().nullable(),
+    orgName: z.string().nullable(),
+    role: z.string(),
+  }),
 });
 
 // Infer TypeScript types from schemas
 export type SignUpRequest = z.infer<typeof signUpSchema>;
 export type SignInRequest = z.infer<typeof signInSchema>;
 export type TokenRefreshRequest = z.infer<typeof tokenRefreshSchema>;
-export type JwtAuthenticationResponse = z.infer<typeof jwtAuthResponseSchema>;
+export type AuthResponse = z.infer<typeof authResponseSchema>;

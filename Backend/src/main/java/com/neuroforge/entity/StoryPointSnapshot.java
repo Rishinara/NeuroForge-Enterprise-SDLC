@@ -12,9 +12,6 @@ import java.time.LocalDateTime;
         name = "story_point_snapshots",
         uniqueConstraints = {
                 @UniqueConstraint(columnNames = {"sprint_id", "snapshot_date"})
-        },
-        indexes = {
-                @Index(name = "idx_snapshot_sprint_id", columnList = "sprint_id")
         }
 )
 @Getter
@@ -47,4 +44,17 @@ public class StoryPointSnapshot {
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof StoryPointSnapshot)) return false;
+        StoryPointSnapshot other = (StoryPointSnapshot) o;
+        return getId() != null && getId().equals(other.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 }

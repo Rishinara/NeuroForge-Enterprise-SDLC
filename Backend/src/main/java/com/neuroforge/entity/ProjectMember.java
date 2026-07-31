@@ -24,7 +24,7 @@ public class ProjectMember {
     )
     private Project project;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
             name = "user_id",
             nullable = false
@@ -39,4 +39,17 @@ public class ProjectMember {
     private Boolean active = true;
 
     private LocalDate joinedDate = LocalDate.now();
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ProjectMember)) return false;
+        ProjectMember other = (ProjectMember) o;
+        return getId() != null && getId().equals(other.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 }

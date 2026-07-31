@@ -50,4 +50,17 @@ public class Team {
     public List<User> getUsers() {return users;}
     public void setUsers(List<User> users) {this.users = users;}
 
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Team)) return false;
+        Team other = (Team) o;
+        return getId() != null && getId().equals(other.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 }

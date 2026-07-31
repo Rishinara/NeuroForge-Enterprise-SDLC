@@ -1,7 +1,7 @@
 package com.neuroforge.repository;
 
 import com.neuroforge.entity.Invite;
-import com.neuroforge.entity.InviteStatus;
+import com.neuroforge.enums.InviteStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -49,9 +49,9 @@ export default function DashboardHome() {
 
   const stats = useMemo(() => {
     const total = projects.length
-    const onTrack = projects.filter((p) => p.health === 'On Track').length
-    const atRisk = projects.filter((p) => p.health === 'At Risk').length
-    const delayed = projects.filter((p) => p.health === 'Delayed').length
+    const onTrack = projects.filter((p) => p.health === 'ON_TRACK' || p.health === 'On Track').length
+    const atRisk = projects.filter((p) => p.health === 'AT_RISK' || p.health === 'At Risk').length
+    const delayed = projects.filter((p) => p.health === 'DELAYED' || p.health === 'Delayed').length
     return { total, onTrack, atRisk, delayed }
   }, [projects])
 

@@ -8,12 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(
-        name = "task_status_history",
-        indexes = {
-                @Index(name = "idx_history_task_id", columnList = "task_id")
-        }
-)
+@Table(name = "task_status_history")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -44,4 +39,17 @@ public class TaskStatusHistory {
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime changedAt;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof TaskStatusHistory)) return false;
+        TaskStatusHistory other = (TaskStatusHistory) o;
+        return getId() != null && getId().equals(other.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 }

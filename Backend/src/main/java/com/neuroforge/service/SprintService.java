@@ -33,6 +33,4 @@ public interface SprintService {
 
     BurndownResponse getBurndown(Long sprintId,
                                  String loggedInEmail);
-
-    Long getActiveSprintId(Long projectId);
 }

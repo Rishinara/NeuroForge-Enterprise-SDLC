@@ -1,62 +1,53 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { projectApi } from '../api/projectApi.js'
 import { extractErrorMessage } from '../api/client.js'
+import { useAuth, ROLES } from '../context/AuthContext.jsx'
+import Can from '../components/Can.jsx'
 import HealthBadge from '../components/HealthBadge.jsx'
 import Tabs from '../components/Tabs.jsx'
 import './workspace.css'
 
-const SAMPLE_PROJECT = {
-  name: 'Checkout Revamp',
-  description: 'Rebuild the checkout flow to reduce cart abandonment.',
-  methodology: 'AGILE',
-  health: 'On Track',
-  startDate: '2026-05-01',
-  endDate: '2026-09-30',
-  techStack: ['React', 'Spring Boot', 'PostgreSQL'],
-  team: [
-    { id: 'm1', name: 'Asha Patel', role: 'PROJECT_MANAGER' },
-    { id: 'm2', name: 'Leo Kim', role: 'DEVELOPER' },
-  ],
-}
-
-const SAMPLE_MILESTONES = [
-  { id: 'ms1', name: 'Design freeze', date: '2026-07-10', status: 'Done' },
-  { id: 'ms2', name: 'Beta release', date: '2026-07-25', status: 'On Track' },
-  { id: 'ms3', name: 'GA launch', date: '2026-08-15', status: 'At Risk' },
-]
+const CAN_TOGGLE_MILESTONE = [ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.SUPER_ADMIN]
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const [project, setProject] = useState(null)
-  const [milestones, setMilestones] = useState([])
   const [tab, setTab] = useState('overview')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [togglingId, setTogglingId] = useState(null)
+
+  useEffect(() => {
+    if (projectId && isNaN(Number(projectId))) {
+      projectApi.listProjects(user?.orgId)
+        .then((res) => {
+          const firstProj = res.data?.[0]
+          if (firstProj?.id) {
+            navigate(`/projects/${firstProj.id}`, { replace: true })
+          } else {
+            navigate('/projects', { replace: true })
+          }
+        })
+        .catch(() => {
+          navigate('/projects', { replace: true })
+        })
+    }
+  }, [projectId, user?.orgId, navigate])
 
   const load = useCallback(async () => {
+    if (!projectId || isNaN(Number(projectId))) return
     setLoading(true)
     setError('')
     try {
-      const [projectRes, milestonesRes] = await Promise.all([
-        projectApi.getProject(projectId),
-        projectApi.listMilestones(projectId),
-      ])
-
-      const projectData = projectRes.data
-      const milestonesData = milestonesRes.data
-
-      if (!projectData || typeof projectData !== 'object' || !Array.isArray(milestonesData)) {
-        throw new Error('Unexpected response shape from server')
-      }
-
-      setProject(projectData)
-      setMilestones(milestonesData)
+      const res = await projectApi.getProject(projectId)
+      if (!res.data || typeof res.data !== 'object') throw new Error('Unexpected response shape')
+      setProject(res.data)
     } catch (err) {
       setError(extractErrorMessage(err))
-      
-      setProject({ id: projectId, ...SAMPLE_PROJECT })
-      setMilestones(SAMPLE_MILESTONES)
+      setProject(null)
     } finally {
       setLoading(false)
     }
@@ -66,8 +57,31 @@ export default function ProjectDetailPage() {
     load()
   }, [load])
 
-  if (loading || !project) {
+  async function handleToggleMilestone(milestoneId, currentlyCompleted) {
+    setTogglingId(milestoneId)
+    try {
+      const res = await projectApi.toggleMilestone(projectId, milestoneId, !currentlyCompleted)
+      setProject(res.data)
+    } catch (err) {
+      setError(extractErrorMessage(err))
+    } finally {
+      setTogglingId(null)
+    }
+  }
+
+  if (loading) {
     return <div className="wk-page"><p className="wk-empty">Loading project…</p></div>
+  }
+
+  if (!project) {
+    return (
+      <div className="wk-page">
+        <Link to="/projects" style={{ fontSize: 12.5, color: 'var(--wk-slate)', textDecoration: 'none' }}>← Back to projects</Link>
+        <p className="wk-alert wk-alert-error" style={{ marginTop: 12 }}>
+          {error || 'This project could not be found.'}
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -76,16 +90,19 @@ export default function ProjectDetailPage() {
 
       {error && (
         <p className="wk-alert wk-alert-error" style={{ marginTop: 12 }}>
-          Live data unavailable — showing sample data instead. ({error})
+          {error}
         </p>
       )}
 
       <div className="wk-page-header" style={{ marginTop: 12 }}>
         <div>
           <h1 className="wk-page-title">{project.name}</h1>
-          <p className="wk-page-subtitle">{project.methodology === 'AGILE' ? 'Agile' : 'Waterfall'} · {project.startDate} → {project.endDate}</p>
+          <p className="wk-page-subtitle">
+            {project.methodology === 'AGILE' ? 'Agile' : 'Waterfall'} · {project.startDate} → {project.endDate}
+            {project.teamName && <> · Team: {project.teamName}</>}
+          </p>
         </div>
-        <HealthBadge status={project.health} />
+        <HealthBadge status={project.healthStatus} />
       </div>
 
       <Tabs
@@ -102,8 +119,8 @@ export default function ProjectDetailPage() {
         <div className="wk-card">
           <p style={{ fontSize: 13.5, lineHeight: 1.7, color: '#334155', marginBottom: 16 }}>{project.description}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {(project.techStack || []).map((tag) => (
-              <span key={tag} style={{ background: '#eef2ff', color: 'var(--wk-accent)', fontSize: 11.5, fontWeight: 600, padding: '4px 10px', borderRadius: 999 }}>
+            {(project.techStackTags || []).map((tag) => (
+              <span key={tag} style={{ background: 'var(--wk-accent-soft)', color: 'var(--wk-accent)', fontSize: 11.5, fontWeight: 600, padding: '4px 10px', borderRadius: 999 }}>
                 {tag}
               </span>
             ))}
@@ -113,19 +130,38 @@ export default function ProjectDetailPage() {
 
       {tab === 'milestones' && (
         <div className="wk-card">
-          {milestones.length === 0 ? (
+          {(project.milestones || []).length === 0 ? (
             <p className="wk-empty">No milestones yet.</p>
           ) : (
             <table className="wk-table">
               <thead>
-                <tr><th>Milestone</th><th>Target date</th><th>Status</th></tr>
+                <tr><th>Milestone</th><th>Due date</th><th>Status</th></tr>
               </thead>
               <tbody>
-                {milestones.map((m) => (
+                {project.milestones.map((m) => (
                   <tr key={m.id}>
                     <td>{m.name}</td>
-                    <td>{m.date}</td>
-                    <td><HealthBadge status={m.status} /></td>
+                    <td>{m.dueDate}</td>
+                    <td>
+                      <Can
+                        roles={CAN_TOGGLE_MILESTONE}
+                        fallback={
+                          <span style={{ fontSize: 11, fontWeight: 600, color: m.completed ? '#166534' : '#92400e' }}>
+                            {m.completed ? 'Completed' : 'Pending'}
+                          </span>
+                        }
+                      >
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={m.completed}
+                            disabled={togglingId === m.id}
+                            onChange={() => handleToggleMilestone(m.id, m.completed)}
+                          />
+                          {m.completed ? 'Completed' : 'Pending'}
+                        </label>
+                      </Can>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -136,18 +172,19 @@ export default function ProjectDetailPage() {
 
       {tab === 'team' && (
         <div className="wk-card">
-          {(project.team || []).length === 0 ? (
-            <p className="wk-empty">No team members assigned yet.</p>
+          {(project.members || []).length === 0 ? (
+            <p className="wk-empty">No members on this project's team yet.</p>
           ) : (
             <table className="wk-table">
               <thead>
-                <tr><th>Name</th><th>Role</th></tr>
+                <tr><th>Name</th><th>Email</th><th>Role</th></tr>
               </thead>
               <tbody>
-                {project.team.map((m) => (
+                {project.members.map((m) => (
                   <tr key={m.id}>
-                    <td>{m.name}</td>
-                    <td>{m.role.replaceAll('_', ' ')}</td>
+                    <td>{m.fullName}</td>
+                    <td>{m.email}</td>
+                    <td>{m.role?.replaceAll('_', ' ')}</td>
                   </tr>
                 ))}
               </tbody>

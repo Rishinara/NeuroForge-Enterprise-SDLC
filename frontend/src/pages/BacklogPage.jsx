@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { taskApi } from '../api/taskApi.js'
+import { sprintApi } from '../api/sprintApi.js'
+import { projectApi } from '../api/projectApi.js'
 import { aiApi } from '../api/aiApi.js'
 import { api, extractErrorMessage } from '../api/client.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
@@ -8,40 +10,67 @@ import Can from '../components/Can.jsx'
 import './agile.css'
 
 const PRIORITY_STYLE = {
-  High: { bg: '#fee2e2', color: '#991b1b' },
-  Medium: { bg: '#fef3c7', color: '#92400e' },
-  Low: { bg: '#f3f4f6', color: '#4b5563' },
+  CRITICAL: { bg: '#fee2e2', color: '#7f1d1d' },
+  HIGH: { bg: '#fee2e2', color: '#991b1b' },
+  MEDIUM: { bg: '#fef3c7', color: '#92400e' },
+  LOW: { bg: '#f3f4f6', color: '#4b5563' },
 }
 
+const PRIORITY_LABEL = { CRITICAL: 'Critical', HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' }
 const CAN_MANAGE = [ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]
-
 
 export default function BacklogPage() {
   const { projectId = 'p1' } = useParams()
-  const { role } = useAuth()
+  const navigate = useNavigate()
+  const { user, role } = useAuth()
+  
   const [items, setItems] = useState([])
+  const [sprints, setSprints] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [endpointMissing, setEndpointMissing] = useState(false)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ title: '', points: 3, priority: 'Medium', labels: '' })
+  const [form, setForm] = useState({ title: '', storyPoints: 3, priority: 'MEDIUM', labels: '' })
+  const [assigningId, setAssigningId] = useState(null)
+
+  useEffect(() => {
+    if (projectId && isNaN(Number(projectId))) {
+      projectApi.listProjects(user?.orgId)
+        .then((res) => {
+          const firstProj = res.data?.[0]
+          if (firstProj?.id) {
+            navigate(window.location.pathname.replace(projectId, firstProj.id), { replace: true })
+          } else {
+            navigate('/projects', { replace: true })
+          }
+        })
+        .catch(() => {
+          navigate('/projects', { replace: true })
+        })
+    }
+  }, [projectId, user?.orgId, navigate])
 
   // AI Copilot state
   const [showAiCopilot, setShowAiCopilot] = useState(false)
-  const [aiTab, setAiTab] = useState('task') // 'task' or 'project'
+  const [aiTab, setAiTab] = useState('task')
   const [aiForm, setAiForm] = useState({ title: '', description: '' })
   const [aiResult, setAiResult] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState('')
 
   const load = useCallback(async () => {
+    if (!projectId || isNaN(Number(projectId))) return
     setLoading(true)
     setError('')
     setEndpointMissing(false)
     try {
-      const res = await api.get(`/projects/${projectId}/tasks`)
-      if (!Array.isArray(res.data)) throw new Error('Unexpected response shape')
-      setItems(res.data)
+      const [backlogRes, sprintsRes] = await Promise.all([
+        api.get(`/tasks/project/${projectId}/backlog`),
+        sprintApi.listProjectSprints(projectId).catch(() => ({ data: [] })),
+      ])
+      if (!Array.isArray(backlogRes.data)) throw new Error('Unexpected response shape')
+      setItems(backlogRes.data)
+      setSprints(Array.isArray(sprintsRes.data) ? sprintsRes.data : [])
     } catch (err) {
       if (err?.response?.status === 404) {
         setEndpointMissing(true)
@@ -63,21 +92,34 @@ export default function BacklogPage() {
     if (!form.title.trim()) return
     const payload = {
       title: form.title.trim(),
-      points: Number(form.points) || 0,
+      storyPoints: Number(form.storyPoints) || 1,
       priority: form.priority,
       labels: form.labels.split(',').map((l) => l.trim()).filter(Boolean),
-      projectId,
-      sprintId: null, 
+      projectId: Number(projectId)
     }
+    setError('')
     try {
       const res = await taskApi.createTask(payload)
       setItems((prev) => [res.data, ...prev])
+      setForm({ title: '', storyPoints: 3, priority: 'MEDIUM', labels: '' })
+      setShowForm(false)
     } catch (err) {
       setError(extractErrorMessage(err))
-      return
     }
-    setForm({ title: '', points: 3, priority: 'Medium', labels: '' })
-    setShowForm(false)
+  }
+
+  async function handleAssignSprint(taskId, sprintId) {
+    if (!sprintId) return
+    setAssigningId(taskId)
+    setError('')
+    try {
+      await taskApi.assignTaskToSprint(taskId, sprintId)
+      setItems((prev) => prev.filter((t) => t.id !== taskId))
+    } catch (err) {
+      setError(extractErrorMessage(err))
+    } finally {
+      setAssigningId(null)
+    }
   }
 
   const runAiTaskTool = async (toolName) => {
@@ -139,7 +181,7 @@ export default function BacklogPage() {
     }
   }
 
-  const totalPoints = items.reduce((sum, i) => sum + (i.points || 0), 0)
+  const totalPoints = items.reduce((sum, i) => sum + (i.storyPoints || 0), 0)
 
   return (
     <div className="wk-page">
@@ -165,7 +207,7 @@ export default function BacklogPage() {
       {endpointMissing && (
         <p className="wk-alert wk-alert-info">
           Your backend doesn't have a "list tasks by project" endpoint yet
-          (tried <code>GET /api/projects/{'{projectId}'}/tasks</code>, got 404).
+          (tried <code>GET /api/tasks/project/{'{projectId}'}/backlog</code>, got 404).
           Ask your backend developer to add one — until then this list stays empty,
           though adding new items still works via the real <code>POST /api/tasks</code> endpoint.
         </p>
@@ -192,21 +234,23 @@ export default function BacklogPage() {
               </div>
               <div className="wk-row-2">
                 <div className="wk-field">
-                  <label className="wk-label">Story points</label>
+                  <label className="wk-label">Story points (1–13)</label>
                   <input
                     type="number"
                     min="1"
+                    max="13"
                     className="wk-input"
-                    value={form.points}
-                    onChange={(e) => setForm((f) => ({ ...f, points: e.target.value }))}
+                    value={form.storyPoints}
+                    onChange={(e) => setForm((f) => ({ ...f, storyPoints: e.target.value }))}
                   />
                 </div>
                 <div className="wk-field">
                   <label className="wk-label">Priority</label>
                   <select className="wk-select" value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}>
-                    <option>High</option>
-                    <option>Medium</option>
-                    <option>Low</option>
+                    <option value="CRITICAL">Critical</option>
+                    <option value="HIGH">High</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="LOW">Low</option>
                   </select>
                 </div>
               </div>
@@ -231,13 +275,14 @@ export default function BacklogPage() {
             ) : (
               <div className="ag-backlog-list">
                 {items.map((item) => {
-                  const pStyle = PRIORITY_STYLE[item.priority] || PRIORITY_STYLE.Medium
+                  const pStyle = PRIORITY_STYLE[item.priority] || PRIORITY_STYLE.MEDIUM
                   return (
                     <div key={item.id} className="ag-backlog-row">
-                      <span className="ag-points-chip">{item.points}</span>
+                      <span className="ag-points-chip">{item.storyPoints}</span>
                       <div className="ag-backlog-main">
                         <span className="ag-backlog-title">{item.title}</span>
-                        {item.specTitle && <span className="ag-backlog-spec">Traces to: {item.specTitle}</span>}
+                        {item.assigneeName && <span className="ag-backlog-spec">Assignee: {item.assigneeName}</span>}
+                        {item.specTitle && !item.assigneeName && <span className="ag-backlog-spec">Traces to: {item.specTitle}</span>}
                       </div>
                       <div className="ag-backlog-labels">
                         {(item.labels || []).map((l) => (
@@ -245,8 +290,24 @@ export default function BacklogPage() {
                         ))}
                       </div>
                       <span className="ag-priority-chip" style={{ background: pStyle.bg, color: pStyle.color }}>
-                        {item.priority}
+                        {PRIORITY_LABEL[item.priority] || item.priority}
                       </span>
+                      <Can roles={CAN_MANAGE}>
+                        <select
+                          className="wk-select"
+                          style={{ fontSize: 12, padding: '5px 26px 5px 8px' }}
+                          value=""
+                          disabled={assigningId === item.id || sprints.length === 0}
+                          onChange={(e) => handleAssignSprint(item.id, e.target.value)}
+                        >
+                          <option value="" disabled>
+                            {sprints.length === 0 ? 'No sprints yet' : 'Add to sprint…'}
+                          </option>
+                          {sprints.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                      </Can>
                     </div>
                   )
                 })}

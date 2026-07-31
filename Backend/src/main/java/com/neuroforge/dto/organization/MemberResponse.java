@@ -1,6 +1,6 @@
 package com.neuroforge.dto.organization;
 
-import com.neuroforge.entity.Role;
+import com.neuroforge.enums.Role;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;

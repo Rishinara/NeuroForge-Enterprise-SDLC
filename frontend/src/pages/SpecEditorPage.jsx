@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { specApi } from '../api/specApi.js'
+import { projectApi } from '../api/projectApi.js'
 import { extractErrorMessage } from '../api/client.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import Can from '../components/Can.jsx'
@@ -32,7 +33,7 @@ const CAN_EDIT_ROLES = [ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMI
 export default function SpecEditorPage() {
   const { projectId = 'p1', specId } = useParams()
   const navigate = useNavigate()
-  const { role } = useAuth()
+  const { user, role } = useAuth()
   const isNew = !specId || specId === 'new'
 
   const [spec, setSpec] = useState(isNew ? BLANK_SPEC : null)
@@ -44,8 +45,26 @@ export default function SpecEditorPage() {
   const canEdit = CAN_EDIT_ROLES.includes(role) && spec?.status !== 'Approved'
   const editingLocked = spec?.status === 'Approved'
 
+  useEffect(() => {
+    if (projectId && isNaN(Number(projectId))) {
+      projectApi.listProjects(user?.orgId)
+        .then((res) => {
+          const firstProj = res.data?.[0]
+          if (firstProj?.id) {
+            const newPath = window.location.pathname.replace(projectId, firstProj.id)
+            navigate(newPath, { replace: true })
+          } else {
+            navigate('/projects', { replace: true })
+          }
+        })
+        .catch(() => {
+          navigate('/projects', { replace: true })
+        })
+    }
+  }, [projectId, user?.orgId, navigate])
+
   const load = useCallback(async () => {
-    if (isNew) return
+    if (isNew || isNaN(Number(projectId))) return
     setLoading(true)
     setError('')
     try {
@@ -57,7 +76,7 @@ export default function SpecEditorPage() {
     } finally {
       setLoading(false)
     }
-  }, [specId, isNew])
+  }, [specId, isNew, projectId])
 
   useEffect(() => {
     load()

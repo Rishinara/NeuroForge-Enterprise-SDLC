@@ -4,10 +4,6 @@ import com.neuroforge.dto.project.CreateProjectRequest;
 import com.neuroforge.dto.project.ProjectResponse;
 import com.neuroforge.dto.project.UpdateProjectRequest;
 import com.neuroforge.service.ProjectService;
-import com.neuroforge.service.SprintService;
-import com.neuroforge.service.TaskService;
-import com.neuroforge.dto.sprint.SprintResponse;
-import com.neuroforge.dto.task.TaskResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,8 +21,6 @@ import java.util.List;
 public class ProjectController {
 
     private final ProjectService projectService;
-    private final SprintService sprintService;
-    private final TaskService taskService;
 
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER')")
     @PostMapping("/projects")
@@ -68,36 +62,31 @@ public class ProjectController {
         );
     }
 
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER')")
+    @DeleteMapping("/projects/{projectId}")
+    public ResponseEntity<Void> deleteProject(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        projectService.deleteProject(projectId, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/projects")
+    public ResponseEntity<List<ProjectResponse>> getProjects(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        return ResponseEntity.ok(
+                projectService.getProjectsForUser(userDetails.getUsername())
+        );
+    }
+
     // Temporary endpoint until Milestone module is implemented
     @GetMapping("/projects/{projectId}/milestones")
     public ResponseEntity<List<Object>> getMilestones(
             @PathVariable Long projectId) {
 
         return ResponseEntity.ok(List.of());
-    }
-
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER')")
-    @DeleteMapping("/projects/{projectId}")
-    public ResponseEntity<Void> deleteProject(
-            @PathVariable Long projectId) {
-
-        projectService.deleteProject(projectId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/projects/{projectId}/sprints")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<SprintResponse>> getProjectSprints(
-            @PathVariable Long projectId,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(sprintService.getProjectSprints(projectId, userDetails.getUsername()));
-    }
-
-    @GetMapping("/projects/{projectId}/tasks")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<TaskResponse>> getProjectBacklog(
-            @PathVariable Long projectId,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(taskService.getProjectBacklog(projectId, userDetails.getUsername()));
     }
 }
