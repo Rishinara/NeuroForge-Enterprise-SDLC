@@ -9,6 +9,9 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('neuroforge_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
+  
+  const orgId = localStorage.getItem('neuroforge_org_id')
+  if (orgId) config.headers['X-Org-Id'] = orgId
   return config
 })
 

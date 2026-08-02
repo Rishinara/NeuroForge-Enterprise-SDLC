@@ -20,12 +20,12 @@ public class Invite {
     private String token;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id", nullable = false)
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    private Organization organization;
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "org_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore    private Organization organization;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "team_id", nullable = false)
+    @JoinColumn(name = "team_id", nullable = true)
     @com.fasterxml.jackson.annotation.JsonIgnore
     private Team team;
 

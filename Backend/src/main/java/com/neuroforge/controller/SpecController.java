@@ -25,7 +25,7 @@ public class SpecController {
     private final SpecService specService;
 
     @GetMapping("/projects/{projectId}/specs")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','DEVELOPER','QA_TESTER','CLIENT')")
     public ResponseEntity<List<SpecSummaryResponse>> getSpecsByProject(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -42,7 +42,7 @@ public class SpecController {
     }
 
     @GetMapping("/specs/{specId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','DEVELOPER','QA_TESTER','CLIENT')")
     public ResponseEntity<SpecResponse> getSpecById(
             @PathVariable Long specId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -59,7 +59,7 @@ public class SpecController {
     }
 
     @GetMapping("/specs/{specId}/versions")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','DEVELOPER','QA_TESTER','CLIENT')")
     public ResponseEntity<List<SpecVersionDTO>> getSpecVersions(
             @PathVariable Long specId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -67,7 +67,7 @@ public class SpecController {
     }
 
     @GetMapping("/specs/{specId}/versions/{version}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','DEVELOPER','QA_TESTER','CLIENT')")
     public ResponseEntity<SpecResponse> getSpecByVersion(
             @PathVariable Long specId,
             @PathVariable Integer version,

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import { extractErrorMessage } from '../api/client.js'
 import AuthLayout from '../components/AuthLayout.jsx'
@@ -40,9 +40,12 @@ export default function SignupPage() {
   const { signup } = useAuth()
   const navigate = useNavigate()
 
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+
   const [form, setForm] = useState({
     fullName: '',
-    email: '',
+    email: searchParams.get('email') || '',
     phone: '',
     role: '',
     password: '',
@@ -50,6 +53,8 @@ export default function SignupPage() {
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  const redirectTo = location.state?.from?.pathname || '/dashboard'
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
@@ -84,7 +89,7 @@ export default function SignupPage() {
         role: form.role,
         password: form.password,
       })
-      navigate('/dashboard', { replace: true })
+      navigate(redirectTo, { replace: true })
     } catch (err) {
       setError(extractErrorMessage(err))
     } finally {

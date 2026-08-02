@@ -13,7 +13,6 @@ public class InviteRequest {
     @NotNull
     private Role role;
 
-    @NotNull
     private Long teamId;
 
     public InviteRequest() {}

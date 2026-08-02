@@ -29,17 +29,23 @@ public class OrgService {
     private final UserRepository userRepository;
     private final InviteRepository inviteRepository;
     private final JwtService jwtService;
+    private final EmailService emailService;
+    private final ActivityService activityService;
 
     public OrgService(OrganizationRepository organizationRepository,
                       TeamRepository teamRepository,
                       UserRepository userRepository,
                       InviteRepository inviteRepository,
-                      JwtService jwtService) {
+                      JwtService jwtService,
+                      EmailService emailService,
+                      ActivityService activityService) {
         this.organizationRepository = organizationRepository;
         this.teamRepository = teamRepository;
         this.userRepository = userRepository;
         this.inviteRepository = inviteRepository;
         this.jwtService = jwtService;
+        this.emailService = emailService;
+        this.activityService = activityService;
     }
 
 
@@ -56,6 +62,82 @@ public class OrgService {
 
     public List<Organization> getAllOrganizations() {
         return organizationRepository.findAll();
+    }
+
+    @Transactional
+    public void deleteOrganization(Long id) {
+        Organization org = organizationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
+
+        // Unlink users from this organization
+        List<User> orgUsers = userRepository.findByOrganizationId(id);
+        for (User u : orgUsers) {
+            u.setOrganization(null);
+            userRepository.save(u);
+        }
+
+        // Delete teams belonging to this organization
+        List<Team> teams = teamRepository.findByOrganizationId(id);
+        teamRepository.deleteAll(teams);
+
+        organizationRepository.delete(org);
+    }
+
+    @Transactional
+    public OrgAdminResponse assignOrgAdmin(Long orgId, Long userId) {
+        Organization org = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
+
+        User targetUser = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (targetUser.getRole() == Role.SUPER_ADMIN) {
+            throw new InvalidRequestException("SUPER_ADMIN user cannot be assigned as Org Admin.");
+        }
+
+        // Check if organization already has an ORG_ADMIN
+        List<User> existingOrgUsers = userRepository.findByOrganizationId(orgId);
+        boolean hasOrgAdmin = existingOrgUsers.stream()
+                .anyMatch(u -> u.getRole() == Role.ORG_ADMIN && !u.getId().equals(userId));
+
+        if (hasOrgAdmin) {
+            throw new InvalidRequestException("This organization already has an Org Admin assigned. Only 1 Org Admin per organization is allowed.");
+        }
+
+        // Link user to organization and set role to ORG_ADMIN
+        targetUser.setOrganization(org);
+        targetUser.setRole(Role.ORG_ADMIN);
+        User savedUser = userRepository.save(targetUser);
+
+        return new OrgAdminResponse(
+                savedUser.getId(),
+                savedUser.getFullName(),
+                savedUser.getEmail(),
+                savedUser.getPhoneNumber(),
+                savedUser.getRole(),
+                savedUser.isEnabled(),
+                savedUser.getCreatedAt()
+        );
+    }
+
+    @Transactional
+    public void removeOrgAdmin(Long orgId, Long userId) {
+        User targetUser = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (targetUser.getOrganization() == null || !targetUser.getOrganization().getId().equals(orgId)) {
+            throw new InvalidRequestException("User does not belong to this organization.");
+        }
+
+        if (targetUser.getRole() != Role.ORG_ADMIN) {
+            throw new InvalidRequestException("User is not an Org Admin.");
+        }
+
+        // Demote role to DEVELOPER and unlink from organization
+        targetUser.setRole(Role.DEVELOPER);
+        targetUser.getTeams().clear();
+        targetUser.setOrganization(null);
+        userRepository.save(targetUser);
     }
 
     private User validateOrganizationAccess(Long orgId, String email) {
@@ -79,6 +161,82 @@ public class OrgService {
     }
 
     // ---- Teams ----
+
+    @Transactional(readOnly = true)
+    public TeamDetailResponse getTeamDetails(Long orgId, Long teamId, String loggedInEmail) {
+        validateOrganizationAccess(orgId, loggedInEmail);
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new ResourceNotFoundException("Team not found"));
+        if (!team.getOrganization().getId().equals(orgId)) {
+            throw new InvalidRequestException("Team does not belong to this organization");
+        }
+        
+        List<User> orgUsers = userRepository.findByOrganizationId(orgId);
+        List<MemberResponse> teamMembers = orgUsers.stream()
+                .filter(u -> u.getTeams().stream().anyMatch(tm -> tm.getId().equals(team.getId())))
+                .map(u -> new MemberResponse(
+                        u.getId(),
+                        u.getFullName(),
+                        u.getEmail(),
+                        u.getPhoneNumber(),
+                        u.getRole(),
+                        u.isEnabled(),
+                        u.getCreatedAt(),
+                        u.getTeams().stream().map(Team::getName).toList()
+                ))
+                .toList();
+
+        TeamDetailResponse dto = new TeamDetailResponse();
+        dto.setId(team.getId());
+        dto.setName(team.getName());
+        dto.setDescription(team.getDescription());
+        dto.setLeadId(team.getLead() != null ? team.getLead().getId() : null);
+        dto.setLeadName(team.getLead() != null ? team.getLead().getFullName() : null);
+        dto.setCreatedAt(team.getCreatedAt());
+        dto.setUpdatedAt(team.getUpdatedAt());
+        dto.setMemberCount(teamMembers.size());
+        dto.setMembers(teamMembers);
+        return dto;
+    }
+
+    @Transactional
+    public TeamDetailResponse updateTeam(Long orgId, Long teamId, UpdateTeamRequest request, String loggedInEmail) {
+        validateOrganizationAccess(orgId, loggedInEmail);
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new ResourceNotFoundException("Team not found"));
+        if (!team.getOrganization().getId().equals(orgId)) {
+            throw new InvalidRequestException("Team does not belong to this organization");
+        }
+
+        if (request.getName() != null && !request.getName().isBlank()) {
+            if (!team.getName().equalsIgnoreCase(request.getName()) &&
+                teamRepository.existsByOrganizationIdAndNameIgnoreCase(orgId, request.getName().trim())) {
+                throw new DuplicateResourceException("A team with this name already exists.");
+            }
+            team.setName(request.getName().trim());
+        }
+
+        if (request.getDescription() != null) {
+            team.setDescription(request.getDescription().trim());
+        }
+
+        if (request.getLeadId() != null) {
+            User lead = userRepository.findById(request.getLeadId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Lead user not found"));
+            if (lead.getOrganization() == null || !lead.getOrganization().getId().equals(orgId)) {
+                throw new InvalidRequestException("Lead user must belong to the organization.");
+            }
+            team.setLead(lead);
+        } else {
+            team.setLead(null);
+        }
+
+        team = teamRepository.save(team);
+        
+        activityService.logActivity(orgId, "Team updated", "Updated team: " + team.getName(), loggedInEmail);
+        
+        return getTeamDetails(orgId, team.getId(), loggedInEmail);
+    }
 
     @Transactional(readOnly = true)
     public List<TeamResponse> listTeams(Long orgId, String loggedInEmail) {
@@ -125,12 +283,17 @@ public class OrgService {
                 .orElseThrow(() -> new ResourceNotFoundException("Team not found"));
         if (!team.getOrganization().getId().equals(orgId))
             throw new InvalidRequestException("Team does not belong to this organization");
-        if (!team.getUsers().isEmpty()) {
-            throw new InvalidRequestException(
-                    "Cannot delete a team that still has members."
-            );
-        }
+
+        List<User> teamMembers = userRepository.findByTeamsId(teamId);
+        teamMembers.forEach(u -> {
+            u.getTeams().removeIf(t -> t.getId().equals(teamId));
+            userRepository.save(u);
+        });
+
+        String teamName = team.getName();
         teamRepository.delete(team);
+        
+        activityService.logActivity(orgId, "Team deleted", "Deleted team: " + teamName, loggedInEmail);
     }
 
     // ---- Members ----
@@ -142,6 +305,7 @@ public class OrgService {
 
         return userRepository.findByOrganizationId(orgId)
                 .stream()
+                .filter(u -> u.getRole() != Role.SUPER_ADMIN)
                 .map(u -> new MemberResponse(
                         u.getId(),
                         u.getFullName(),
@@ -165,10 +329,16 @@ public class OrgService {
                 .orElseThrow(() -> new ResourceNotFoundException("Member not found"));
         if (user.getOrganization() == null || !user.getOrganization().getId().equals(orgId))
             throw new InvalidRequestException("Member does not belong to this organization");
-        if (role == Role.SUPER_ADMIN) {
+        if (role == Role.SUPER_ADMIN || role == Role.ORG_ADMIN) {
             throw new InvalidRequestException(
-                    "SUPER_ADMIN role cannot be assigned."
+                    "SUPER_ADMIN or ORG_ADMIN roles cannot be assigned via this endpoint."
             );
+        }
+        if (user.getRole() == Role.ORG_ADMIN) {
+            throw new InvalidRequestException("You cannot change the role of an Organization Admin via this endpoint.");
+        }
+        if (user.getEmail().equals(loggedInEmail)) {
+            throw new InvalidRequestException("You cannot change your own role.");
         }
         user.setRole(role);
         userRepository.save(user);
@@ -194,6 +364,12 @@ public class OrgService {
                 .orElseThrow(() -> new ResourceNotFoundException("Member not found"));
         if (user.getOrganization() == null || !user.getOrganization().getId().equals(orgId))
             throw new InvalidRequestException("Member does not belong to this organization");
+        if (user.getEmail().equals(loggedInEmail)) {
+            throw new InvalidRequestException("You cannot remove yourself from the organization.");
+        }
+        if (user.getRole() == Role.ORG_ADMIN) {
+            throw new InvalidRequestException("Organization Admins cannot be removed via this endpoint.");
+        }
         // Remove the user from all teams
         user.getTeams().clear();
         // Reset role
@@ -235,19 +411,50 @@ public class OrgService {
         Organization org = organizationRepository.findById(orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
 
-        Team team = teamRepository.findById(request.getTeamId())
-                .orElseThrow(() -> new ResourceNotFoundException("Team not found"));
-
-        if (!team.getOrganization().getId().equals(orgId)) {
-            throw new InvalidRequestException("Selected team does not belong to this organization.");
+        Team team = null;
+        if (request.getTeamId() != null) {
+            team = teamRepository.findById(request.getTeamId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Team not found"));
+            if (!team.getOrganization().getId().equals(orgId)) {
+                throw new InvalidRequestException("Selected team does not belong to this organization.");
+            }
         }
 
         String token = UUID.randomUUID().toString();
-        Invite invite = new Invite(request.getEmail(), token, org, team,request.getRole());
+        Invite invite = new Invite(request.getEmail(), token, org, team, request.getRole());
         inviteRepository.save(invite);
 
-        // TODO: replace with real email sender in production
-        log.info("INVITE sent to org={} email=[redacted] token=[redacted]", orgId);
+        emailService.sendInviteEmail(request.getEmail(), token, org.getName(), request.getRole().name());
+        log.info("INVITE successfully dispatched to org={} email=[redacted]", orgId);
+        
+        activityService.logActivity(orgId, "Member invited", "Invited " + request.getEmail() + " as " + request.getRole(), loggedInEmail);
+    }
+
+    @Transactional(readOnly = true)
+    public List<InviteResponse> listPendingInvites(Long orgId, String loggedInEmail) {
+        validateOrganizationAccess(orgId, loggedInEmail);
+        return inviteRepository.findByOrganizationId(orgId).stream()
+                .filter(i -> i.getStatus() == InviteStatus.PENDING)
+                .map(i -> new InviteResponse(
+                        i.getId(),
+                        i.getEmail(),
+                        i.getRole(),
+                        i.getStatus(),
+                        i.getCreatedAt(),
+                        i.getCreatedAt().plusDays(7)
+                ))
+                .toList();
+    }
+
+    @Transactional
+    public void cancelInvite(Long orgId, Long inviteId, String loggedInEmail) {
+        validateOrganizationAccess(orgId, loggedInEmail);
+        Invite invite = inviteRepository.findById(inviteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Invite not found"));
+        if (!invite.getOrganization().getId().equals(orgId)) {
+            throw new InvalidRequestException("Invite does not belong to this organization.");
+        }
+        inviteRepository.delete(invite);
     }
 
     @Transactional
@@ -303,10 +510,12 @@ public class OrgService {
         user.setOrganization(invite.getOrganization());
         user.setRole(invite.getRole());
 
-        boolean alreadyMember = user.getTeams().stream()
-                .anyMatch(team -> team.getId().equals(invite.getTeam().getId()));
-        if (!alreadyMember) {
-            user.getTeams().add(invite.getTeam());
+        if (invite.getTeam() != null) {
+            boolean alreadyMember = user.getTeams().stream()
+                    .anyMatch(team -> team.getId().equals(invite.getTeam().getId()));
+            if (!alreadyMember) {
+                user.getTeams().add(invite.getTeam());
+            }
         }
 
         userRepository.save(user);

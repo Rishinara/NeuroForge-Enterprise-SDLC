@@ -1,9 +1,18 @@
 import { api } from './client.js'
 
 export const orgApi = {
+  // Organizations
+  createOrganization: (payload) => api.post('/organizations', payload),
+  listOrganizations: () => api.get('/organizations'),
+  deleteOrganization: (id) => api.delete(`/organizations/${id}`),
+  assignOrgAdmin: (orgId, userId) => api.post(`/organizations/${orgId}/assign-admin`, { userId }),
+  removeOrgAdmin: (orgId, userId) => api.delete(`/organizations/${orgId}/admin/${userId}`),
+
   // Teams
   listTeams: (orgId) => api.get(`/orgs/${orgId}/teams`),
+  getTeam: (orgId, teamId) => api.get(`/orgs/${orgId}/teams/${teamId}`),
   createTeam: (orgId, payload) => api.post(`/orgs/${orgId}/teams`, payload),
+  updateTeam: (orgId, teamId, payload) => api.put(`/orgs/${orgId}/teams/${teamId}`, payload),
   deleteTeam: (orgId, teamId) => api.delete(`/orgs/${orgId}/teams/${teamId}`),
 
   // Members
@@ -13,9 +22,14 @@ export const orgApi = {
   removeMember: (orgId, memberId) => api.delete(`/orgs/${orgId}/members/${memberId}`),
 
   // Invites
+  listInvites: (orgId) => api.get(`/orgs/${orgId}/invites`),
   inviteMember: (orgId, payload) => api.post(`/orgs/${orgId}/invites`, payload),
+  cancelInvite: (orgId, inviteId) => api.delete(`/orgs/${orgId}/invites/${inviteId}`),
   getInvitePreview: (token) => api.get(`/invites/${token}`),
   acceptInvite: (token) => api.post(`/invites/${token}/accept`),
+
+  // Activities
+  listActivities: (orgId) => api.get(`/orgs/${orgId}/activities`),
 
   // Org settings
   getOrgSettings: (orgId) => api.get(`/orgs/${orgId}/settings`),

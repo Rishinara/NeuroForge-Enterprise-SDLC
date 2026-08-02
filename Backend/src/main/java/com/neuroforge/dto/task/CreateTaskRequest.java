@@ -31,9 +31,6 @@ public class CreateTaskRequest {
 
     private Long requirementId;
 
-    @NotNull(message = "Project is required")
-    private Long projectId;
-
     private Long sprintId;
 
     private Long assigneeId;

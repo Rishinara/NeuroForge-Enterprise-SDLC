@@ -32,7 +32,9 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectMemberRepository projectMemberRepository;
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
-
+    private final com.neuroforge.repository.TeamRepository teamRepository;
+    private final com.neuroforge.service.ActivityService activityService;
+    private final com.neuroforge.repository.SpecRepository specRepository;
 
     private ProjectResponse mapToProjectResponse(Project project) {
 
@@ -67,8 +69,27 @@ public class ProjectServiceImpl implements ProjectService {
         response.setTeam(members);
         response.setTeamSize(members.size());
 
-        // Temporary value until Task Management module is completed
-        response.setProgressPercent(0);
+        if (project.getAssignedTeams() != null) {
+            List<com.neuroforge.dto.organization.TeamResponse> teamResponses = project.getAssignedTeams().stream()
+                    .map(t -> new com.neuroforge.dto.organization.TeamResponse(t.getId(), t.getName(), 0)) // Just basic info
+                    .toList();
+            response.setAssignedTeams(teamResponses);
+        } else {
+            response.setAssignedTeams(new java.util.ArrayList<>());
+        }
+
+        int totalTasks = 0;
+        int completedTasks = 0;
+        if (project.getTasks() != null) {
+            for (com.neuroforge.entity.Task task : project.getTasks()) {
+                totalTasks++;
+                if (task.getStatus() != null && task.getStatus().name().equalsIgnoreCase("DONE")) {
+                    completedTasks++;
+                }
+            }
+        }
+        double taskCompletionPercentage = totalTasks == 0 ? 0 : ((double) completedTasks / totalTasks) * 100;
+        response.setProgressPercent((int) Math.round(taskCompletionPercentage));
 
         return response;
     }
@@ -122,35 +143,61 @@ public class ProjectServiceImpl implements ProjectService {
         Project savedProject = projectRepository.save(project);
 
         // Save Team Members
-        if (request.getTeamMemberIds() != null &&
-                !request.getTeamMemberIds().isEmpty()) {
-
+        if (request.getTeamMemberIds() != null && !request.getTeamMemberIds().isEmpty()) {
             for (Long userId : request.getTeamMemberIds()) {
-
                 User user = userRepository.findById(userId)
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "User not found with id : " + userId));
-
-
+                        .orElseThrow(() -> new ResourceNotFoundException("User not found with id : " + userId));
+                if (user.getOrganization() == null || !user.getOrganization().getId().equals(request.getOrgId())) {
+                    throw new com.neuroforge.exception.InvalidRequestException("User " + user.getEmail() + " does not belong to the organization.");
+                }
                 ProjectMember member = createProjectMember(project, user);
                 projectMemberRepository.save(member);
             }
         }
+        
+        // Save Assigned Teams
+        if (request.getAssignedTeamIds() != null && !request.getAssignedTeamIds().isEmpty()) {
+            for (Long teamId : request.getAssignedTeamIds()) {
+                Team team = teamRepository.findById(teamId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Team not found with id : " + teamId));
+                project.getAssignedTeams().add(team);
+            }
+            projectRepository.save(project);
+        }
         // Build Response
+        
+        // Log Activity
+        // We need the actor's email. For simplicity, since createProjectRequest doesn't have it natively,
+        // we might not have it in the service layer unless we add it to the DTO or fetch from SecurityContext.
+        // I will fetch from SecurityContext in this case since we need it.
+        String actorEmail = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        activityService.logActivity(organization.getId(), "Project created", "Created project: " + savedProject.getName(), actorEmail);
+        
         return mapToProjectResponse(savedProject);
     }
 
     @Override
-    public List<ProjectResponse> getProjectsByOrganization(Long organizationId) {
+    public List<ProjectResponse> getProjectsByOrganization(Long organizationId, String loggedInEmail) {
 
         // Validate Organization
         organizationRepository.findById(organizationId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Organization not found"));
 
+        User user = userRepository.findByEmail(loggedInEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
         // Fetch Projects
         List<Project> projects = projectRepository.findByOrganizationIdOrderByCreatedAtDesc(organizationId);
+
+        if (user.getRole() == com.neuroforge.enums.Role.CLIENT 
+                || user.getRole() == com.neuroforge.enums.Role.PROJECT_MANAGER
+                || user.getRole() == com.neuroforge.enums.Role.DEVELOPER
+                || user.getRole() == com.neuroforge.enums.Role.QA_TESTER) {
+            projects = projects.stream()
+                    .filter(p -> p.getMembers().stream().anyMatch(m -> m.getUser().getId().equals(user.getId())))
+                    .toList();
+        }
 
         // Convert Entity -> DTO
         return projects.stream()
@@ -160,12 +207,27 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectResponse getProject(Long projectId) {
+        String loggedInEmail = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(loggedInEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Project not found with id : " + projectId
                         ));
+
+        if (user.getRole() == com.neuroforge.enums.Role.CLIENT 
+                || user.getRole() == com.neuroforge.enums.Role.DEVELOPER
+                || user.getRole() == com.neuroforge.enums.Role.QA_TESTER) {
+            
+            boolean isMember = project.getMembers().stream()
+                    .anyMatch(m -> m.getUser().getId().equals(user.getId()));
+            
+            if (!isMember) {
+                throw new org.springframework.security.access.AccessDeniedException("You do not have permission to view this project");
+            }
+        }
 
         return mapToProjectResponse(project);
     }
@@ -219,24 +281,92 @@ public class ProjectServiceImpl implements ProjectService {
         project.getMembers().clear();
 
         // Add new members
-        if (request.getTeamMemberIds() != null &&
-                !request.getTeamMemberIds().isEmpty()) {
-
+        if (request.getTeamMemberIds() != null && !request.getTeamMemberIds().isEmpty()) {
             for (Long userId : request.getTeamMemberIds()) {
-
                 User user = userRepository.findById(userId)
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "User not found with id : " + userId));
-
+                        .orElseThrow(() -> new ResourceNotFoundException("User not found with id : " + userId));
+                if (user.getOrganization() == null || !user.getOrganization().getId().equals(project.getOrganization().getId())) {
+                    throw new com.neuroforge.exception.InvalidRequestException("User " + user.getEmail() + " does not belong to the organization.");
+                }
                 ProjectMember member = createProjectMember(project, user);
                 project.getMembers().add(member);
             }
         }
 
+        // Update Assigned Teams
+        if (project.getAssignedTeams() != null) {
+            project.getAssignedTeams().clear();
+        } else {
+            project.setAssignedTeams(new java.util.ArrayList<>());
+        }
+        if (request.getAssignedTeamIds() != null && !request.getAssignedTeamIds().isEmpty()) {
+            for (Long teamId : request.getAssignedTeamIds()) {
+                Team team = teamRepository.findById(teamId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Team not found with id : " + teamId));
+                project.getAssignedTeams().add(team);
+            }
+        }
+
         Project updatedProject = projectRepository.save(project);
+        
+        String actorEmail = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        activityService.logActivity(updatedProject.getOrganization().getId(), "Project updated", "Updated project: " + updatedProject.getName(), actorEmail);
 
         return mapToProjectResponse(updatedProject);
     }
 
+    @Override
+    @Transactional
+    public void deleteProject(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found with id : " + projectId));
+                
+        if (specRepository.existsByProjectId(projectId)) {
+            throw new com.neuroforge.exception.InvalidRequestException("Cannot delete project because it has associated specs. Please delete or reassign them first.");
+        }
+        
+        Long orgId = project.getOrganization().getId();
+        String projectName = project.getName();
+        
+        projectRepository.delete(project);
+        
+        String actorEmail = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        activityService.logActivity(orgId, "Project deleted", "Deleted project: " + projectName, actorEmail);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public com.neuroforge.dto.project.ProjectProgressResponse getProjectProgress(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found with id : " + projectId));
+
+        int totalTasks = 0;
+        int completedTasks = 0;
+        int totalStoryPoints = 0;
+        int completedStoryPoints = 0;
+
+        for (com.neuroforge.entity.Task task : project.getTasks()) {
+            totalTasks++;
+            int points = task.getStoryPoints() != null ? task.getStoryPoints() : 0;
+            totalStoryPoints += points;
+
+            if (task.getStatus() != null && task.getStatus().name().equalsIgnoreCase("DONE")) {
+                completedTasks++;
+                completedStoryPoints += points;
+            }
+        }
+
+        double taskCompletionPercentage = totalTasks == 0 ? 0 : ((double) completedTasks / totalTasks) * 100;
+        double pointCompletionPercentage = totalStoryPoints == 0 ? 0 : ((double) completedStoryPoints / totalStoryPoints) * 100;
+
+        return com.neuroforge.dto.project.ProjectProgressResponse.builder()
+                .projectId(project.getId())
+                .totalTasks(totalTasks)
+                .completedTasks(completedTasks)
+                .totalStoryPoints(totalStoryPoints)
+                .completedStoryPoints(completedStoryPoints)
+                .taskCompletionPercentage(Math.round(taskCompletionPercentage * 100.0) / 100.0)
+                .pointCompletionPercentage(Math.round(pointCompletionPercentage * 100.0) / 100.0)
+                .build();
+    }
 }

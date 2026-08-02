@@ -364,17 +364,21 @@ export default function SpecEditorPage() {
                   Submit for review
                 </button>
               )}
-              {spec.status === 'In Review' && (
-                <button className="wk-btn wk-btn-primary" onClick={handleApprove} disabled={saving}>
-                  Approve spec
-                </button>
-              )}
               {isNew && (
                 <button className="wk-btn wk-btn-primary" onClick={handleSaveDraft} disabled={saving}>
                   {saving ? 'Creating…' : 'Create spec (v1)'}
                 </button>
               )}
             </div>
+          </Can>
+          <Can roles={[ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN, ROLES.CLIENT]}>
+             <div className="sp-actions" style={{ marginTop: 12 }}>
+                {spec.status === 'In Review' && (
+                  <button className="wk-btn wk-btn-primary" onClick={handleApprove} disabled={saving}>
+                    Approve spec
+                  </button>
+                )}
+             </div>
           </Can>
         </div>
 

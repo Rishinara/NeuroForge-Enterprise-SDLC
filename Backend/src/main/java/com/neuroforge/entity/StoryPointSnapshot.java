@@ -26,8 +26,8 @@ public class StoryPointSnapshot {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sprint_id", nullable = false)
-    private Sprint sprint;
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "sprint_id", nullable = false)    private Sprint sprint;
 
     @Column(nullable = false)
     private LocalDate snapshotDate;

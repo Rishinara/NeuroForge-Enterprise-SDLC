@@ -12,6 +12,8 @@ public class UserResponse {
     private LocalDateTime createdAt;
     private boolean enabled;
     private String phoneNumber;
+    private Long organizationId;
+    private String organizationName;
 
     public UserResponse() {
     }
@@ -24,6 +26,18 @@ public class UserResponse {
         this.createdAt = createdAt;
         this.enabled = enabled;
         this.phoneNumber = phoneNumber;
+    }
+
+    public UserResponse(Long id, String fullName, String email, Role role, LocalDateTime createdAt, boolean enabled, String phoneNumber, Long organizationId, String organizationName) {
+        this.id = id;
+        this.fullName = fullName;
+        this.email = email;
+        this.role = role;
+        this.createdAt = createdAt;
+        this.enabled = enabled;
+        this.phoneNumber = phoneNumber;
+        this.organizationId = organizationId;
+        this.organizationName = organizationName;
     }
 
     public Long getId() {
@@ -77,4 +91,12 @@ public class UserResponse {
     public String getPhoneNumber() {return phoneNumber;}
 
     public void setPhoneNumber(String phoneNumber) {this.phoneNumber = phoneNumber;}
+
+    public Long getOrganizationId() { return organizationId; }
+
+    public void setOrganizationId(Long organizationId) { this.organizationId = organizationId; }
+
+    public String getOrganizationName() { return organizationName; }
+
+    public void setOrganizationName(String organizationName) { this.organizationName = organizationName; }
 }

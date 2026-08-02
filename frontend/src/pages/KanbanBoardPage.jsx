@@ -224,7 +224,12 @@ export default function KanbanBoardPage() {
     const client = new SimpleStompClient(wsUrl, (event) => {
       if (event && event.taskId && event.newStatus) {
         setTasks((prev) =>
-          prev.map((t) => (t.id === Number(event.taskId) ? { ...t, status: event.newStatus } : t))
+          prev.map((t) => {
+            if (t.id === Number(event.taskId)) {
+              return { ...t, status: STATUS_ENUM_TO_UI[event.newStatus] || event.newStatus }
+            }
+            return t
+          })
         )
       }
     })
@@ -258,13 +263,17 @@ export default function KanbanBoardPage() {
   }
 
   function canMoveTo(targetStatus) {
+    if (role === ROLES.ORG_ADMIN || role === ROLES.CLIENT) return false
+    if (role === ROLES.DEVELOPER) {
+      if (['Testing', 'Done'].includes(targetStatus)) return false
+    }
     if (targetStatus === 'Done') {
-      return [ROLES.QA_TESTER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN].includes(role)
+      return [ROLES.QA_TESTER, ROLES.SUPER_ADMIN].includes(role)
     }
     return true
   }
 
-  function handleDrop(targetStatus) {
+  async function handleDrop(targetStatus) {
     setDragOverCol(null)
     if (!dragTaskId) return
 
@@ -276,11 +285,22 @@ export default function KanbanBoardPage() {
     }
 
     const taskId = dragTaskId
+    const taskToMove = tasks.find(t => t.id === taskId)
+    const previousStatus = taskToMove ? taskToMove.status : null
+    
+    // Optimistic update
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: targetStatus } : t)))
     setDragTaskId(null)
 
-    taskApi.updateStatus(taskId, targetStatus).catch(() => {
-    })
+    try {
+      await taskApi.updateStatus(taskId, targetStatus)
+      // The websocket will also broadcast the update to all clients
+    } catch (err) {
+      // Rollback on failure
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: previousStatus } : t)))
+      setBlockedNote(extractErrorMessage(err) || 'Failed to update task status.')
+      setTimeout(() => setBlockedNote(''), 3500)
+    }
   }
 
   const tasksByColumn = COLUMNS.reduce((acc, col) => {
@@ -376,7 +396,7 @@ export default function KanbanBoardPage() {
                   <div
                     key={task.id}
                     className="ag-card"
-                    draggable
+                    draggable={role !== ROLES.ORG_ADMIN && role !== ROLES.CLIENT && ((role !== ROLES.DEVELOPER && role !== ROLES.QA_TESTER) || task.assigneeId === user?.id)}
                     onDragStart={() => setDragTaskId(task.id)}
                     onDragEnd={() => setDragTaskId(null)}
                   >

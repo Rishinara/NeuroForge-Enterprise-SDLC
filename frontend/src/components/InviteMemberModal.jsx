@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { orgApi } from '../api/orgApi.js'
 import { extractErrorMessage } from '../api/client.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
@@ -9,20 +9,32 @@ const INVITE_ROLE_OPTIONS = [
   { value: ROLES.DEVELOPER, label: 'Developer' },
   { value: ROLES.QA_TESTER, label: 'QA / Tester' },
   { value: ROLES.CLIENT, label: 'Client / Stakeholder' },
-  { value: ROLES.ORG_ADMIN, label: 'Org Admin' },
 ]
 
-export default function InviteMemberModal({ open, onClose, onInvited }) {
+export default function InviteMemberModal({ open, onClose, onInvited, targetOrgId }) {
   const { user } = useAuth()
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('')
+  const [teamId, setTeamId] = useState('')
+  const [teams, setTeams] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [sent, setSent] = useState(false)
 
+  // Fetch teams on open
+  useEffect(() => {
+    if (open) {
+      const activeOrgId = targetOrgId || user?.orgId
+      if (activeOrgId) {
+        orgApi.listTeams(activeOrgId).then(res => setTeams(res.data || [])).catch(() => setTeams([]))
+      }
+    }
+  }, [open, targetOrgId, user?.orgId])
+
   function reset() {
     setEmail('')
     setRole('')
+    setTeamId('')
     setError('')
     setSent(false)
   }
@@ -37,11 +49,16 @@ export default function InviteMemberModal({ open, onClose, onInvited }) {
     if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Enter a valid email address.')
     if (!role) return setError('Select a role for this invite.')
 
+    const activeOrgId = targetOrgId || user?.orgId
+    if (!activeOrgId) return setError('Please select an organization before sending an invite.')
+
     setError('')
     setSubmitting(true)
     try {
-      // POST /api/orgs/{orgId}/invites -> unique token saved, email sent via JavaMailSender
-      await orgApi.inviteMember(user.orgId, { email, role })
+      const payload = { email, role }
+      if (teamId) payload.teamId = Number(teamId)
+      
+      await orgApi.inviteMember(activeOrgId, payload)
       setSent(true)
       onInvited?.()
     } catch (err) {
@@ -85,6 +102,18 @@ export default function InviteMemberModal({ open, onClose, onInvited }) {
               ))}
             </select>
           </div>
+
+          {teams.length > 0 && (
+            <div className="nf-field">
+              <label className="nf-label" htmlFor="invite-team">Assign to Team (Optional)</label>
+              <select id="invite-team" className="nf-select" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+                <option value="">None</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <button className="nf-btn nf-btn-primary" type="submit" disabled={submitting}>
             {submitting ? 'Sending invite…' : 'Send invite'}

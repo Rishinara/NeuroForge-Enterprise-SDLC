@@ -18,11 +18,11 @@ public class ProjectMember {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(
             name = "project_id",
             nullable = false
-    )
-    private Project project;
+    )    private Project project;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(

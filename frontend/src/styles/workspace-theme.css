@@ -287,6 +287,9 @@
   width: 100%;
   max-width: 420px;
   border: 1px solid var(--wk-border);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .wk-modal-header {
@@ -314,7 +317,8 @@
 }
 
 .wk-modal-body {
-  padding: 18px;
+  padding: 16px 18px;
+  overflow-y: auto;
 }
 
 .wk-modal-footer {

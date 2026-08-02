@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { orgApi } from '../api/orgApi.js'
 import { extractErrorMessage } from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -7,7 +7,8 @@ import AuthLayout from '../components/AuthLayout.jsx'
 
 export default function AcceptInvitePage() {
   const { token } = useParams()
-  const { token: authToken, user } = useAuth()
+  const location = useLocation()
+  const { token: authToken, user, setToken, setUser } = useAuth()
   const navigate = useNavigate()
 
   const [preview, setPreview] = useState(null)
@@ -26,7 +27,11 @@ export default function AcceptInvitePage() {
     setError('')
     setAccepting(true)
     try {
-      await orgApi.acceptInvite(token)
+      const res = await orgApi.acceptInvite(token)
+      if (res.data?.token && res.data?.user) {
+        setToken(res.data.token)
+        setUser(res.data.user)
+      }
       setAccepted(true)
       setTimeout(() => navigate('/dashboard'), 1200)
     } catch (err) {
@@ -65,9 +70,21 @@ export default function AcceptInvitePage() {
         title={`Join ${preview.orgName}`}
         subtitle={`You've been invited as ${roleLabel}.`}
       >
-        <button className="nf-btn nf-btn-primary" onClick={() => navigate(`/signup?invite=${token}`)}>
+        <button 
+          className="nf-btn nf-btn-primary" 
+          onClick={() => navigate(`/signup?email=${encodeURIComponent(preview.invitedEmail)}`, { state: { from: location } })}
+        >
           Create your account to accept
         </button>
+        <div style={{ marginTop: '16px', textAlign: 'center' }}>
+          <span style={{ fontSize: '14px', color: 'var(--nf-slate)' }}>Already have an account? </span>
+          <button 
+            style={{ background: 'none', border: 'none', color: 'var(--nf-primary)', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }} 
+            onClick={() => navigate(`/login`, { state: { from: location } })}
+          >
+            Log in
+          </button>
+        </div>
       </AuthLayout>
     )
   }

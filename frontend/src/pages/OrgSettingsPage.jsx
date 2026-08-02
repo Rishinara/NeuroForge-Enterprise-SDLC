@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { orgApi } from '../api/orgApi.js'
 import { extractErrorMessage } from '../api/client.js'
-import { useAuth } from '../context/AuthContext.jsx'
+import { useAuth, ROLES } from '../context/AuthContext.jsx'
+import UnassignedOrgNotice from '../components/UnassignedOrgNotice.jsx'
 import './workspace.css'
 
 export default function OrgSettingsPage() {
   const { user } = useAuth()
+  const isSuperAdmin = user?.role === ROLES.SUPER_ADMIN
+
   const [form, setForm] = useState({ name: '', description: '', supportEmail: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -13,17 +16,22 @@ export default function OrgSettingsPage() {
   const [saved, setSaved] = useState(false)
 
   const load = useCallback(async () => {
+    if (!user?.orgId) {
+      setLoading(false)
+      setForm({ name: user?.orgName || '', description: '', supportEmail: '' })
+      return
+    }
     setLoading(true)
     try {
       const res = await orgApi.getOrgSettings(user.orgId)
       setForm(res.data)
     } catch (err) {
       setError(extractErrorMessage(err))
-      setForm({ name: user.orgName || '', description: '', supportEmail: '' })
+      setForm({ name: user?.orgName || '', description: '', supportEmail: '' })
     } finally {
       setLoading(false)
     }
-  }, [user.orgId, user.orgName])
+  }, [user?.orgId, user?.orgName])
 
   useEffect(() => {
     load()
@@ -31,6 +39,10 @@ export default function OrgSettingsPage() {
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
+  }
+
+  if (!isSuperAdmin && !user?.orgId) {
+    return <UnassignedOrgNotice />
   }
 
   async function handleSubmit(e) {

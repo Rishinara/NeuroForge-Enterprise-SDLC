@@ -64,11 +64,6 @@ public class UserService {
             throw new InvalidRequestException("SUPER_ADMIN role cannot be self-assigned.");
         }
 
-        Organization org = null;
-        if (request.getRole().name().equals("ORG_ADMIN")) {
-            org = organizationRepository.save(new Organization(request.getFullName() + "'s Org"));
-        }
-
         User user = new User();
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
@@ -76,7 +71,7 @@ public class UserService {
         user.setRole(request.getRole());
         user.setPhoneNumber(request.getPhone());
         user.setCreatedAt(LocalDateTime.now());
-        user.setOrganization(org);
+        user.setOrganization(null);
 
         userRepository.save(user);
 

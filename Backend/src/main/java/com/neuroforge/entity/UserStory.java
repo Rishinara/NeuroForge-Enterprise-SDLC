@@ -37,6 +37,6 @@ public class UserStory {
     private List<String> criteria = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "spec_id")
-    private Spec spec;
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "spec_id")    private Spec spec;
 }

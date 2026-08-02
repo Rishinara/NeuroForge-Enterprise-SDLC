@@ -12,4 +12,5 @@ public interface SpecRepository extends JpaRepository<Spec, Long> {
     List<Spec> findAllByProjectId(Long projectId);
     List<Spec> findAllByParentSpecIdOrId(Long parentSpecId, Long id);
     Optional<Spec> findById(Long id);
+    boolean existsByProjectId(Long projectId);
 }

@@ -21,8 +21,8 @@ public class TaskStatusHistory {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id", nullable = false)
-    private Task task;
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "task_id", nullable = false)    private Task task;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

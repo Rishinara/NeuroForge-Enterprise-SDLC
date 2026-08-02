@@ -37,16 +37,16 @@ public class Spec {
     private Integer version = 1;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id", nullable = false)
-    private Project project;
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "project_id", nullable = false)    private Project project;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_id", nullable = false)
     private User createdBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_spec_id")
-    private Spec parentSpec;
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "parent_spec_id")    private Spec parentSpec;
 
     @OneToMany(mappedBy = "spec", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

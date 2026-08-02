@@ -16,6 +16,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @EntityGraph(attributePaths = {"teams"})
     List<User> findByOrganizationId(Long orgId);
 
+    List<User> findByTeamsId(Long teamId);
+
     @EntityGraph(attributePaths = "organization")
     User findUserById(Long id);
 }

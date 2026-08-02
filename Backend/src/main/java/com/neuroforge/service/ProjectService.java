@@ -10,7 +10,7 @@ import java.util.List;
 public interface ProjectService {
     ProjectResponse createProject(CreateProjectRequest request);
 
-    List<ProjectResponse> getProjectsByOrganization(Long orgId);
+    List<ProjectResponse> getProjectsByOrganization(Long orgId, String loggedInEmail);
 
     ProjectResponse getProject(Long projectId);
 
@@ -18,4 +18,8 @@ public interface ProjectService {
             Long projectId,
             UpdateProjectRequest request
     );
+
+    void deleteProject(Long projectId);
+    
+    com.neuroforge.dto.project.ProjectProgressResponse getProjectProgress(Long projectId);
 }

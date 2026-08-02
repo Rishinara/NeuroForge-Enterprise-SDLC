@@ -41,8 +41,8 @@ public class Sprint {
     private SprintStatus status = SprintStatus.PLANNED;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "project_id", nullable = false)
-    private Project project;
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "project_id", nullable = false)    private Project project;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)

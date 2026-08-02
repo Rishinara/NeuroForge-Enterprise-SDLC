@@ -14,7 +14,7 @@ const STATUS_MAP = {
 }
 
 export const taskApi = {
-  createTask: (payload) => api.post('/tasks', payload), 
+  createTask: (projectId, payload) => api.post(`/tasks/projects/${projectId}/backlog`, payload), 
   getTask: (id) => api.get(`/tasks/${id}`),
   updateTask: (id, payload) => api.put(`/tasks/${id}`, payload),
   deleteTask: (id) => api.delete(`/tasks/${id}`),

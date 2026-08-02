@@ -48,9 +48,9 @@ public class User implements UserDetails {
     private boolean enabled = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id")
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    private Organization organization;
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "org_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore    private Organization organization;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

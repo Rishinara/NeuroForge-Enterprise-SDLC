@@ -8,12 +8,6 @@ import './workspace.css'
 
 const STEPS = ['Basics', 'Methodology', 'Tech stack', 'Team', 'Review']
 
-const SAMPLE_MEMBERS = [
-  { id: 'm1', name: 'Asha Patel', role: 'PROJECT_MANAGER' },
-  { id: 'm2', name: 'Leo Kim', role: 'DEVELOPER' },
-  { id: 'm3', name: 'Maya Chen', role: 'QA_TESTER' },
-]
-
 export default function CreateProjectPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -36,12 +30,13 @@ export default function CreateProjectPage() {
 
   useEffect(() => {
     orgApi
-      .listMembers(user.orgId)
+      .listMembers(user?.orgId)
       .then((res) => {
-        setMembers(Array.isArray(res.data) ? res.data : SAMPLE_MEMBERS)
+        const allMembers = Array.isArray(res.data) ? res.data : []
+        setMembers(allMembers.filter(m => m.role !== 'ORG_ADMIN'))
       })
-      .catch(() => setMembers(SAMPLE_MEMBERS))
-  }, [user.orgId])
+      .catch(() => setMembers([]))
+  }, [user?.orgId])
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }))
@@ -221,13 +216,19 @@ export default function CreateProjectPage() {
           <div className="wk-field">
             <label className="wk-label">Team members</label>
             {members.length === 0 ? (
-              <p style={{ fontSize: 12.5, color: 'var(--wk-slate)' }}>No members found for this organization.</p>
+              <p style={{ fontSize: 12.5, color: 'var(--wk-slate)' }}>No eligible members found in this organization.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {members.map((m) => (
-                  <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, padding: '8px 10px', border: '1px solid #eef0f5', borderRadius: 8 }}>
+                  <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, padding: '8px 12px', border: '1px solid #eef0f5', borderRadius: 8, cursor: 'pointer' }}>
                     <input type="checkbox" checked={form.teamMemberIds.includes(m.id)} onChange={() => toggleMember(m.id)} />
-                    {m.name} <span style={{ color: 'var(--wk-slate)', fontSize: 11.5 }}>({m.role.replaceAll('_', ' ')})</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                      <span style={{ fontWeight: 600 }}>{m.fullName}</span>
+                      <span style={{ color: 'var(--wk-slate)', margin: '0 4px' }}>—</span>
+                      <a href={`mailto:${m.email}`} style={{ color: 'var(--wk-accent)', textDecoration: 'none' }} onClick={(e) => e.stopPropagation()}>{m.email}</a>
+                      <span style={{ color: 'var(--wk-slate)', margin: '0 4px' }}>—</span>
+                      <span style={{ color: 'var(--wk-slate)', fontSize: 12 }}>{m.role.replaceAll('_', ' ')}</span>
+                    </div>
                   </label>
                 ))}
               </div>

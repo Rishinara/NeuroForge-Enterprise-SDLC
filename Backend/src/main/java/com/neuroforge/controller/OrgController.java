@@ -3,6 +3,7 @@ package com.neuroforge.controller;
 import com.neuroforge.dto.auth.AuthResponse;
 import com.neuroforge.dto.organization.*;
 import com.neuroforge.entity.Organization;
+import com.neuroforge.service.ActivityService;
 import com.neuroforge.service.OrgService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +18,11 @@ import java.util.List;
 public class OrgController {
 
     private final OrgService orgService;
+    private final ActivityService activityService;
 
-    public OrgController(OrgService orgService) {
+    public OrgController(OrgService orgService, ActivityService activityService) {
         this.orgService = orgService;
+        this.activityService = activityService;
     }
 
     @PreAuthorize("hasRole('SUPER_ADMIN')")
@@ -28,21 +31,63 @@ public class OrgController {
         return orgService.createOrganization(request);
     }
 
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @GetMapping("/api/organizations")
     public List<Organization> getAllOrganizations() {
         return orgService.getAllOrganizations();
     }
 
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @DeleteMapping("/api/organizations/{id}")
+    public ResponseEntity<Void> deleteOrganization(@PathVariable Long id) {
+        orgService.deleteOrganization(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PostMapping("/api/organizations/{orgId}/assign-admin")
+    public OrgAdminResponse assignOrgAdmin(
+            @PathVariable Long orgId,
+            @Valid @RequestBody AssignOrgAdminRequest request) {
+        return orgService.assignOrgAdmin(orgId, request.getUserId());
+    }
+
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @DeleteMapping("/api/organizations/{orgId}/admin/{userId}")
+    public ResponseEntity<Void> removeOrgAdmin(
+            @PathVariable Long orgId,
+            @PathVariable Long userId) {
+        orgService.removeOrgAdmin(orgId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
     // ---- Teams ----
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
+    @PreAuthorize("hasRole('ORG_ADMIN')")
     @PostMapping("/api/orgs/{orgId}/teams")
     public TeamResponse createTeam(
             @PathVariable Long orgId,
             @Valid @RequestBody TeamRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         return orgService.createTeam(orgId, request.getName(), userDetails.getUsername());
+    }
+
+    @GetMapping("/api/orgs/{orgId}/teams/{teamId}")
+    public TeamDetailResponse getTeam(
+            @PathVariable Long orgId,
+            @PathVariable Long teamId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return orgService.getTeamDetails(orgId, teamId, userDetails.getUsername());
+    }
+
+    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PutMapping("/api/orgs/{orgId}/teams/{teamId}")
+    public TeamDetailResponse updateTeam(
+            @PathVariable Long orgId,
+            @PathVariable Long teamId,
+            @RequestBody UpdateTeamRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return orgService.updateTeam(orgId, teamId, request, userDetails.getUsername());
     }
 
     @PreAuthorize("isAuthenticated()")
@@ -53,7 +98,7 @@ public class OrgController {
         return orgService.listTeams(orgId, userDetails.getUsername());
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
+    @PreAuthorize("hasRole('ORG_ADMIN')")
     @DeleteMapping("/api/orgs/{orgId}/teams/{teamId}")
     public ResponseEntity<Void> deleteTeam(
             @PathVariable Long orgId,
@@ -73,7 +118,7 @@ public class OrgController {
         return orgService.listMembers(orgId, userDetails.getUsername());
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
+    @PreAuthorize("hasRole('ORG_ADMIN')")
     @PutMapping("/api/orgs/{orgId}/members/{memberId}/role")
     public MemberResponse updateMemberRole(
             @PathVariable Long orgId,
@@ -83,7 +128,7 @@ public class OrgController {
         return orgService.updateMemberRole(orgId, memberId, request.getRole(), userDetails.getUsername());
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
+    @PreAuthorize("hasRole('ORG_ADMIN')")
     @DeleteMapping("/api/orgs/{orgId}/members/{memberId}")
     public ResponseEntity<Void> removeMember(
             @PathVariable Long orgId,
@@ -95,7 +140,7 @@ public class OrgController {
 
     // ---- Invites ----
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER')")
+    @PreAuthorize("hasRole('ORG_ADMIN')")
     @PostMapping("/api/orgs/{orgId}/invites")
     public ResponseEntity<Void> inviteMember(
             @PathVariable Long orgId,
@@ -103,6 +148,32 @@ public class OrgController {
             @AuthenticationPrincipal UserDetails userDetails) {
         orgService.inviteMember(orgId, request, userDetails.getUsername());
         return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @GetMapping("/api/orgs/{orgId}/invites")
+    public List<InviteResponse> listPendingInvites(
+            @PathVariable Long orgId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return orgService.listPendingInvites(orgId, userDetails.getUsername());
+    }
+
+    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @DeleteMapping("/api/orgs/{orgId}/invites/{inviteId}")
+    public ResponseEntity<Void> cancelInvite(
+            @PathVariable Long orgId,
+            @PathVariable Long inviteId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        orgService.cancelInvite(orgId, inviteId, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @GetMapping("/api/orgs/{orgId}/activities")
+    public List<ActivityResponse> getRecentActivities(
+            @PathVariable Long orgId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return activityService.getRecentActivities(orgId, userDetails.getUsername());
     }
 
     @GetMapping("/api/invites/{token}")

@@ -92,14 +92,14 @@ public class TaskServiceImpl implements TaskService {
 
 
     @Override
-    public TaskResponse createTask(CreateTaskRequest request,
+    public TaskResponse createTask(Long projectId, CreateTaskRequest request,
                                    String loggedInEmail) {
 
         User reporter = userRepository.findByEmail(loggedInEmail)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("User not found"));
 
-        Project project = projectRepository.findById(request.getProjectId())
+        Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Project not found"));
 
@@ -268,13 +268,17 @@ public class TaskServiceImpl implements TaskService {
     public List<TaskResponse> getProjectBacklog(Long projectId,
                                                 String loggedInEmail) {
 
-        userRepository.findByEmail(loggedInEmail)
+        User user = userRepository.findByEmail(loggedInEmail)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("User not found"));
 
-        projectRepository.findById(projectId)
+        Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Project not found"));
+                        
+        if (user.getRole() != com.neuroforge.enums.Role.SUPER_ADMIN && (user.getOrganization() == null || !project.getOrganization().getId().equals(user.getOrganization().getId()))) {
+             throw new org.springframework.security.access.AccessDeniedException("User does not have access to this project");
+        }
 
         return taskRepository.findByProjectIdAndSprintIsNull(projectId)
                 .stream()
@@ -392,6 +396,18 @@ public class TaskServiceImpl implements TaskService {
         Task task = taskRepository.findTaskById(taskId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Task not found"));
+
+        if (user.getRole() == com.neuroforge.enums.Role.DEVELOPER) {
+            if (task.getAssignee() == null || !task.getAssignee().getId().equals(user.getId())) {
+                throw new org.springframework.security.access.AccessDeniedException("You can only update your assigned tasks.");
+            }
+        }
+        
+        if (user.getRole() == com.neuroforge.enums.Role.DEVELOPER) {
+            if (request.getStatus() == com.neuroforge.enums.TaskStatus.TESTING || request.getStatus() == com.neuroforge.enums.TaskStatus.DONE) {
+                throw new org.springframework.security.access.AccessDeniedException("Developers cannot move tasks to Testing or Done.");
+            }
+        }
 
         if (!isValidStatusTransition(task.getStatus(),
                 request.getStatus())) {

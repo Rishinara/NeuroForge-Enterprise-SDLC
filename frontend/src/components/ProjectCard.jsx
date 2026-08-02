@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import HealthBadge from './HealthBadge.jsx'
 import './project-card.css'
 
-export default function ProjectCard({ project }) {
+export default function ProjectCard({ project, showTeams }) {
   const progress = project.progressPercent ?? 0
 
   return (
@@ -18,6 +18,16 @@ export default function ProjectCard({ project }) {
         <div className="pc-tags">
           {project.techStack.slice(0, 4).map((tag) => (
             <span key={tag} className="pc-tag">{tag}</span>
+          ))}
+        </div>
+      )}
+
+      {showTeams && project.assignedTeams?.length > 0 && (
+        <div className="pc-tags" style={{ marginTop: 8 }}>
+          {project.assignedTeams.map((t) => (
+            <span key={t.id} className="pc-tag" style={{ background: '#e2e8f0', color: '#334155' }}>
+              Team: {t.name}
+            </span>
           ))}
         </div>
       )}
