@@ -14,6 +14,8 @@ public class NeuroforgeBackendApplication {
 	public static void main(String[] args) {
 
 		SpringApplication.run(NeuroforgeBackendApplication.class, args);
+		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+		System.out.println(encoder.encode("Admin@123"));
 
 	}
 
