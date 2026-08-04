@@ -18,11 +18,11 @@ public class ProjectMember {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(
             name = "project_id",
             nullable = false
-    )
-    private Project project;
+    )    private Project project;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
@@ -39,17 +39,4 @@ public class ProjectMember {
     private Boolean active = true;
 
     private LocalDate joinedDate = LocalDate.now();
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ProjectMember)) return false;
-        ProjectMember other = (ProjectMember) o;
-        return getId() != null && getId().equals(other.getId());
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
 }

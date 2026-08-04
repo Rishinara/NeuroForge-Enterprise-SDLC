@@ -20,12 +20,12 @@ public class Invite {
     private String token;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id", nullable = false)
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    private Organization organization;
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "org_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore    private Organization organization;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "team_id", nullable = false)
+    @JoinColumn(name = "team_id", nullable = true)
     @com.fasterxml.jackson.annotation.JsonIgnore
     private Team team;
 
@@ -69,17 +69,4 @@ public class Invite {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Team getTeam() {return team;}
     public void setTeam(Team team) {this.team = team;}
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Invite)) return false;
-        Invite other = (Invite) o;
-        return getId() != null && getId().equals(other.getId());
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
 }

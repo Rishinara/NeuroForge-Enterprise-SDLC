@@ -21,8 +21,8 @@ public class TaskStatusHistory {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id", nullable = false)
-    private Task task;
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "task_id", nullable = false)    private Task task;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -39,17 +39,4 @@ public class TaskStatusHistory {
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime changedAt;
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof TaskStatusHistory)) return false;
-        TaskStatusHistory other = (TaskStatusHistory) o;
-        return getId() != null && getId().equals(other.getId());
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
 }

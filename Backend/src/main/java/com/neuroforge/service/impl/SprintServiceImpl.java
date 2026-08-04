@@ -185,13 +185,17 @@ public class SprintServiceImpl implements SprintService {
     public List<SprintResponse> getProjectSprints(Long projectId,
                                                   String loggedInEmail) {
 
-        userRepository.findByEmail(loggedInEmail)
+        User user = userRepository.findByEmail(loggedInEmail)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("User not found"));
 
-        projectRepository.findById(projectId)
+        Project project = projectRepository.findById(projectId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Project not found"));
+                        
+        if (user.getRole() != com.neuroforge.enums.Role.SUPER_ADMIN && (user.getOrganization() == null || !project.getOrganization().getId().equals(user.getOrganization().getId()))) {
+             throw new org.springframework.security.access.AccessDeniedException("User does not have access to this project");
+        }
 
         return sprintRepository.findAllByProjectId(projectId)
                 .stream()
@@ -330,6 +334,13 @@ public class SprintServiceImpl implements SprintService {
                         new ResourceNotFoundException("Sprint not found"));
 
         List<Task> tasks = taskRepository.findBySprintIdOrderByPriorityAscCreatedAtAsc(sprintId);
+        User user = userRepository.findByEmail(loggedInEmail).get();
+
+        if (user.getRole() == com.neuroforge.enums.Role.DEVELOPER) {
+            tasks = tasks.stream()
+                    .filter(t -> t.getAssignee() != null && t.getAssignee().getId().equals(user.getId()))
+                    .toList();
+        }
 
         BoardResponse response = new BoardResponse();
 

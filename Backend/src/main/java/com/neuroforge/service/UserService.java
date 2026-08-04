@@ -64,19 +64,20 @@ public class UserService {
             throw new InvalidRequestException("SUPER_ADMIN role cannot be self-assigned.");
         }
 
-        Organization org = null;
-        if (request.getRole().name().equals("ORG_ADMIN")) {
-            org = organizationRepository.save(new Organization(request.getFullName() + "'s Org"));
-        }
-
         User user = new User();
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole() != null ? request.getRole() : Role.DEVELOPER);
+        user.setRole(request.getRole());
         user.setPhoneNumber(request.getPhone());
         user.setCreatedAt(LocalDateTime.now());
-        user.setOrganization(org);
+        user.setOrganization(null);
+        
+        if (request.getOrgId() != null) {
+            Organization org = organizationRepository.findById(request.getOrgId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
+            user.setRequestedOrganization(org);
+        }
 
         userRepository.save(user);
 
@@ -97,18 +98,6 @@ public class UserService {
 
         String token = jwtService.generateToken(user);
         return buildAuthResponse(token, user);
-    }
-
-    public AuthResponse refreshTokenV2(java.util.Map<String, String> body) {
-        String expiredToken = body.get("token");
-        String email = jwtService.extractEmailFromExpiredToken(expiredToken);
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        if (!user.isEnabled()) {
-            throw new InvalidRequestException("Account disabled");
-        }
-        String newToken = jwtService.generateToken(user);
-        return buildAuthResponse(newToken, user);
     }
 
     public AuthResponse.UserPayload getMe(String email) {
@@ -199,6 +188,7 @@ public class UserService {
     }
 
     private AuthResponse.UserPayload toPayload(User user) {
+        user = userRepository.findUserById(user.getId());
         Long orgId = user.getOrganization() != null ? user.getOrganization().getId() : null;
         String orgName = user.getOrganization() != null ? user.getOrganization().getName() : null;
         return new AuthResponse.UserPayload(

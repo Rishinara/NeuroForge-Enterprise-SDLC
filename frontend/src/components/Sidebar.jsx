@@ -1,27 +1,55 @@
 import { useState, useEffect } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { IconDashboard, IconProjects, IconUsers, IconSettings, IconLogout, IconPlus } from './icons.jsx'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import { projectApi } from '../api/projectApi.js'
 import Avatar from './Avatar.jsx'
 import './sidebar.css'
 
-function getNavSections(currentProjectId) {
+function getNavSections(currentProjectId, role, hasProjects) {
+  if (role === ROLES.SUPER_ADMIN) {
+    return [
+      {
+        label: 'Platform Administration',
+        items: [
+          { to: '/dashboard', label: 'Overview', icon: IconDashboard, roles: null },
+          { to: '/projects', label: 'Projects Portfolio', icon: IconProjects, roles: null },
+          { to: '/org/teams', label: 'Users & Org Admins', icon: IconUsers, roles: null },
+          { to: '/org/settings', label: 'Organizations & Settings', icon: IconSettings, roles: null },
+          { to: '/profile', label: 'Profile', icon: IconSettings, roles: null },
+        ],
+      },
+    ]
+  }
+
+  const workspaceItems = [
+    { to: '/dashboard', label: 'Dashboard', icon: IconDashboard, roles: null },
+    { to: '/projects', label: 'Projects', icon: IconProjects, roles: null },
+  ]
+  
+  if (hasProjects) {
+    workspaceItems.push(
+      { to: `/projects/${currentProjectId}/specs`, label: 'Specs', icon: IconProjects, roles: null },
+      { to: `/projects/${currentProjectId}/backlog`, label: 'Backlog & Board', icon: IconDashboard, roles: null },
+      { to: `/projects/${currentProjectId}/bugs`, label: 'Bugs', icon: IconProjects, roles: null },
+      { to: `/projects/${currentProjectId}/test-cases`, label: 'Test Cases', icon: IconProjects, roles: null },
+      { to: `/projects/${currentProjectId}/milestones`, label: 'Milestones', icon: IconProjects, roles: null },
+      { to: `/projects/${currentProjectId}/approvals`, label: 'Approvals', icon: IconProjects, roles: null },
+      { to: `/projects/${currentProjectId}/reports`, label: 'Reports', icon: IconDashboard, roles: null }
+    )
+  }
+
   return [
     {
       label: 'Workspace',
-      items: [
-        { to: '/dashboard', label: 'Dashboard', icon: IconDashboard, roles: null },
-        { to: '/projects', label: 'Projects', icon: IconProjects, roles: null },
-        { to: `/projects/${currentProjectId}/specs`, label: 'Specs', icon: IconProjects, roles: null },
-        { to: `/projects/${currentProjectId}/backlog`, label: 'Backlog & Board', icon: IconDashboard, roles: null },
-      ],
+      items: workspaceItems,
     },
     {
       label: 'Organization',
       items: [
-        { to: '/org/teams', label: 'Teams & Members', icon: IconUsers, roles: [ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN] },
-        { to: '/org/settings', label: 'Org Settings', icon: IconSettings, roles: [ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN] },
+        { to: '/org/teams', label: 'Teams & Members', icon: IconUsers, roles: [ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER] },
+        { to: '/org/invites', label: 'Pending Invites', icon: IconUsers, roles: [ROLES.ORG_ADMIN] },
+        { to: '/org/settings', label: 'Org Settings', icon: IconSettings, roles: [ROLES.ORG_ADMIN] },
       ],
     },
   ]
@@ -29,14 +57,25 @@ function getNavSections(currentProjectId) {
 
 export default function Sidebar() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const { user, role, logout } = useAuth()
+  const [projects, setProjects] = useState([])
+  
   const [currentProjectId, setCurrentProjectId] = useState(() => {
     const match = window.location.pathname.match(/^\/projects\/([^/]+)/)
     const pathId = match && match[1] !== 'new' && !isNaN(Number(match[1])) ? match[1] : null
     if (pathId) return pathId
     const cached = localStorage.getItem('neuroforge_current_project_id')
-    return cached && !isNaN(Number(cached)) ? cached : (user?.currentProjectId || 'p1')
+    return cached && !isNaN(Number(cached)) ? cached : 'p1'
   })
+
+  useEffect(() => {
+    if (user?.orgId && role !== ROLES.SUPER_ADMIN) {
+      projectApi.listProjects(user.orgId).then((res) => {
+        setProjects(Array.isArray(res.data) ? res.data : [])
+      }).catch(() => {})
+    }
+  }, [user?.orgId, role])
 
   useEffect(() => {
     const match = pathname.match(/^\/projects\/([^/]+)/)
@@ -49,25 +88,44 @@ export default function Sidebar() {
       const cached = localStorage.getItem('neuroforge_current_project_id')
       if (cached && !isNaN(Number(cached))) {
         setCurrentProjectId(cached)
-      } else if (user?.orgId) {
-        projectApi.listProjects(user.orgId).then((res) => {
-          const firstProj = res.data?.[0]
-          if (firstProj?.id) {
-            localStorage.setItem('neuroforge_current_project_id', firstProj.id)
-            setCurrentProjectId(firstProj.id)
-          }
-        }).catch(() => {})
+      } else if (projects.length > 0) {
+        localStorage.setItem('neuroforge_current_project_id', projects[0].id)
+        setCurrentProjectId(projects[0].id)
       }
     }
-  }, [pathname, user?.orgId])
-  const visibleSections = getNavSections(currentProjectId)
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => !item.roles || item.roles.includes(role)),
-    }))
-    .filter((section) => section.items.length > 0)
+  }, [pathname, projects])
 
-  const canCreateProject = [ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN].includes(role)
+  const handleProjectSelect = (e) => {
+    const newProjectId = e.target.value
+    setCurrentProjectId(newProjectId)
+    localStorage.setItem('neuroforge_current_project_id', newProjectId)
+    
+    const match = pathname.match(/^\/projects\/[^/]+(.*)/)
+    if (match) {
+      navigate(`/projects/${newProjectId}${match[1]}`)
+    } else {
+      navigate(`/projects/${newProjectId}/backlog`)
+    }
+  }
+
+  const isSuperAdmin = role === ROLES.SUPER_ADMIN || user?.role === ROLES.SUPER_ADMIN
+  const isUnassigned = !isSuperAdmin && !user?.orgId
+
+  const visibleSections = isUnassigned
+    ? [
+        {
+          label: 'Account Status',
+          items: [{ to: '/dashboard', label: 'Overview', icon: IconDashboard }],
+        },
+      ]
+    : getNavSections(currentProjectId, role, projects.length > 0)
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) => !item.roles || item.roles.includes(role)),
+        }))
+        .filter((section) => section.items.length > 0)
+
+  const canCreateProject = !isUnassigned && [ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN].includes(role)
 
   return (
     <aside className="sb-shell">
@@ -91,7 +149,33 @@ export default function Sidebar() {
       <nav className="sb-nav">
         {visibleSections.map((section) => (
           <div key={section.label} className="sb-nav-section">
-            <p className="sb-nav-heading">{section.label}</p>
+            {section.label === 'Workspace' && projects.length > 0 ? (
+              <div style={{ marginBottom: 8, padding: '0 12px' }}>
+                <select
+                  value={currentProjectId || ''}
+                  onChange={handleProjectSelect}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    borderRadius: 6,
+                    border: '1px solid #cbd5e1',
+                    background: '#f1f5f9',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: '#0f172a',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <p className="sb-nav-heading">{section.label}</p>
+            )}
             {section.items.map((item) => {
               const Icon = item.icon
               return (

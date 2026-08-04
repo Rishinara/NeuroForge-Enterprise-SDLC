@@ -1,6 +1,6 @@
 .sb-shell {
   width: 232px;
-  min-height: 100vh;
+  height: 100vh;
   background: var(--wk-surface);
   border-right: 1px solid var(--wk-border);
   color: var(--wk-ink);
@@ -71,6 +71,19 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  overflow-y: auto;
+}
+
+/* Custom scrollbar for nav */
+.sb-nav::-webkit-scrollbar {
+  width: 4px;
+}
+.sb-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sb-nav::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 .sb-nav-heading {

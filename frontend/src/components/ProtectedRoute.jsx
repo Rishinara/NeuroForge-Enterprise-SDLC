@@ -7,7 +7,13 @@ export default function ProtectedRoute({ children, roles }) {
   const { isAuthenticated, role, loading } = useAuth()
   const location = useLocation()
 
-  if (loading) return null
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', color: '#64748b' }}>
+        Loading NeuroForge…
+      </div>
+    )
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />

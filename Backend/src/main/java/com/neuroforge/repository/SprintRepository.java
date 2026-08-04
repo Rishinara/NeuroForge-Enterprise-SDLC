@@ -20,7 +20,6 @@ public interface SprintRepository extends JpaRepository<Sprint, Long> {
 
     boolean existsByProjectIdAndNameIgnoreCase(Long projectId, String name);
 
-    @EntityGraph(attributePaths = {"project", "createdBy"})
     Optional<Sprint> findByProjectIdAndStatus(Long projectId, SprintStatus status);
 
     boolean existsByProjectIdAndStatus(Long projectId, SprintStatus status);

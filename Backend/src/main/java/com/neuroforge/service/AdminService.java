@@ -48,12 +48,14 @@ public class AdminService {
         return toUserResponse(userRepository.save(user));
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream()
                 .map(this::toUserResponse)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public UserResponse getUserById(Long id) {
         return toUserResponse(findUserOrThrow(id));
     }
@@ -68,6 +70,9 @@ public class AdminService {
     @Transactional
     public UserResponse updateUserStatus(Long id, UpdateStatusRequest request) {
         User user = findUserOrThrow(id);
+        if (user.getRole() == Role.SUPER_ADMIN && !request.isEnabled()) {
+            throw new InvalidRequestException("SUPER_ADMIN user cannot be disabled.");
+        }
         user.setEnabled(request.isEnabled());
         return toUserResponse(userRepository.save(user));
     }
@@ -89,6 +94,8 @@ public class AdminService {
     }
 
     private UserResponse toUserResponse(User user) {
+        Long orgId = user.getOrganization() != null ? user.getOrganization().getId() : null;
+        String orgName = user.getOrganization() != null ? user.getOrganization().getName() : null;
         return new UserResponse(
                 user.getId(),
                 user.getFullName(),
@@ -96,7 +103,9 @@ public class AdminService {
                 user.getRole(),
                 user.getCreatedAt(),
                 user.isEnabled(),
-                user.getPhoneNumber()
+                user.getPhoneNumber(),
+                orgId,
+                orgName
         );
     }
 }

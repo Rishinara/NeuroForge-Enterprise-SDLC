@@ -51,20 +51,6 @@ public class JwtService {
         return getClaims(token).getSubject();
     }
 
-    public String extractEmailFromExpiredToken(String token) {
-        try {
-            Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-            return claims.getSubject();
-        } catch (ExpiredJwtException e) {
-            return e.getClaims().getSubject(); // Still readable when expired
-        }
-    }
-
-
     public boolean validateToken(String token) {
         try {
             getClaims(token);

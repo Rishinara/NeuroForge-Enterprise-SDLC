@@ -9,12 +9,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 @SpringBootApplication(scanBasePackages = "com.neuroforge")
 @EnableJpaRepositories(basePackages = "com.neuroforge")
 @EntityScan(basePackages = "com.neuroforge")
-@org.springframework.scheduling.annotation.EnableAsync
 public class NeuroforgeBackendApplication {
 
 	public static void main(String[] args) {
 
 		SpringApplication.run(NeuroforgeBackendApplication.class, args);
+		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+		System.out.println(encoder.encode("Admin@123"));
 
 	}
 

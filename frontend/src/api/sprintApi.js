@@ -1,6 +1,7 @@
 import { api } from './client.js'
 
 export const sprintApi = {
+ 
   createSprint: (payload) => api.post('/sprints', payload), // payload must include projectId
   getSprint: (id) => api.get(`/sprints/${id}`),
   updateSprint: (id, payload) => api.put(`/sprints/${id}`, payload),
@@ -8,7 +9,11 @@ export const sprintApi = {
   startSprint: (id) => api.post(`/sprints/${id}/start`),
   completeSprint: (id) => api.post(`/sprints/${id}/complete`),
   listProjectSprints: (projectId) => api.get(`/sprints/project/${projectId}`),
-  getBoard: (sprintId) => api.get(`/tasks/${sprintId}/board`),
+
+  
+  getBoard: (sprintId, projectId) => api.get(`/tasks/${sprintId}/board`, { params: projectId ? { projectId } : {} }),
+
+ 
   captureSnapshot: (sprintId) => api.post(`/sprints/${sprintId}/snapshot`),
-  getBurndown: (sprintId) => api.get(`/sprints/${sprintId}/burndown`),
+  getBurndown: (sprintId, projectId) => api.get(`/sprints/${sprintId}/burndown`, { params: projectId ? { projectId } : {} }),
 }

@@ -6,6 +6,7 @@ import com.neuroforge.enums.ProjectStatus;
 import lombok.Getter;
 import lombok.Setter;
 
+import com.neuroforge.dto.organization.TeamResponse;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -32,6 +33,8 @@ public class ProjectResponse {
     private List<String> techStack;
 
     private List<ProjectMemberResponse> team;
+    
+    private List<TeamResponse> assignedTeams;
 
     private Integer teamSize;
 

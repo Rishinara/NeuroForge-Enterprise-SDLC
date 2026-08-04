@@ -2,6 +2,8 @@ package com.neuroforge.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.UpdateTimestamp;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,17 +22,28 @@ public class Team {
     @Column(nullable = false)
     private String name;
 
+    @Column(length = 1000)
+    private String description;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id", nullable = false)
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    private Organization organization;
+    @JoinColumn(name = "lead_id")
+    private User lead;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "org_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore    private Organization organization;
 
     @ManyToMany(mappedBy = "teams")
     @com.fasterxml.jackson.annotation.JsonIgnore
     private List<User> users = new ArrayList<>();
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     public Team() {}
     public Team(String name, Organization organization) {
@@ -49,18 +62,11 @@ public class Team {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public List<User> getUsers() {return users;}
     public void setUsers(List<User> users) {this.users = users;}
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public User getLead() { return lead; }
+    public void setLead(User lead) { this.lead = lead; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Team)) return false;
-        Team other = (Team) o;
-        return getId() != null && getId().equals(other.getId());
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
 }

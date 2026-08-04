@@ -24,7 +24,7 @@ public class SprintController {
     private final SprintService sprintService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
     public SprintResponse createSprint(
             @Valid @RequestBody CreateSprintRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -33,7 +33,7 @@ public class SprintController {
     }
 
     @PutMapping("/{sprintId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
     public SprintResponse updateSprint(
             @PathVariable Long sprintId,
             @Valid @RequestBody UpdateSprintRequest request,
@@ -46,7 +46,7 @@ public class SprintController {
     }
 
     @DeleteMapping("/{sprintId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
     public void deleteSprint(
             @PathVariable Long sprintId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -57,7 +57,7 @@ public class SprintController {
     }
 
     @GetMapping("/{sprintId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
     public SprintResponse getSprintById(
             @PathVariable Long sprintId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -68,7 +68,7 @@ public class SprintController {
     }
 
     @GetMapping("/project/{projectId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
     public List<SprintResponse> getProjectSprints(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -79,7 +79,7 @@ public class SprintController {
     }
 
     @PostMapping("/{sprintId}/start")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
     public SprintResponse startSprint(
             @PathVariable Long sprintId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -90,7 +90,7 @@ public class SprintController {
     }
 
     @PostMapping("/{sprintId}/complete")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
     public SprintSummaryResponse completeSprint(
             @PathVariable Long sprintId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -101,20 +101,18 @@ public class SprintController {
     }
 
     @PostMapping("/{sprintId}/snapshot")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
-    public ResponseEntity<String> captureStoryPointSnapshot(
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
+    public void captureStoryPointSnapshot(
             @PathVariable Long sprintId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         sprintService.captureStoryPointSnapshot(
                 sprintId,
                 userDetails.getUsername());
-
-        return ResponseEntity.ok("Story point snapshot captured successfully");
     }
 
     @GetMapping("/{sprintId}/burndown")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
     public BurndownResponse getBurndown(
             @PathVariable Long sprintId,
             @AuthenticationPrincipal UserDetails userDetails) {

@@ -26,8 +26,8 @@ public class StoryPointSnapshot {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sprint_id", nullable = false)
-    private Sprint sprint;
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "sprint_id", nullable = false)    private Sprint sprint;
 
     @Column(nullable = false)
     private LocalDate snapshotDate;
@@ -44,17 +44,4 @@ public class StoryPointSnapshot {
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof StoryPointSnapshot)) return false;
-        StoryPointSnapshot other = (StoryPointSnapshot) o;
-        return getId() != null && getId().equals(other.getId());
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
 }

@@ -48,8 +48,8 @@ public class Project {
     private HealthStatus health;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "organization_id")
-    private Organization organization;
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "organization_id")    private Organization organization;
 
     @OneToMany(
             mappedBy = "project",
@@ -58,6 +58,14 @@ public class Project {
             fetch = FetchType.LAZY
     )
     private List<ProjectMember> members = new ArrayList<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "project_teams",
+        joinColumns = @JoinColumn(name = "project_id"),
+        inverseJoinColumns = @JoinColumn(name = "team_id")
+    )
+    private List<Team> assignedTeams = new ArrayList<>();
 
     @ElementCollection(fetch=FetchType.EAGER)
     @CollectionTable(
@@ -79,17 +87,4 @@ public class Project {
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL)
     private List<Task> tasks = new ArrayList<>();
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Project)) return false;
-        Project other = (Project) o;
-        return getId() != null && getId().equals(other.getId());
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
 }

@@ -16,6 +16,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/ai")
+@CrossOrigin(origins = "*")
 @Tag(name = "AI Module", description = "AI-powered task management features")
 public class AiController {
 

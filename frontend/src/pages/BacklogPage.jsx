@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { taskApi } from '../api/taskApi.js'
-import { sprintApi } from '../api/sprintApi.js'
 import { projectApi } from '../api/projectApi.js'
+import { sprintApi } from '../api/sprintApi.js'
 import { aiApi } from '../api/aiApi.js'
 import { api, extractErrorMessage } from '../api/client.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
@@ -10,28 +10,33 @@ import Can from '../components/Can.jsx'
 import './agile.css'
 
 const PRIORITY_STYLE = {
-  CRITICAL: { bg: '#fee2e2', color: '#7f1d1d' },
   HIGH: { bg: '#fee2e2', color: '#991b1b' },
+  High: { bg: '#fee2e2', color: '#991b1b' },
   MEDIUM: { bg: '#fef3c7', color: '#92400e' },
+  Medium: { bg: '#fef3c7', color: '#92400e' },
   LOW: { bg: '#f3f4f6', color: '#4b5563' },
+  Low: { bg: '#f3f4f6', color: '#4b5563' },
+  CRITICAL: { bg: '#fef2f2', color: '#7f1d1d' },
 }
 
-const PRIORITY_LABEL = { CRITICAL: 'Critical', HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' }
-const CAN_MANAGE = [ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]
+const CAN_MANAGE = [ROLES.PROJECT_MANAGER, ROLES.SUPER_ADMIN]
+
 
 export default function BacklogPage() {
   const { projectId = 'p1' } = useParams()
   const navigate = useNavigate()
   const { user, role } = useAuth()
-  
   const [items, setItems] = useState([])
   const [sprints, setSprints] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [endpointMissing, setEndpointMissing] = useState(false)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ title: '', storyPoints: 3, priority: 'MEDIUM', labels: '' })
-  const [assigningId, setAssigningId] = useState(null)
+  const [form, setForm] = useState({ title: '', points: 3, priority: 'Medium', labels: '' })
+
+  const [showSprintForm, setShowSprintForm] = useState(false)
+  const [sprintForm, setSprintForm] = useState({ name: '', goal: '', startDate: '', endDate: '' })
+  const [dragTaskId, setDragTaskId] = useState(null)
 
   useEffect(() => {
     if (projectId && isNaN(Number(projectId))) {
@@ -52,7 +57,7 @@ export default function BacklogPage() {
 
   // AI Copilot state
   const [showAiCopilot, setShowAiCopilot] = useState(false)
-  const [aiTab, setAiTab] = useState('task')
+  const [aiTab, setAiTab] = useState('task') // 'task' or 'project'
   const [aiForm, setAiForm] = useState({ title: '', description: '' })
   const [aiResult, setAiResult] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
@@ -64,12 +69,12 @@ export default function BacklogPage() {
     setError('')
     setEndpointMissing(false)
     try {
-      const [backlogRes, sprintsRes] = await Promise.all([
+      const [tasksRes, sprintsRes] = await Promise.all([
         api.get(`/tasks/project/${projectId}/backlog`),
-        sprintApi.listProjectSprints(projectId).catch(() => ({ data: [] })),
+        sprintApi.listProjectSprints(projectId).catch(() => ({ data: [] }))
       ])
-      if (!Array.isArray(backlogRes.data)) throw new Error('Unexpected response shape')
-      setItems(backlogRes.data)
+      if (!Array.isArray(tasksRes.data)) throw new Error('Unexpected response shape')
+      setItems(tasksRes.data)
       setSprints(Array.isArray(sprintsRes.data) ? sprintsRes.data : [])
     } catch (err) {
       if (err?.response?.status === 404) {
@@ -90,36 +95,23 @@ export default function BacklogPage() {
   async function handleAdd(e) {
     e.preventDefault()
     if (!form.title.trim()) return
+    const numericProjId = Number(projectId)
     const payload = {
       title: form.title.trim(),
-      storyPoints: Number(form.storyPoints) || 1,
-      priority: form.priority,
+      storyPoints: Math.max(1, Math.min(13, Number(form.points) || 1)),
+      priority: (form.priority || 'MEDIUM').toUpperCase(),
       labels: form.labels.split(',').map((l) => l.trim()).filter(Boolean),
-      projectId: Number(projectId)
+      sprintId: null, 
     }
-    setError('')
     try {
-      const res = await taskApi.createTask(payload)
+      const res = await taskApi.createTask(numericProjId, payload)
       setItems((prev) => [res.data, ...prev])
-      setForm({ title: '', storyPoints: 3, priority: 'MEDIUM', labels: '' })
-      setShowForm(false)
     } catch (err) {
       setError(extractErrorMessage(err))
+      return
     }
-  }
-
-  async function handleAssignSprint(taskId, sprintId) {
-    if (!sprintId) return
-    setAssigningId(taskId)
-    setError('')
-    try {
-      await taskApi.assignTaskToSprint(taskId, sprintId)
-      setItems((prev) => prev.filter((t) => t.id !== taskId))
-    } catch (err) {
-      setError(extractErrorMessage(err))
-    } finally {
-      setAssigningId(null)
-    }
+    setForm({ title: '', points: 3, priority: 'Medium', labels: '' })
+    setShowForm(false)
   }
 
   const runAiTaskTool = async (toolName) => {
@@ -162,6 +154,41 @@ export default function BacklogPage() {
     }
   }
 
+  async function handleCreateSprint(e) {
+    e.preventDefault()
+    if (!sprintForm.name.trim() || !sprintForm.startDate || !sprintForm.endDate) return
+    const numericProjId = Number(projectId)
+    const payload = {
+      ...sprintForm,
+      projectId: isNaN(numericProjId) ? null : numericProjId,
+    }
+    try {
+      const res = await sprintApi.createSprint(payload)
+      setSprints((prev) => [res.data, ...prev])
+      setShowSprintForm(false)
+      setSprintForm({ name: '', goal: '', startDate: '', endDate: '' })
+    } catch (err) {
+      setError(extractErrorMessage(err))
+    }
+  }
+
+  async function handleDropToSprint(targetSprintId) {
+    if (!dragTaskId) return
+    const taskId = dragTaskId
+    setDragTaskId(null)
+    
+    // Optimistic UI update
+    setItems((prev) => prev.filter(t => t.id !== taskId))
+    
+    try {
+      await taskApi.assignSprint(taskId, targetSprintId)
+    } catch (err) {
+      // Revert on failure by reloading
+      load()
+      setError(extractErrorMessage(err))
+    }
+  }
+
   const runAiProjectRisk = async () => {
     if (items.length === 0) {
       setAiError('No backlog items found to analyze.')
@@ -181,7 +208,7 @@ export default function BacklogPage() {
     }
   }
 
-  const totalPoints = items.reduce((sum, i) => sum + (i.storyPoints || 0), 0)
+  const totalPoints = items.reduce((sum, i) => sum + (i.points || 0), 0)
 
   return (
     <div className="wk-page">
@@ -234,23 +261,21 @@ export default function BacklogPage() {
               </div>
               <div className="wk-row-2">
                 <div className="wk-field">
-                  <label className="wk-label">Story points (1–13)</label>
+                  <label className="wk-label">Story points</label>
                   <input
                     type="number"
                     min="1"
-                    max="13"
                     className="wk-input"
-                    value={form.storyPoints}
-                    onChange={(e) => setForm((f) => ({ ...f, storyPoints: e.target.value }))}
+                    value={form.points}
+                    onChange={(e) => setForm((f) => ({ ...f, points: e.target.value }))}
                   />
                 </div>
                 <div className="wk-field">
                   <label className="wk-label">Priority</label>
                   <select className="wk-select" value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}>
-                    <option value="CRITICAL">Critical</option>
-                    <option value="HIGH">High</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="LOW">Low</option>
+                    <option>High</option>
+                    <option>Medium</option>
+                    <option>Low</option>
                   </select>
                 </div>
               </div>
@@ -267,6 +292,88 @@ export default function BacklogPage() {
             </form>
           )}
 
+          {/* Sprints Section */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 16, margin: 0 }}>Sprints</h3>
+              <Can roles={CAN_MANAGE}>
+                <button className="wk-btn wk-btn-secondary" style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => setShowSprintForm((s) => !s)}>
+                  {showSprintForm ? 'Cancel' : '+ Create sprint'}
+                </button>
+              </Can>
+            </div>
+            
+            {showSprintForm && (
+              <form className="wk-card ag-add-form" onSubmit={handleCreateSprint} style={{ marginBottom: 16 }}>
+                <div className="wk-field">
+                  <label className="wk-label">Sprint name *</label>
+                  <input className="wk-input" required value={sprintForm.name} onChange={e => setSprintForm(f => ({...f, name: e.target.value}))} placeholder="Sprint 1" />
+                </div>
+                <div className="wk-field">
+                  <label className="wk-label">Goal</label>
+                  <input className="wk-input" value={sprintForm.goal} onChange={e => setSprintForm(f => ({...f, goal: e.target.value}))} placeholder="Complete authentication flow" />
+                </div>
+                <div className="wk-row-2">
+                  <div className="wk-field">
+                    <label className="wk-label">Start Date *</label>
+                    <input type="date" required className="wk-input" value={sprintForm.startDate} onChange={e => setSprintForm(f => ({...f, startDate: e.target.value}))} />
+                  </div>
+                  <div className="wk-field">
+                    <label className="wk-label">End Date *</label>
+                    <input type="date" required className="wk-input" value={sprintForm.endDate} onChange={e => setSprintForm(f => ({...f, endDate: e.target.value}))} />
+                  </div>
+                </div>
+                <button className="wk-btn wk-btn-primary" type="submit">Save Sprint</button>
+              </form>
+            )}
+            
+            {sprints.length === 0 ? (
+              <p className="wk-empty" style={{ padding: '16px 0', border: '1px dashed var(--wk-border)', borderRadius: 8 }}>No sprints created yet.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {sprints.map(sprint => (
+                  <div 
+                    key={sprint.id} 
+                    className="wk-card" 
+                    style={{ 
+                      padding: '12px 16px', 
+                      border: '2px dashed transparent',
+                      transition: 'all 0.2s'
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault(); 
+                      e.currentTarget.style.borderColor = 'var(--wk-accent)';
+                      e.currentTarget.style.background = '#f8fafc';
+                    }}
+                    onDragLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'transparent';
+                      e.currentTarget.style.background = '#fff';
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.currentTarget.style.borderColor = 'transparent';
+                      e.currentTarget.style.background = '#fff';
+                      handleDropToSprint(sprint.id);
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <h4 style={{ margin: 0, fontSize: 15 }}>{sprint.name}</h4>
+                        <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 999, background: sprint.status === 'ACTIVE' ? '#dcfce7' : '#f1f5f9', color: sprint.status === 'ACTIVE' ? '#166534' : '#475569', fontWeight: 500 }}>
+                          {sprint.status}
+                        </span>
+                      </div>
+                      <Link to={`/projects/${projectId}/board`} className="wk-btn wk-btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }}>View Board</Link>
+                    </div>
+                    {sprint.goal && <p style={{ fontSize: 13, color: '#475569', margin: '6px 0 0 0' }}>{sprint.goal}</p>}
+                    <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0 0' }}>{sprint.startDate} to {sprint.endDate} — Drag backlog items here to assign</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <h3 style={{ fontSize: 16, marginBottom: 12 }}>Backlog</h3>
           <div className="wk-card" style={{ padding: 0 }}>
             {loading ? (
               <p className="wk-empty">Loading backlog…</p>
@@ -275,14 +382,22 @@ export default function BacklogPage() {
             ) : (
               <div className="ag-backlog-list">
                 {items.map((item) => {
-                  const pStyle = PRIORITY_STYLE[item.priority] || PRIORITY_STYLE.MEDIUM
+                  const pStyle = PRIORITY_STYLE[item.priority] || PRIORITY_STYLE.Medium
                   return (
-                    <div key={item.id} className="ag-backlog-row">
-                      <span className="ag-points-chip">{item.storyPoints}</span>
+                    <div 
+                      key={item.id} 
+                      className="ag-backlog-row"
+                      draggable={CAN_MANAGE.includes(role)}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', item.id)
+                        setDragTaskId(item.id)
+                      }}
+                      style={{ cursor: CAN_MANAGE.includes(role) ? 'grab' : 'default' }}
+                    >
+                      <span className="ag-points-chip">{item.storyPoints ?? item.points ?? 0}</span>
                       <div className="ag-backlog-main">
                         <span className="ag-backlog-title">{item.title}</span>
-                        {item.assigneeName && <span className="ag-backlog-spec">Assignee: {item.assigneeName}</span>}
-                        {item.specTitle && !item.assigneeName && <span className="ag-backlog-spec">Traces to: {item.specTitle}</span>}
+                        {item.specTitle && <span className="ag-backlog-spec">Traces to: {item.specTitle}</span>}
                       </div>
                       <div className="ag-backlog-labels">
                         {(item.labels || []).map((l) => (
@@ -290,24 +405,8 @@ export default function BacklogPage() {
                         ))}
                       </div>
                       <span className="ag-priority-chip" style={{ background: pStyle.bg, color: pStyle.color }}>
-                        {PRIORITY_LABEL[item.priority] || item.priority}
+                        {item.priority}
                       </span>
-                      <Can roles={CAN_MANAGE}>
-                        <select
-                          className="wk-select"
-                          style={{ fontSize: 12, padding: '5px 26px 5px 8px' }}
-                          value=""
-                          disabled={assigningId === item.id || sprints.length === 0}
-                          onChange={(e) => handleAssignSprint(item.id, e.target.value)}
-                        >
-                          <option value="" disabled>
-                            {sprints.length === 0 ? 'No sprints yet' : 'Add to sprint…'}
-                          </option>
-                          {sprints.map((s) => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </select>
-                      </Can>
                     </div>
                   )
                 })}

@@ -21,19 +21,21 @@ public class TaskController {
     private final TaskService taskService;
     private final SprintService sprintService;
 
-    @PostMapping
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    @PostMapping("/projects/{projectId}/backlog")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
     public TaskResponse createTask(
+            @PathVariable Long projectId,
             @Valid @RequestBody CreateTaskRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         return taskService.createTask(
+                projectId,
                 request,
                 userDetails.getUsername());
     }
 
     @PutMapping("/{taskId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
     public TaskResponse updateTask(
             @PathVariable Long taskId,
             @Valid @RequestBody UpdateTaskRequest request,
@@ -46,7 +48,7 @@ public class TaskController {
     }
 
     @DeleteMapping("/{taskId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
     public void deleteTask(
             @PathVariable Long taskId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -57,7 +59,7 @@ public class TaskController {
     }
 
     @GetMapping("/{taskId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
     public TaskResponse getTaskById(
             @PathVariable Long taskId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -68,7 +70,7 @@ public class TaskController {
     }
 
     @GetMapping("/project/{projectId}/backlog")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
     public List<TaskResponse> getProjectBacklog(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -79,7 +81,7 @@ public class TaskController {
     }
 
     @PostMapping("/{taskId}/assign-sprint/{sprintId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
     public TaskResponse assignTaskToSprint(
             @PathVariable Long taskId,
             @PathVariable Long sprintId,
@@ -92,7 +94,7 @@ public class TaskController {
     }
 
     @PostMapping("/{taskId}/remove-sprint")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
     public TaskResponse removeTaskFromSprint(
             @PathVariable Long taskId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -103,7 +105,7 @@ public class TaskController {
     }
 
     @PatchMapping("/{taskId}/status")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'ORG_ADMIN')")
     public TaskResponse updateTaskStatus(
             @PathVariable Long taskId,
             @Valid @RequestBody UpdateTaskStatusRequest request,
@@ -116,7 +118,7 @@ public class TaskController {
     }
 
     @GetMapping("/{taskId}/history")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
     public List<TaskStatusHistoryResponse> getTaskStatusHistory(
             @PathVariable Long taskId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -127,7 +129,7 @@ public class TaskController {
     }
 
     @GetMapping("/{sprintId}/board")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
     public BoardResponse getSprintBoard(
             @PathVariable Long sprintId,
             @AuthenticationPrincipal UserDetails userDetails) {

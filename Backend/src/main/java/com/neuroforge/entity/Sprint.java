@@ -41,8 +41,8 @@ public class Sprint {
     private SprintStatus status = SprintStatus.PLANNED;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "project_id", nullable = false)
-    private Project project;
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "project_id", nullable = false)    private Project project;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
@@ -62,17 +62,4 @@ public class Sprint {
     )
     private List<Task> tasks = new ArrayList<>();
 
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Sprint)) return false;
-        Sprint other = (Sprint) o;
-        return getId() != null && getId().equals(other.getId());
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
 }

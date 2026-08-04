@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { taskApi } from '../api/taskApi.js'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { sprintApi } from '../api/sprintApi.js'
+import { taskApi } from '../api/taskApi.js'
 import { aiApi } from '../api/aiApi.js'
 import { projectApi } from '../api/projectApi.js'
 import { extractErrorMessage } from '../api/client.js'
@@ -10,15 +10,30 @@ import Avatar from '../components/Avatar.jsx'
 import BurndownChart from '../components/BurndownChart.jsx'
 import './agile.css'
 
-const STATUS_COLUMNS = [
-  { key: 'todo', status: 'TODO', label: 'To Do' },
-  { key: 'inProgress', status: 'IN_PROGRESS', label: 'In Progress' },
-  { key: 'codeReview', status: 'CODE_REVIEW', label: 'Code Review' },
-  { key: 'testing', status: 'TESTING', label: 'Testing' },
-  { key: 'done', status: 'DONE', label: 'Done' },
-]
+const COLUMNS = ['To Do', 'In Progress', 'Code Review', 'Testing', 'Done']
 
-const PRIORITY_DOT = { CRITICAL: '#7f1d1d', HIGH: '#dc2626', MEDIUM: '#d97706', LOW: '#9ca3af' }
+const PRIORITY_DOT = {
+  HIGH: '#dc2626',
+  High: '#dc2626',
+  MEDIUM: '#d97706',
+  Medium: '#d97706',
+  LOW: '#9ca3af',
+  Low: '#9ca3af',
+  CRITICAL: '#991b1b',
+}
+
+const STATUS_ENUM_TO_UI = {
+  TODO: 'To Do',
+  IN_PROGRESS: 'In Progress',
+  CODE_REVIEW: 'Code Review',
+  TESTING: 'Testing',
+  DONE: 'Done',
+  'To Do': 'To Do',
+  'In Progress': 'In Progress',
+  'Code Review': 'Code Review',
+  'Testing': 'Testing',
+  'Done': 'Done',
+}
 
 class SimpleStompClient {
   constructor(url, onMessage) {
@@ -92,23 +107,21 @@ class SimpleStompClient {
 }
 
 function normalizeBoardResponse(data) {
-  if (Array.isArray(data)) return data
-  if (data && typeof data === 'object') {
-    return Object.entries(data).flatMap(([status, tasks]) =>
+  let list = []
+  if (Array.isArray(data)) {
+    list = data
+  } else if (data && typeof data === 'object') {
+    list = Object.entries(data).flatMap(([status, tasks]) =>
       Array.isArray(tasks) ? tasks.map((t) => ({ ...t, status: t.status || status })) : []
     )
   }
-  return []
+  return list.map((t) => ({ ...t, status: STATUS_ENUM_TO_UI[t.status] || t.status }))
 }
 
 export default function KanbanBoardPage() {
-  const { projectId } = useParams()
-  const navigate = useNavigate()
+  const { projectId = 'p1', sprintId = 'current' } = useParams()
   const { user, role } = useAuth()
-
-  const [sprints, setSprints] = useState([])
-  const [selectedSprintId, setSelectedSprintId] = useState(null)
-  
+  const navigate = useNavigate()
   const [tasks, setTasks] = useState([])
   const [burndown, setBurndown] = useState([])
   const [loading, setLoading] = useState(true)
@@ -123,74 +136,87 @@ export default function KanbanBoardPage() {
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState('')
 
-  const loadSprints = useCallback(async () => {
-    setError('')
-    try {
-      const res = await sprintApi.listProjectSprints(projectId)
-      const list = Array.isArray(res.data) ? res.data : []
-      setSprints(list)
-      if (list.length > 0) {
-        const active = list.find((s) => s.status === 'ACTIVE')
-        setSelectedSprintId((active || list[0]).id)
-      } else {
-        setSelectedSprintId(null)
-        setLoading(false)
-      }
-    } catch (err) {
-      setError(extractErrorMessage(err))
-      setSprints([])
-      setLoading(false)
-    }
-  }, [projectId])
+  const [activeSprintId, setActiveSprintId] = useState(null)
 
   useEffect(() => {
-    loadSprints()
-  }, [loadSprints])
+    if (projectId && isNaN(Number(projectId))) {
+      projectApi.listProjects(user?.orgId)
+        .then((res) => {
+          const firstProj = res.data?.[0]
+          if (firstProj?.id) {
+            navigate(`/projects/${firstProj.id}/board`, { replace: true })
+          } else {
+            navigate('/projects', { replace: true })
+          }
+        })
+        .catch(() => {
+          navigate('/projects', { replace: true })
+        })
+      return
+    }
 
-  const loadBoard = useCallback(async () => {
-    if (!selectedSprintId) return
+    if (sprintId === 'current') {
+      sprintApi.listProjectSprints(projectId)
+        .then((res) => {
+          if (Array.isArray(res.data) && res.data.length > 0) {
+            const active = res.data.find(s => s.status === 'ACTIVE')
+            const planned = res.data.find(s => s.status === 'PLANNED')
+            const resolved = active || planned || res.data[0]
+            if (resolved?.id) {
+              navigate(`/projects/${projectId}/sprints/${resolved.id}/board`, { replace: true })
+              return
+            }
+          }
+          setLoading(false)
+          setError('No sprints found for this project. Please create a sprint in the Backlog first.')
+        })
+        .catch((err) => {
+          setLoading(false)
+          setError(extractErrorMessage(err))
+        })
+    }
+  }, [projectId, sprintId, user?.orgId, navigate])
+
+  const load = useCallback(async () => {
+    if (!projectId || isNaN(Number(projectId)) || !sprintId || sprintId === 'current') return
     setLoading(true)
     setError('')
     try {
-      const res = await taskApi.getBoard(selectedSprintId)
+      const numericProjId = Number(projectId) || null
+      const res = await sprintApi.getBoard(sprintId, numericProjId)
       setTasks(normalizeBoardResponse(res.data))
+      if (res.data && res.data.sprintId) {
+        setActiveSprintId(res.data.sprintId)
+      }
     } catch (err) {
       setError(extractErrorMessage(err))
       setTasks([])
     } finally {
       setLoading(false)
     }
-  }, [selectedSprintId])
+  }, [sprintId, projectId])
 
   const loadBurndown = useCallback(async () => {
-    if (!selectedSprintId) return
+    if (!projectId || isNaN(Number(projectId)) || !sprintId || sprintId === 'current') return
     setBurndownError('')
     try {
-      const res = await sprintApi.getBurndown(selectedSprintId)
-      const snapshots = res.data?.snapshots || []
-      const firstTotal = snapshots[0]?.totalStoryPoints ?? 0
-      const chartData = snapshots.map((snap, i) => ({
-        day: snap.snapshotDate,
-        remaining: snap.remainingStoryPoints,
-        ideal:
-          snapshots.length > 1
-            ? Math.round((firstTotal - (firstTotal * i) / (snapshots.length - 1)) * 10) / 10
-            : snap.remainingStoryPoints,
-      }))
-      setBurndown(chartData)
+      const numericProjId = Number(projectId) || null
+      const res = await sprintApi.getBurndown(sprintId, numericProjId)
+      if (!Array.isArray(res.data)) throw new Error('Unexpected response shape')
+      setBurndown(res.data)
     } catch (err) {
       setBurndownError(extractErrorMessage(err))
       setBurndown([])
     }
-  }, [selectedSprintId])
+  }, [sprintId, projectId])
 
   useEffect(() => {
-    loadBoard()
+    load()
     loadBurndown()
-  }, [loadBoard, loadBurndown])
+  }, [load, loadBurndown])
 
   useEffect(() => {
-    if (!selectedSprintId) return
+    if (!activeSprintId) return
 
     const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082/api'
     const wsUrl = apiUrl.replace('http', 'ws').replace('/api', '/ws/websocket')
@@ -198,18 +224,23 @@ export default function KanbanBoardPage() {
     const client = new SimpleStompClient(wsUrl, (event) => {
       if (event && event.taskId && event.newStatus) {
         setTasks((prev) =>
-          prev.map((t) => (t.id === Number(event.taskId) ? { ...t, status: event.newStatus } : t))
+          prev.map((t) => {
+            if (t.id === Number(event.taskId)) {
+              return { ...t, status: STATUS_ENUM_TO_UI[event.newStatus] || event.newStatus }
+            }
+            return t
+          })
         )
       }
     })
 
     client.connect()
-    client.subscribe(`/topic/sprints/${selectedSprintId}`)
+    client.subscribe(`/topic/sprints/${activeSprintId}`)
 
     return () => {
       client.disconnect()
     }
-  }, [selectedSprintId])
+  }, [activeSprintId])
 
   const runSprintAnalysis = async () => {
     if (tasks.length === 0) {
@@ -221,8 +252,7 @@ export default function KanbanBoardPage() {
     setAiResult('')
     try {
       const taskTitles = tasks.map(t => t.title)
-      const sprintObj = sprints.find(s => s.id === selectedSprintId)
-      const sprintName = sprintObj?.name || `Sprint ${selectedSprintId}`
+      const sprintName = tasks[0]?.sprintName || `Sprint ${sprintId}`
       const res = await aiApi.analyzeSprint(sprintName, taskTitles)
       setAiResult(res.data.response || JSON.stringify(res.data))
     } catch (err) {
@@ -233,49 +263,48 @@ export default function KanbanBoardPage() {
   }
 
   function canMoveTo(targetStatus) {
-    if (targetStatus === 'DONE' || targetStatus === 'Done') {
-      return [ROLES.QA_TESTER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN].includes(role)
+    if (role === ROLES.ORG_ADMIN || role === ROLES.CLIENT) return false
+    if (role === ROLES.DEVELOPER) {
+      if (['Testing', 'Done'].includes(targetStatus)) return false
+    }
+    if (targetStatus === 'Done') {
+      return [ROLES.QA_TESTER, ROLES.SUPER_ADMIN].includes(role)
     }
     return true
   }
 
-  function handleDrop(targetStatus) {
+  async function handleDrop(targetStatus) {
     setDragOverCol(null)
     if (!dragTaskId) return
 
     if (!canMoveTo(targetStatus)) {
       setBlockedNote('Only QA can move a task to Done.')
       setDragTaskId(null)
-      setTimeout(() => setBlockedNote(''), 3000)
+      setTimeout(() => setBlockedNote(''), 2500)
       return
     }
 
     const taskId = dragTaskId
+    const taskToMove = tasks.find(t => t.id === taskId)
+    const previousStatus = taskToMove ? taskToMove.status : null
+    
+    // Optimistic update
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: targetStatus } : t)))
     setDragTaskId(null)
 
-    taskApi.updateStatus(taskId, targetStatus).catch((err) => {
-      setError(extractErrorMessage(err))
-      loadBoard()
-    })
+    try {
+      await taskApi.updateStatus(taskId, targetStatus)
+      // The websocket will also broadcast the update to all clients
+    } catch (err) {
+      // Rollback on failure
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: previousStatus } : t)))
+      setBlockedNote(extractErrorMessage(err) || 'Failed to update task status.')
+      setTimeout(() => setBlockedNote(''), 3500)
+    }
   }
 
-  if (!loading && sprints.length === 0) {
-    return (
-      <div className="wk-page" style={{ maxWidth: 1200 }}>
-        <div className="ag-tabs">
-          <Link to={`/projects/${projectId}/backlog`} className="ag-tab">Backlog</Link>
-          <Link to={`/projects/${projectId}/board`} className="ag-tab ag-tab-active">Board</Link>
-        </div>
-        <p className="wk-empty">
-          This project has no sprints yet. Create one before a board can be shown.
-        </p>
-      </div>
-    )
-  }
-
-  const tasksByColumn = STATUS_COLUMNS.reduce((acc, col) => {
-    acc[col.status] = tasks.filter((t) => t.status === col.status || t.status === col.label)
+  const tasksByColumn = COLUMNS.reduce((acc, col) => {
+    acc[col] = tasks.filter((t) => t.status === col)
     return acc
   }, {})
 
@@ -286,24 +315,11 @@ export default function KanbanBoardPage() {
         <Link to={`/projects/${projectId}/board`} className="ag-tab ag-tab-active">Board</Link>
       </div>
 
-      <div className="wk-page-header" style={{ justifyContent: 'space-between' }}>
-        <div className="wk-field" style={{ marginBottom: 0, minWidth: 220 }}>
-          <label className="wk-label">Sprint</label>
-          <select
-            className="wk-select"
-            value={selectedSprintId || ''}
-            onChange={(e) => setSelectedSprintId(Number(e.target.value))}
-          >
-            {sprints.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} ({s.status})
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {error && <p className="wk-alert wk-alert-error">{error}</p>}
+      {error && (
+        <p className="wk-alert wk-alert-error">
+          Could not load tasks. ({error})
+        </p>
+      )}
       {blockedNote && <p className="wk-alert wk-alert-error">{blockedNote}</p>}
 
       <div style={{ display: 'flex', gap: 20, marginBottom: 20, flexWrap: 'wrap', alignItems: 'stretch' }}>
@@ -362,43 +378,42 @@ export default function KanbanBoardPage() {
         <p className="wk-empty">Loading board…</p>
       ) : (
         <div className="ag-board">
-          {STATUS_COLUMNS.map((col) => {
-            const colTasks = tasksByColumn[col.status] || []
-            return (
-              <div
-                key={col.key}
-                className={`ag-column ${dragOverCol === col.status ? 'ag-column-over' : ''}`}
-                onDragOver={(e) => { e.preventDefault(); setDragOverCol(col.status) }}
-                onDragLeave={() => setDragOverCol((c) => (c === col.status ? null : c))}
-                onDrop={(e) => { e.preventDefault(); handleDrop(col.status) }}
-              >
-                <div className="ag-column-header">
-                  <span>{col.label}</span>
-                  <span className="ag-column-count">{colTasks.length}</span>
-                </div>
-
-                <div className="ag-column-body">
-                  {colTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="ag-card"
-                      draggable
-                      onDragStart={() => setDragTaskId(task.id)}
-                      onDragEnd={() => setDragTaskId(null)}
-                    >
-                      <p className="ag-card-title">{task.title}</p>
-                      <div className="ag-card-footer">
-                        <span className="ag-card-points">{task.storyPoints} pts</span>
-                        <span className="ag-priority-dot" style={{ background: PRIORITY_DOT[task.priority] || '#9ca3af' }} />
-                        {(task.assigneeName || task.assignee) && <Avatar name={task.assigneeName || task.assignee} size={22} />}
-                      </div>
-                    </div>
-                  ))}
-                  {colTasks.length === 0 && <p className="ag-column-empty">Drop tasks here</p>}
-                </div>
+          {COLUMNS.map((col) => (
+            <div
+              key={col}
+              className={`ag-column ${dragOverCol === col ? 'ag-column-over' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); setDragOverCol(col) }}
+              onDragLeave={() => setDragOverCol((c) => (c === col ? null : c))}
+              onDrop={(e) => { e.preventDefault(); handleDrop(col) }}
+            >
+              <div className="ag-column-header">
+                <span>{col}</span>
+                <span className="ag-column-count">{tasksByColumn[col].length}</span>
               </div>
-            )
-          })}
+
+              <div className="ag-column-body">
+                {tasksByColumn[col].map((task) => (
+                  <div
+                    key={task.id}
+                    className="ag-card"
+                    draggable={role !== ROLES.ORG_ADMIN && role !== ROLES.CLIENT && ((role !== ROLES.DEVELOPER && role !== ROLES.QA_TESTER) || task.assigneeId === user?.id)}
+                    onDragStart={() => setDragTaskId(task.id)}
+                    onDragEnd={() => setDragTaskId(null)}
+                  >
+                    <p className="ag-card-title">{task.title}</p>
+                    <div className="ag-card-footer">
+                      <span className="ag-card-points">{task.points} pts</span>
+                      <span className="ag-priority-dot" style={{ background: PRIORITY_DOT[task.priority] || '#9ca3af' }} />
+                      {task.assignee && <Avatar name={task.assignee} size={22} />}
+                    </div>
+                  </div>
+                ))}
+                {tasksByColumn[col].length === 0 && (
+                  <p className="ag-column-empty">Drop tasks here</p>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

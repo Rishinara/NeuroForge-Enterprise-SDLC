@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface TaskService {
 
-    TaskResponse createTask(CreateTaskRequest request, String loggedInEmail);
+    TaskResponse createTask(Long projectId, CreateTaskRequest request, String loggedInEmail);
 
     TaskResponse updateTask(Long taskId,
                             UpdateTaskRequest request,

@@ -48,9 +48,14 @@ public class User implements UserDetails {
     private boolean enabled = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "org_id")
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@JoinColumn(name = "org_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore    private Organization organization;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "requested_org_id")
     @com.fasterxml.jackson.annotation.JsonIgnore
-    private Organization organization;
+    private Organization requestedOrganization;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -85,6 +90,9 @@ public class User implements UserDetails {
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public Organization getOrganization() { return organization; }
     public void setOrganization(Organization organization) { this.organization = organization; }
+
+    public Organization getRequestedOrganization() { return requestedOrganization; }
+    public void setRequestedOrganization(Organization requestedOrganization) { this.requestedOrganization = requestedOrganization; }
     public List<Team> getTeams() { return teams; }
     public void setTeams(List<Team> teams) { this.teams = teams; }
 
@@ -100,17 +108,4 @@ public class User implements UserDetails {
     @Override public boolean isAccountNonLocked() { return true; }
     @Override public boolean isCredentialsNonExpired() { return true; }
     @Override public boolean isEnabled() { return enabled; }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof User)) return false;
-        User other = (User) o;
-        return getId() != null && getId().equals(other.getId());
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
 }

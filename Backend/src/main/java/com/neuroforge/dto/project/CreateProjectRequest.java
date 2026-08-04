@@ -34,5 +34,7 @@ public class CreateProjectRequest {
 
     private List<Long> teamMemberIds;
 
+    private List<Long> assignedTeamIds;
+
     private List<String> techStack;
 }

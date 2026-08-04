@@ -11,57 +11,9 @@ import org.springframework.web.context.request.WebRequest;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import org.springframework.beans.propertyeditors.CustomNumberEditor;
-import org.springframework.web.bind.WebDataBinder;
-import org.springframework.web.bind.annotation.InitBinder;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-import java.beans.PropertyEditorSupport;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    @InitBinder
-    public void initBinder(WebDataBinder binder) {
-        PropertyEditorSupport longEditor = new PropertyEditorSupport() {
-            @Override
-            public void setAsText(String text) throws IllegalArgumentException {
-                if (text == null || text.trim().isEmpty() || "null".equalsIgnoreCase(text.trim()) || "undefined".equalsIgnoreCase(text.trim())) {
-                    setValue(null);
-                } else {
-                    setValue(Long.valueOf(text));
-                }
-            }
-        };
-        
-        PropertyEditorSupport intEditor = new PropertyEditorSupport() {
-            @Override
-            public void setAsText(String text) throws IllegalArgumentException {
-                if (text == null || text.trim().isEmpty() || "null".equalsIgnoreCase(text.trim()) || "undefined".equalsIgnoreCase(text.trim())) {
-                    setValue(null);
-                } else {
-                    setValue(Integer.valueOf(text));
-                }
-            }
-        };
-        
-        PropertyEditorSupport booleanEditor = new PropertyEditorSupport() {
-            @Override
-            public void setAsText(String text) throws IllegalArgumentException {
-                if (text == null || text.trim().isEmpty() || "null".equalsIgnoreCase(text.trim()) || "undefined".equalsIgnoreCase(text.trim())) {
-                    setValue(null);
-                } else {
-                    setValue(Boolean.valueOf(text));
-                }
-            }
-        };
-
-        binder.registerCustomEditor(Long.class, longEditor);
-        binder.registerCustomEditor(long.class, longEditor);
-        binder.registerCustomEditor(Integer.class, intEditor);
-        binder.registerCustomEditor(int.class, intEditor);
-        binder.registerCustomEditor(Boolean.class, booleanEditor);
-        binder.registerCustomEditor(boolean.class, booleanEditor);
-    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFoundException(ResourceNotFoundException ex) {
@@ -118,29 +70,28 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
-    public ResponseEntity<ErrorResponse> handleBadCredentials(org.springframework.security.authentication.BadCredentialsException ex) {
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(org.springframework.security.access.AccessDeniedException ex) {
         ErrorResponse error = new ErrorResponse(
-            LocalDateTime.now(),
-            HttpStatus.UNAUTHORIZED.value(),
-            HttpStatus.UNAUTHORIZED.getReasonPhrase(),
-            "Invalid email or password"
+                LocalDateTime.now(),
+                HttpStatus.FORBIDDEN.value(),
+                HttpStatus.FORBIDDEN.getReasonPhrase(),
+                ex.getMessage()
         );
-        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ResponseEntity<Map<String, String>> handleConstraintViolation(jakarta.validation.ConstraintViolationException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getConstraintViolations().forEach(violation -> {
+            errors.put(violation.getPropertyPath().toString(), violation.getMessage());
+        });
+        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex) {
-        // Specifically handle type mismatch exceptions safely inside general exception
-        if (ex instanceof MethodArgumentTypeMismatchException || ex instanceof IllegalArgumentException) {
-            ErrorResponse error = new ErrorResponse(
-                    LocalDateTime.now(),
-                    HttpStatus.BAD_REQUEST.value(),
-                    HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                    "Invalid parameter type or value provided: " + ex.getMessage()
-            );
-            return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-        }
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),

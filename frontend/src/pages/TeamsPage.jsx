@@ -1,16 +1,18 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { orgApi } from '../api/orgApi.js'
+import { adminApi } from '../api/adminApi.js'
 import { extractErrorMessage } from '../api/client.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import Tabs from '../components/Tabs.jsx'
 import InviteMemberModal from '../components/InviteMemberModal.jsx'
 import Can from '../components/Can.jsx'
 import Avatar from '../components/Avatar.jsx'
+import UnassignedOrgNotice from '../components/UnassignedOrgNotice.jsx'
 import './workspace.css'
 import './teams.css'
 
 const ROLE_LABELS = {
-  ORG_ADMIN: 'Org Admin',
   PROJECT_MANAGER: 'Project Manager',
   DEVELOPER: 'Developer',
   QA_TESTER: 'QA / Tester',
@@ -25,23 +27,13 @@ const ROLE_DOT = {
   CLIENT: '#9ca3af',
 }
 
-const SAMPLE_TEAMS = [
-  { id: 't1', name: 'Platform Engineering', memberCount: 6 },
-  { id: 't2', name: 'Mobile', memberCount: 4 },
-  { id: 't3', name: 'QA & Release', memberCount: 3 },
-]
-
-const SAMPLE_MEMBERS = [
-  { id: 'm1', name: 'Asha Patel', email: 'asha@company.com', role: 'PROJECT_MANAGER' },
-  { id: 'm2', name: 'Leo Kim', email: 'leo@company.com', role: 'DEVELOPER' },
-  { id: 'm3', name: 'Maya Chen', email: 'maya@company.com', role: 'QA_TESTER' },
-  { id: 'm4', name: 'Priya Nair', email: 'priya@company.com', role: 'DEVELOPER' },
-  { id: 'm5', name: 'Sam Torres', email: 'sam@company.com', role: 'CLIENT' },
-]
-
 export default function TeamsPage() {
   const { user } = useAuth()
-  const [tab, setTab] = useState('teams')
+  const isSuperAdmin = user?.role === ROLES.SUPER_ADMIN
+
+  const [tab, setTab] = useState(() => (isSuperAdmin ? 'members' : 'teams'))
+  const [orgs, setOrgs] = useState([])
+  const [selectedOrgId, setSelectedOrgId] = useState('ALL')
   const [teams, setTeams] = useState([])
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -55,38 +47,72 @@ export default function TeamsPage() {
     setLoading(true)
     setError('')
     try {
-      const [teamsRes, membersRes] = await Promise.all([
-        orgApi.listTeams(user.orgId),
-        orgApi.listMembers(user.orgId),
-      ])
-      const teamsData = Array.isArray(teamsRes.data) ? teamsRes.data : null
-      const membersData = Array.isArray(membersRes.data) ? membersRes.data : null
+      if (isSuperAdmin) {
+        const orgsRes = await orgApi.listOrganizations()
+        const loadedOrgs = Array.isArray(orgsRes.data) ? orgsRes.data : []
+        setOrgs(loadedOrgs)
 
-      if (!teamsData || !membersData) {
-        throw new Error('Unexpected response shape from server')
+        if (selectedOrgId !== 'ALL') {
+          const [teamsRes, membersRes] = await Promise.all([
+            orgApi.listTeams(selectedOrgId).catch(() => ({ data: [] })),
+            orgApi.listMembers(selectedOrgId).catch(() => ({ data: [] }))
+          ])
+          setTeams(Array.isArray(teamsRes.data) ? teamsRes.data : [])
+          setMembers(Array.isArray(membersRes.data) ? membersRes.data : [])
+        } else {
+          // Fetch all platform users
+          const usersRes = await adminApi.getAllUsers()
+          const rawUsers = Array.isArray(usersRes.data) ? usersRes.data : []
+          setMembers(
+            rawUsers
+              .filter((u) => u.role !== 'SUPER_ADMIN' && u.role !== ROLES.SUPER_ADMIN)
+              .map((u) => ({
+                id: u.id,
+                name: u.fullName || u.name || u.email,
+                email: u.email,
+                role: u.role,
+                status: u.status || (u.enabled !== false ? 'ACTIVE' : 'INACTIVE'),
+              }))
+          )
+          setTeams([])
+        }
+      } else if (user?.orgId) {
+        const [teamsRes, membersRes] = await Promise.all([
+          orgApi.listTeams(user.orgId),
+          orgApi.listMembers(user.orgId),
+        ])
+        setTeams(Array.isArray(teamsRes.data) ? teamsRes.data : [])
+        setMembers(Array.isArray(membersRes.data) ? membersRes.data : [])
+      } else {
+        setTeams([])
+        setMembers([])
       }
-      setTeams(teamsData)
-      setMembers(membersData)
     } catch (err) {
       setError(extractErrorMessage(err))
-      // Sample data so the page is fully demoable without a live backend
-      setTeams(SAMPLE_TEAMS)
-      setMembers(SAMPLE_MEMBERS)
+      setTeams([])
+      setMembers([])
     } finally {
       setLoading(false)
     }
-  }, [user.orgId])
+  }, [isSuperAdmin, selectedOrgId, user?.orgId])
 
   useEffect(() => {
     load()
   }, [load])
 
+  const targetOrgId = isSuperAdmin ? (selectedOrgId !== 'ALL' ? selectedOrgId : orgs[0]?.id) : user?.orgId
+
   async function handleCreateTeam(e) {
     e.preventDefault()
     if (!newTeamName.trim()) return
+    const activeOrgId = isSuperAdmin ? (selectedOrgId !== 'ALL' ? selectedOrgId : orgs[0]?.id) : user?.orgId
+    if (!activeOrgId) {
+      setError('Please select an organization to create a team.')
+      return
+    }
     setCreatingTeam(true)
     try {
-      await orgApi.createTeam(user.orgId, { name: newTeamName.trim() })
+      await orgApi.createTeam(activeOrgId, { name: newTeamName.trim() })
       setNewTeamName('')
       load()
     } catch (err) {
@@ -96,9 +122,29 @@ export default function TeamsPage() {
     }
   }
 
+  async function handleDeleteTeam(team) {
+    if (team.memberCount > 0) {
+      setError('Cannot delete a team that still has members.')
+      return
+    }
+    if (!confirm(`Are you sure you want to delete team "${team.name}"?`)) return
+    
+    const activeOrgId = isSuperAdmin ? (selectedOrgId !== 'ALL' ? selectedOrgId : orgs[0]?.id) : user?.orgId
+    try {
+      await orgApi.deleteTeam(activeOrgId, team.id)
+      load()
+    } catch (err) {
+      setError(extractErrorMessage(err))
+    }
+  }
+
   async function handleRoleChange(memberId, newRole) {
     try {
-      await orgApi.updateMemberRole(user.orgId, memberId, newRole)
+      if (isSuperAdmin) {
+        await adminApi.updateUserRole(memberId, newRole)
+      } else {
+        await orgApi.updateMemberRole(user.orgId, memberId, newRole)
+      }
       load()
     } catch (err) {
       setError(extractErrorMessage(err))
@@ -106,9 +152,13 @@ export default function TeamsPage() {
   }
 
   async function handleRemove(memberId) {
-    if (!confirm('Remove this member from the organization?')) return
+    if (!confirm('Remove/Delete this user from the platform?')) return
     try {
-      await orgApi.removeMember(user.orgId, memberId)
+      if (isSuperAdmin) {
+        await adminApi.deleteUser(memberId)
+      } else {
+        await orgApi.removeMember(user.orgId, memberId)
+      }
       load()
     } catch (err) {
       setError(extractErrorMessage(err))
@@ -129,10 +179,22 @@ export default function TeamsPage() {
     return counts
   }, [members])
 
+  if (!isSuperAdmin && !user?.orgId) {
+    return <UnassignedOrgNotice />
+  }
+
   return (
     <div className="wk-page">
-      <div className="wk-page-header" style={{ justifyContent: 'flex-end' }}>
-        <Can roles={[ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]}>
+      <div className="wk-page-header" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 className="wk-page-title">{isSuperAdmin ? 'Platform Users & Admins' : 'Users, Teams & Members'}</h1>
+          <p className="wk-page-subtitle">
+            {isSuperAdmin
+              ? 'Select an organization to manage its platform users and admins.'
+              : `${user?.orgName || 'Organization'} team management`}
+          </p>
+        </div>
+        <Can roles={[ROLES.ORG_ADMIN]}>
           <button
             className="wk-btn wk-btn-primary"
             style={{ width: 'auto', padding: '10px 18px' }}
@@ -145,8 +207,60 @@ export default function TeamsPage() {
 
       {error && (
         <p className="wk-alert wk-alert-error">
-          Live data unavailable — showing sample data instead. ({error})
+          {error}
         </p>
+      )}
+
+      {/* Organization Selection Filter for Super Admin */}
+      {isSuperAdmin && (
+        <div className="wk-card" style={{ marginBottom: 20, padding: 16 }}>
+          <label className="wk-label" style={{ marginBottom: 8, display: 'block', fontSize: 13.5, fontWeight: 600, color: '#475569' }}>
+            Select Organization:
+          </label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setSelectedOrgId('ALL')}
+              className="wk-btn"
+              style={{
+                width: 'auto',
+                padding: '6px 14px',
+                fontSize: 12.5,
+                borderRadius: 20,
+                background: selectedOrgId === 'ALL' ? '#0f172a' : '#f1f5f9',
+                color: selectedOrgId === 'ALL' ? '#ffffff' : '#334155',
+                border: 'none',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              All Organizations ({orgs.length})
+            </button>
+            {orgs.map((org) => (
+              <button
+                key={org.id}
+                type="button"
+                onClick={() => setSelectedOrgId(org.id)}
+                className="wk-btn"
+                style={{
+                  width: 'auto',
+                  padding: '6px 14px',
+                  fontSize: 12.5,
+                  borderRadius: 20,
+                  background: selectedOrgId === org.id ? '#4f46e5' : '#f1f5f9',
+                  color: selectedOrgId === org.id ? '#ffffff' : '#334155',
+                  border: 'none',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                🏢 {org.name}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Stat summary row */}
@@ -155,10 +269,12 @@ export default function TeamsPage() {
           <span className="tm-stat-value">{members.length}</span>
           <span className="tm-stat-label">Total members</span>
         </div>
-        <div className="tm-stat-card">
-          <span className="tm-stat-value">{teams.length}</span>
-          <span className="tm-stat-label">Teams</span>
-        </div>
+        {!isSuperAdmin && (
+          <div className="tm-stat-card">
+            <span className="tm-stat-value">{teams.length}</span>
+            <span className="tm-stat-label">Teams</span>
+          </div>
+        )}
         <div className="tm-stat-card">
           <span className="tm-stat-value">{roleCounts.DEVELOPER || 0}</span>
           <span className="tm-stat-label">Developers</span>
@@ -169,17 +285,19 @@ export default function TeamsPage() {
         </div>
       </div>
 
-      <Tabs
-        tabs={[{ key: 'teams', label: 'Teams' }, { key: 'members', label: 'Members' }]}
-        active={tab}
-        onChange={setTab}
-      />
+      {!isSuperAdmin && (
+        <Tabs
+          tabs={[{ key: 'teams', label: 'Teams' }, { key: 'members', label: 'Members' }]}
+          active={tab}
+          onChange={setTab}
+        />
+      )}
 
       {loading ? (
         <p className="wk-empty">Loading…</p>
       ) : tab === 'teams' ? (
         <>
-          <Can roles={[ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]}>
+          <Can roles={[ROLES.ORG_ADMIN]}>
             <form onSubmit={handleCreateTeam} className="tm-inline-form">
               <input
                 className="wk-input"
@@ -200,10 +318,23 @@ export default function TeamsPage() {
               {teams.map((t) => (
                 <div key={t.id} className="tm-team-card">
                   <div className="tm-team-icon">{t.name.charAt(0).toUpperCase()}</div>
-                  <div>
-                    <div className="tm-team-name">{t.name}</div>
+                  <div style={{ flex: 1 }}>
+                    <div className="tm-team-name">
+                      <Link to={`/org/teams/${t.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                        {t.name}
+                      </Link>
+                    </div>
                     <div className="tm-team-count">{t.memberCount} member{t.memberCount === 1 ? '' : 's'}</div>
                   </div>
+                  <Can roles={[ROLES.ORG_ADMIN]}>
+                    <button 
+                      className="tm-remove-btn" 
+                      onClick={() => handleDeleteTeam(t)}
+                      style={{ padding: '4px 8px', fontSize: 11 }}
+                    >
+                      Delete
+                    </button>
+                  </Can>
                 </div>
               ))}
             </div>
@@ -245,22 +376,31 @@ export default function TeamsPage() {
                         </span>
                       }
                     >
-                      <select
-                        className="wk-select tm-role-select"
-                        value={m.role}
-                        onChange={(e) => handleRoleChange(m.id, e.target.value)}
-                      >
-                        {Object.entries(ROLE_LABELS).map(([value, label]) => (
-                          <option key={value} value={value}>{label}</option>
-                        ))}
-                      </select>
+                      {m.id === user?.id || m.role === 'ORG_ADMIN' ? (
+                        <span className="tm-role-pill" style={{ '--dot': ROLE_DOT[m.role] }}>
+                          <span className="tm-role-dot" />
+                          {m.role === 'ORG_ADMIN' ? 'Org Admin' : ROLE_LABELS[m.role]}
+                        </span>
+                      ) : (
+                        <select
+                          className="wk-select tm-role-select"
+                          value={m.role}
+                          onChange={(e) => handleRoleChange(m.id, e.target.value)}
+                        >
+                          {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </select>
+                      )}
                     </Can>
                   </div>
 
                   <Can roles={[ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]}>
-                    <button className="tm-remove-btn" onClick={() => handleRemove(m.id)}>
-                      Remove
-                    </button>
+                    {m.id !== user?.id && m.role !== 'ORG_ADMIN' && (
+                      <button className="tm-remove-btn" onClick={() => handleRemove(m.id)}>
+                        Remove
+                      </button>
+                    )}
                   </Can>
                 </div>
               ))}
@@ -269,7 +409,12 @@ export default function TeamsPage() {
         </div>
       )}
 
-      <InviteMemberModal open={inviteOpen} onClose={() => setInviteOpen(false)} onInvited={load} />
+      <InviteMemberModal
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        onInvited={load}
+        targetOrgId={targetOrgId}
+      />
     </div>
   )
 }

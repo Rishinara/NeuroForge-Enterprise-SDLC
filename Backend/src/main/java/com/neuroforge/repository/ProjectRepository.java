@@ -13,10 +13,8 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     boolean existsByOrganizationIdAndNameIgnoreCase(Long organizationId, String name);
 
-    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"members", "members.user"})
     List<Project> findByOrganizationIdOrderByCreatedAtDesc(Long organizationId);
 
-    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"members", "members.user"})
     Optional<Project> findById(Long id);
 
 }

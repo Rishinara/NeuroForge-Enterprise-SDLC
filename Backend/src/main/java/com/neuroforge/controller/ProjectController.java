@@ -10,7 +10,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,14 +33,15 @@ public class ProjectController {
 
     @GetMapping("/orgs/{organizationId}/projects")
     public ResponseEntity<List<ProjectResponse>> getProjectsByOrganization(
-            @PathVariable Long organizationId) {
+            @PathVariable Long organizationId,
+            @AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
 
         return ResponseEntity.ok(
-                projectService.getProjectsByOrganization(organizationId)
+                projectService.getProjectsByOrganization(organizationId, userDetails.getUsername())
         );
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER','DEVELOPER','QA_TESTER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER','DEVELOPER','QA_TESTER','CLIENT')")
     @GetMapping("/projects/{projectId}")
     public ResponseEntity<ProjectResponse> getProject(
             @PathVariable Long projectId) {
@@ -62,31 +62,20 @@ public class ProjectController {
         );
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER')")
+    // Temporary endpoint until Milestone module is implemented
+    @PreAuthorize("hasRole('ORG_ADMIN')")
     @DeleteMapping("/projects/{projectId}")
-    public ResponseEntity<Void> deleteProject(
-            @PathVariable Long projectId,
-            @AuthenticationPrincipal UserDetails userDetails) {
-
-        projectService.deleteProject(projectId, userDetails.getUsername());
+    public ResponseEntity<Void> deleteProject(@PathVariable Long projectId) {
+        projectService.deleteProject(projectId);
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("isAuthenticated()")
-    @GetMapping("/projects")
-    public ResponseEntity<List<ProjectResponse>> getProjects(
-            @AuthenticationPrincipal UserDetails userDetails) {
 
-        return ResponseEntity.ok(
-                projectService.getProjectsForUser(userDetails.getUsername())
-        );
-    }
-
-    // Temporary endpoint until Milestone module is implemented
-    @GetMapping("/projects/{projectId}/milestones")
-    public ResponseEntity<List<Object>> getMilestones(
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER','CLIENT','DEVELOPER','QA_TESTER')")
+    @GetMapping("/projects/{projectId}/progress")
+    public ResponseEntity<com.neuroforge.dto.project.ProjectProgressResponse> getProjectProgress(
             @PathVariable Long projectId) {
-
-        return ResponseEntity.ok(List.of());
+        
+        return ResponseEntity.ok(projectService.getProjectProgress(projectId));
     }
 }

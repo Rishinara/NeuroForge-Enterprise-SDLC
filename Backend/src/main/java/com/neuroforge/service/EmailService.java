@@ -56,5 +56,26 @@ public class EmailService {
             log.error("Failed to send OTP email to {}: {}", to, e.getMessage());
         }
     }
-}
 
+    public void sendInviteEmail(String to, String token, String orgName, String role) {
+        try {
+            mailSender.send(mimeMessage -> {
+                MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
+                helper.setTo(to);
+                helper.setSubject("You've been invited to join " + orgName + " on NeuroForge");
+                String inviteUrl = frontendBaseUrl + "/invite/" + token;
+                String htmlContent = "<h3>You're Invited!</h3>"
+                        + "<p>You have been invited to join the organization <strong>" + orgName + "</strong> with the role of <strong>" + role + "</strong>.</p>"
+                        + "<p>Click the link below to accept the invitation and join your team:</p>"
+                        + "<a href=\"" + inviteUrl + "\">Accept Invitation</a>"
+                        + "<p>This invitation will expire in 7 days.</p>"
+                        + "<p>If you did not expect this invitation, please ignore this email.</p>";
+                helper.setText(htmlContent, true);
+            });
+            log.info("Invite email successfully sent to {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send invite email to {}: {}", to, e.getMessage());
+            log.info("MOCKED: Would have sent invite link: " + frontendBaseUrl + "/invite/" + token);
+        }
+    }
+}

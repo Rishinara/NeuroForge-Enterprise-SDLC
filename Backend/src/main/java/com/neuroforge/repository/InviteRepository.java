@@ -15,4 +15,5 @@ public interface InviteRepository extends JpaRepository<Invite, Long> {
             Long organizationId,
             InviteStatus status
     );
+    java.util.List<Invite> findByOrganizationId(Long organizationId);
 }
