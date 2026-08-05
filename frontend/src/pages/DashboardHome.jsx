@@ -49,9 +49,9 @@ export default function DashboardHome() {
 
   const stats = useMemo(() => {
     const total = projects.length
-    const onTrack = projects.filter((p) => p.health === 'On Track').length
-    const atRisk = projects.filter((p) => p.health === 'At Risk').length
-    const delayed = projects.filter((p) => p.health === 'Delayed').length
+    const onTrack = projects.filter((p) => p.health === 'ON_TRACK' || p.health === 'On Track').length
+    const atRisk = projects.filter((p) => p.health === 'AT_RISK' || p.health === 'At Risk').length
+    const delayed = projects.filter((p) => p.health === 'DELAYED' || p.health === 'Delayed').length
     return { total, onTrack, atRisk, delayed }
   }, [projects])
 
@@ -111,9 +111,12 @@ export default function DashboardHome() {
       
       <div className="dh-card">
         <div className="dh-card-header">
-          <h3 className="dh-card-title">
-            {role === ROLES.CLIENT ? 'Project progress' : 'Your projects'}
-          </h3>
+          <div>
+            <p className="wk-eyebrow">Portfolio</p>
+            <h3 className="dh-card-title">
+              {role === ROLES.CLIENT ? 'Project progress' : 'Your projects'}
+            </h3>
+          </div>
           <Link to="/projects" className="dh-view-all">
             View all <IconArrowRight size={13} />
           </Link>

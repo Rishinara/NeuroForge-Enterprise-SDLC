@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { projectApi } from '../api/projectApi.js'
 import { extractErrorMessage } from '../api/client.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
@@ -12,13 +12,33 @@ const CAN_TOGGLE_MILESTONE = [ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.SUPE
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const [project, setProject] = useState(null)
   const [tab, setTab] = useState('overview')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [togglingId, setTogglingId] = useState(null)
 
+  useEffect(() => {
+    if (projectId && isNaN(Number(projectId))) {
+      projectApi.listProjects(user?.orgId)
+        .then((res) => {
+          const firstProj = res.data?.[0]
+          if (firstProj?.id) {
+            navigate(`/projects/${firstProj.id}`, { replace: true })
+          } else {
+            navigate('/projects', { replace: true })
+          }
+        })
+        .catch(() => {
+          navigate('/projects', { replace: true })
+        })
+    }
+  }, [projectId, user?.orgId, navigate])
+
   const load = useCallback(async () => {
+    if (!projectId || isNaN(Number(projectId))) return
     setLoading(true)
     setError('')
     try {

@@ -1,31 +1,36 @@
-/* src/styles/workspace-theme.css
-   Design system for Module 2 (Org & Team Workspace), Module 3 (Project & Portfolio),
-   and the dashboard shell (sidebar/topbar). Intentionally separate from
-   src/components/auth.css so Module 1 (login/signup) is never affected by changes here.
-   Flat colors only — no gradients, no animation, single accent. */
 
 :root {
-  --wk-bg: #f7f8fa;
+  --wk-bg: #f5f6f9;
   --wk-surface: #ffffff;
   --wk-border: #e5e7eb;
   --wk-ink: #111827;
   --wk-slate: #6b7280;
-  --wk-accent: #4f46e5;
-  --wk-accent-hover: #4338ca;
-  --wk-accent-soft: #eef2ff;
+
+  --wk-navy: #131a2e;
+  --wk-navy-hover: #1c2540;
+
+  --wk-amber: #f5a623;
+
+  --wk-accent: #2563eb;
+  --wk-accent-hover: #1d4ed8;
+  --wk-accent-soft: #eff6ff;
+  --wk-peach-bg: #fdeee0;
+  --wk-peach-ink: #b45309;
+
   --wk-success: #16a34a;
   --wk-success-soft: #dcfce7;
   --wk-warning: #d97706;
   --wk-warning-soft: #fef3c7;
   --wk-danger: #dc2626;
   --wk-danger-soft: #fee2e2;
+
   --wk-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* ---------- Page shell ---------- */
+
 
 .wk-page {
-  max-width: 1080px;
+  max-width: 1120px;
   margin: 0 auto;
   padding: 28px 32px 64px;
   font-family: var(--wk-font);
@@ -53,12 +58,71 @@
   margin: 0;
 }
 
+.wk-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--wk-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 6px;
+}
+
 .wk-card {
   background: var(--wk-surface);
   border: 1px solid var(--wk-border);
   border-radius: 10px;
   padding: 20px;
   margin-bottom: 20px;
+}
+
+.wk-card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.wk-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--wk-ink);
+  margin: 0;
+}
+
+.wk-card-meta {
+  font-size: 12.5px;
+  color: var(--wk-slate);
+  margin: 4px 0 0;
+}
+
+.wk-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wk-stat-box {
+  background: var(--wk-bg);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.wk-stat-box-label {
+  font-size: 12px;
+  color: var(--wk-slate);
+}
+
+.wk-stat-box-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--wk-ink);
 }
 
 .wk-empty {
@@ -68,7 +132,6 @@
   font-size: 13px;
 }
 
-/* ---------- Tabs ---------- */
 
 .wk-tabs {
   display: flex;
@@ -97,7 +160,6 @@
   border-bottom-color: var(--wk-accent);
 }
 
-/* ---------- Table ---------- */
 
 .wk-table {
   width: 100%;
@@ -129,7 +191,7 @@
   border-radius: 6px;
 }
 
-/* ---------- Form primitives (workspace-scoped, independent of Module 1) ---------- */
+
 
 .wk-field {
   display: flex;
@@ -190,7 +252,7 @@
   gap: 12px;
 }
 
-/* ---------- Buttons ---------- */
+
 
 .wk-btn {
   border-radius: 8px;
@@ -202,13 +264,14 @@
   border: 1px solid transparent;
 }
 
+
 .wk-btn-primary {
-  background: var(--wk-accent);
+  background: var(--wk-navy);
   color: #fff;
 }
 
 .wk-btn-primary:hover:not(:disabled) {
-  background: var(--wk-accent-hover);
+  background: var(--wk-navy-hover);
 }
 
 .wk-btn-primary:disabled {
@@ -239,7 +302,7 @@
   text-decoration: underline;
 }
 
-/* ---------- Alerts ---------- */
+
 
 .wk-alert {
   border-radius: 8px;
@@ -264,11 +327,10 @@
 
 .wk-alert-info {
   background: var(--wk-accent-soft);
-  color: #3730a3;
-  border-color: #c7d2fe;
+  color: #1e40af;
+  border-color: #bfdbfe;
 }
 
-/* ---------- Modal (used by Modal.jsx) ---------- */
 
 .wk-modal-overlay {
   position: fixed;

@@ -5,7 +5,11 @@ const STYLES = {
 }
 
 export default function HealthBadge({ status }) {
-  const style = STYLES[status] || { bg: '#f1f5f9', color: '#475569', label: status || 'Unknown' }
+  let normStatus = status;
+  if (status === 'On Track') normStatus = 'ON_TRACK';
+  else if (status === 'At Risk') normStatus = 'AT_RISK';
+  else if (status === 'Delayed') normStatus = 'DELAYED';
+  const style = STYLES[normStatus] || { bg: '#f1f5f9', color: '#475569', label: normStatus || 'Unknown' }
   return (
     <span
       style={{

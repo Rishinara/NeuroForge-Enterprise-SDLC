@@ -1,50 +1,53 @@
 .sb-shell {
-  width: 232px;
+  width: 240px;
   min-height: 100vh;
-  background: var(--wk-surface);
-  border-right: 1px solid var(--wk-border);
-  color: var(--wk-ink);
+  background: var(--wk-navy);
+  border-right: 1px solid #232b47;
+  color: #e5e7eb;
   display: flex;
   flex-direction: column;
-  padding: 20px 14px 16px;
+  padding: 20px 14px 18px;
   position: sticky;
   top: 0;
   flex-shrink: 0;
 }
 
 .sb-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 0 6px;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
+}
+
+.sb-logo-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--wk-amber);
+  color: #1a1300;
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .sb-wordmark {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-weight: 700;
-  font-size: 15.5px;
-  margin-bottom: 10px;
-}
-
-.sb-wordmark-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 2px;
-  background: var(--wk-accent);
+  font-size: 14.5px;
+  color: #fff;
+  line-height: 1.3;
 }
 
 .sb-org-pill {
-  display: inline-block;
-  max-width: 100%;
+  font-size: 10.5px;
+  color: #8b93ab;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
-  color: var(--wk-slate);
-  background: var(--wk-bg);
-  border: 1px solid var(--wk-border);
-  padding: 4px 10px;
-  border-radius: 6px;
+  max-width: 160px;
 }
 
 .sb-cta {
@@ -52,18 +55,18 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  background: var(--wk-accent);
-  color: #fff;
+  background: var(--wk-amber);
+  color: #1a1300;
   text-decoration: none;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 9px;
   border-radius: 8px;
   margin: 0 4px 20px;
 }
 
 .sb-cta:hover {
-  background: var(--wk-accent-hover);
+  filter: brightness(1.05);
 }
 
 .sb-nav {
@@ -74,100 +77,67 @@
 }
 
 .sb-nav-heading {
-  font-size: 10.5px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #9ca3af;
+  letter-spacing: 0.08em;
+  color: #626c8a;
   margin: 0 10px 6px;
 }
 
 .sb-nav-section {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .sb-nav-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #4b5563;
+  color: #c3c9dc;
   text-decoration: none;
   font-size: 13.5px;
   font-weight: 500;
   padding: 8px 10px;
-  border-radius: 6px;
-}
-
-.sb-nav-item svg {
-  flex-shrink: 0;
-  color: #9ca3af;
+  border-radius: 8px;
 }
 
 .sb-nav-item:hover {
-  background: var(--wk-bg);
-  color: var(--wk-ink);
+  background: #1c2340;
+  color: #fff;
 }
 
 .sb-nav-item-active {
-  background: var(--wk-accent-soft);
-  color: var(--wk-accent);
+  background: var(--wk-accent);
+  color: #fff;
 }
 
-.sb-nav-item-active svg {
-  color: var(--wk-accent);
+.sb-nav-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .sb-footer {
-  border-top: 1px solid var(--wk-border);
+  border-top: 1px solid #232b47;
   padding-top: 14px;
   margin-top: 14px;
 }
 
-.sb-user-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px;
-  border-radius: 8px;
-}
-
-.sb-user-info {
-  min-width: 0;
-  flex: 1;
-}
-
-.sb-user-name {
+.sb-session-role {
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--wk-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sb-user-role {
-  font-size: 10.5px;
-  color: var(--wk-slate);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.sb-logout-icon {
-  background: none;
-  border: none;
-  color: #9ca3af;
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
-  flex-shrink: 0;
-  display: flex;
-}
-
-.sb-logout-icon:hover {
-  background: var(--wk-bg);
-  color: var(--wk-ink);
+  color: #e5e7eb;
+  padding: 0 10px;
+  text-transform: capitalize;
 }
 
 @media (max-width: 900px) {

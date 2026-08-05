@@ -212,6 +212,7 @@ export default function TeamsPage() {
       ) : (
         <div className="wk-card" style={{ padding: 0, overflow: 'hidden' }}>
           <div className="tm-member-toolbar">
+            <p className="wk-eyebrow" style={{ marginBottom: 10 }}>Organization</p>
             <input
               className="wk-input"
               placeholder="Search by name or email…"

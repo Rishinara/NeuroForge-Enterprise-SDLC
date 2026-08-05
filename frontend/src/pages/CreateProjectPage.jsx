@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { projectApi } from '../api/projectApi.js'
-import { orgAdminApi } from '../api/orgAdminApi.js'
+import { orgApi } from '../api/orgApi.js'
 import { extractErrorMessage } from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import './workspace.css'
@@ -32,11 +32,10 @@ export default function CreateProjectPage() {
   const [milestoneDraft, setMilestoneDraft] = useState({ name: '', dueDate: '' })
 
   useEffect(() => {
-    orgAdminApi
+    orgApi
       .listTeams(user.orgId)
       .then((res) => {
-        if (!Array.isArray(res.data)) throw new Error('Unexpected response shape')
-        setTeams(res.data)
+        setTeams(Array.isArray(res.data) ? res.data : [])
       })
       .catch((err) => {
         setTeamsError(extractErrorMessage(err))
@@ -102,9 +101,17 @@ export default function CreateProjectPage() {
         methodology: form.methodology,
         startDate: form.startDate,
         endDate: form.endDate,
-        techStackTags: form.techStackTags,
-        teamId: Number(form.teamId),
-        milestones: form.milestones,
+        techStack: form.techStackTags,
+        teamMemberIds: [],
+      }
+      if (form.teamId) {
+        try {
+          const membersRes = await orgApi.listMembers(user.orgId)
+          const teamMembers = membersRes.data.filter(m => 
+            m.teams?.includes(teams.find(t => String(t.id) === String(form.teamId))?.name)
+          )
+          payload.teamMemberIds = teamMembers.map(m => m.id)
+        } catch { /* fallback: empty */ }
       }
       const res = await projectApi.createProject(user.orgId, payload)
       navigate(`/projects/${res.data.id}`)
