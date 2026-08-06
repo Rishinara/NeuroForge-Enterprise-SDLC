@@ -7,16 +7,17 @@ import { aiApi } from '../api/aiApi.js'
 import { api, extractErrorMessage } from '../api/client.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import Can from '../components/Can.jsx'
-import './agile.css'
+
+const formatEnum = (val) => val ? val.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown';
 
 const PRIORITY_STYLE = {
-  HIGH: { bg: '#fee2e2', color: '#991b1b' },
-  High: { bg: '#fee2e2', color: '#991b1b' },
-  MEDIUM: { bg: '#fef3c7', color: '#92400e' },
-  Medium: { bg: '#fef3c7', color: '#92400e' },
-  LOW: { bg: '#f3f4f6', color: '#4b5563' },
-  Low: { bg: '#f3f4f6', color: '#4b5563' },
-  CRITICAL: { bg: '#fef2f2', color: '#7f1d1d' },
+  HIGH: 'bg-red-100 text-red-800',
+  High: 'bg-red-100 text-red-800',
+  MEDIUM: 'bg-orange-100 text-orange-800',
+  Medium: 'bg-orange-100 text-orange-800',
+  LOW: 'bg-slate-100 text-slate-700',
+  Low: 'bg-slate-100 text-slate-700',
+  CRITICAL: 'bg-red-200 text-red-900',
 }
 
 const CAN_MANAGE = [ROLES.PROJECT_MANAGER, ROLES.SUPER_ADMIN]
@@ -211,20 +212,25 @@ export default function BacklogPage() {
   const totalPoints = items.reduce((sum, i) => sum + (i.points || 0), 0)
 
   return (
-    <div className="wk-page">
-      <div className="ag-tabs">
-        <Link to={`/projects/${projectId}/backlog`} className="ag-tab ag-tab-active">Backlog</Link>
-        <Link to={`/projects/${projectId}/board`} className="ag-tab">Board</Link>
+    <div className="min-h-screen bg-slate-50 p-6 md:p-8">
+      {/* tabs */}
+      <div className="flex space-x-6 border-b border-slate-200 mb-6 pb-2">
+        <Link to={`/projects/${projectId}/backlog`} className="text-orange-600 border-b-2 border-orange-500 pb-2 text-base font-semibold">Backlog</Link>
+        <Link to={`/projects/${projectId}/board`} className="text-slate-500 hover:text-slate-700 pb-2 text-base font-medium">Board</Link>
       </div>
 
-      <div className="wk-page-header" style={{ justifyContent: 'space-between' }}>
-        <p className="wk-page-subtitle">{items.length} items · {totalPoints} points total</p>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="wk-btn wk-btn-secondary" style={{ width: 'auto' }} onClick={() => setShowAiCopilot(s => !s)}>
+      {/* header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Project Backlog</h1>
+          <p className="text-sm text-slate-700 mt-1">{items.length} items · {totalPoints} points total</p>
+        </div>
+        <div className="flex items-center gap-3 justify-end">
+          <button className="px-4 py-2 bg-white border border-slate-200 text-sm font-medium text-slate-700 rounded-lg shadow-sm hover:bg-slate-50" onClick={() => setShowAiCopilot(s => !s)}>
             {showAiCopilot ? 'Hide AI Copilot' : '🤖 AI Copilot'}
           </button>
           <Can roles={CAN_MANAGE}>
-            <button className="wk-btn wk-btn-primary" style={{ width: 'auto' }} onClick={() => setShowForm((s) => !s)}>
+            <button className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg shadow-sm" onClick={() => setShowForm((s) => !s)}>
               {showForm ? 'Cancel' : '+ Add item'}
             </button>
           </Can>
@@ -232,308 +238,307 @@ export default function BacklogPage() {
       </div>
 
       {endpointMissing && (
-        <p className="wk-alert wk-alert-info">
-          Your backend doesn't have a "list tasks by project" endpoint yet
-          (tried <code>GET /api/tasks/project/{'{projectId}'}/backlog</code>, got 404).
-          Ask your backend developer to add one — until then this list stays empty,
-          though adding new items still works via the real <code>POST /api/tasks</code> endpoint.
-        </p>
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex gap-3 text-sm text-blue-800">
+          <p>
+            Your backend doesn't have a "list tasks by project" endpoint yet
+            (tried <code>GET /api/tasks/project/{'{projectId}'}/backlog</code>, got 404).
+            Ask your backend developer to add one — until then this list stays empty,
+            though adding new items still works via the real <code>POST /api/tasks</code> endpoint.
+          </p>
+        </div>
       )}
 
       {error && !endpointMissing && (
-        <p className="wk-alert wk-alert-error">
-          Could not load the backlog. ({error})
-        </p>
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+          <p>Could not load the backlog. ({error})</p>
+        </div>
       )}
 
-      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 500px' }}>
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        <div className="flex-1 w-full flex flex-col gap-6">
           {showForm && (
-            <form className="wk-card ag-add-form" onSubmit={handleAdd} style={{ marginBottom: 20 }}>
-              <div className="wk-field">
-                <label className="wk-label">Title</label>
-                <input
-                  className="wk-input"
-                  value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  placeholder="e.g. Slot availability calendar view"
-                />
-              </div>
-              <div className="wk-row-2">
-                <div className="wk-field">
-                  <label className="wk-label">Story points</label>
+            <form className="bg-white rounded-xl shadow-md border border-slate-200 p-6" onSubmit={handleAdd}>
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Add Backlog Item</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Title</label>
                   <input
-                    type="number"
-                    min="1"
-                    className="wk-input"
-                    value={form.points}
-                    onChange={(e) => setForm((f) => ({ ...f, points: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    value={form.title}
+                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                    placeholder="e.g. Slot availability calendar view"
                   />
                 </div>
-                <div className="wk-field">
-                  <label className="wk-label">Priority</label>
-                  <select className="wk-select" value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}>
-                    <option>High</option>
-                    <option>Medium</option>
-                    <option>Low</option>
-                  </select>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Story points</label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      value={form.points}
+                      onChange={(e) => setForm((f) => ({ ...f, points: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Priority</label>
+                    <select 
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white" 
+                      value={form.priority} 
+                      onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
+                    >
+                      <option>High</option>
+                      <option>Medium</option>
+                      <option>Low</option>
+                    </select>
+                  </div>
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Labels (comma separated)</label>
+                  <input
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    value={form.labels}
+                    onChange={(e) => setForm((f) => ({ ...f, labels: e.target.value }))}
+                    placeholder="frontend, payments"
+                  />
+                </div>
+                <button className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg shadow-sm" type="submit">
+                  Add to backlog
+                </button>
               </div>
-              <div className="wk-field">
-                <label className="wk-label">Labels (comma separated)</label>
-                <input
-                  className="wk-input"
-                  value={form.labels}
-                  onChange={(e) => setForm((f) => ({ ...f, labels: e.target.value }))}
-                  placeholder="frontend, payments"
-                />
-              </div>
-              <button className="wk-btn wk-btn-primary" type="submit">Add to backlog</button>
             </form>
           )}
 
           {/* Sprints Section */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ fontSize: 16, margin: 0 }}>Sprints</h3>
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-slate-800">Sprints</h3>
               <Can roles={CAN_MANAGE}>
-                <button className="wk-btn wk-btn-secondary" style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => setShowSprintForm((s) => !s)}>
+                <button className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors" onClick={() => setShowSprintForm((s) => !s)}>
                   {showSprintForm ? 'Cancel' : '+ Create sprint'}
                 </button>
               </Can>
             </div>
             
             {showSprintForm && (
-              <form className="wk-card ag-add-form" onSubmit={handleCreateSprint} style={{ marginBottom: 16 }}>
-                <div className="wk-field">
-                  <label className="wk-label">Sprint name *</label>
-                  <input className="wk-input" required value={sprintForm.name} onChange={e => setSprintForm(f => ({...f, name: e.target.value}))} placeholder="Sprint 1" />
-                </div>
-                <div className="wk-field">
-                  <label className="wk-label">Goal</label>
-                  <input className="wk-input" value={sprintForm.goal} onChange={e => setSprintForm(f => ({...f, goal: e.target.value}))} placeholder="Complete authentication flow" />
-                </div>
-                <div className="wk-row-2">
-                  <div className="wk-field">
-                    <label className="wk-label">Start Date *</label>
-                    <input type="date" required className="wk-input" value={sprintForm.startDate} onChange={e => setSprintForm(f => ({...f, startDate: e.target.value}))} />
+              <form className="bg-slate-50 rounded-lg border border-slate-100 p-5 mb-5" onSubmit={handleCreateSprint}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Sprint name *</label>
+                    <input className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" required value={sprintForm.name} onChange={e => setSprintForm(f => ({...f, name: e.target.value}))} placeholder="Sprint 1" />
                   </div>
-                  <div className="wk-field">
-                    <label className="wk-label">End Date *</label>
-                    <input type="date" required className="wk-input" value={sprintForm.endDate} onChange={e => setSprintForm(f => ({...f, endDate: e.target.value}))} />
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Goal</label>
+                    <input className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" value={sprintForm.goal} onChange={e => setSprintForm(f => ({...f, goal: e.target.value}))} placeholder="Complete authentication flow" />
                   </div>
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Start Date *</label>
+                      <input type="date" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" value={sprintForm.startDate} onChange={e => setSprintForm(f => ({...f, startDate: e.target.value}))} />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-slate-500 mb-1">End Date *</label>
+                      <input type="date" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" value={sprintForm.endDate} onChange={e => setSprintForm(f => ({...f, endDate: e.target.value}))} />
+                    </div>
+                  </div>
+                  <button className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg shadow-sm" type="submit">Save Sprint</button>
                 </div>
-                <button className="wk-btn wk-btn-primary" type="submit">Save Sprint</button>
               </form>
             )}
             
             {sprints.length === 0 ? (
-              <p className="wk-empty" style={{ padding: '16px 0', border: '1px dashed var(--wk-border)', borderRadius: 8 }}>No sprints created yet.</p>
+              <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
+                <svg className="w-10 h-10 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm font-medium text-slate-600">No sprints created yet</p>
+                <p className="text-xs text-slate-400 mt-1">Create a sprint to start organizing tasks.</p>
+              </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="flex flex-col gap-3">
                 {sprints.map(sprint => (
                   <div 
                     key={sprint.id} 
-                    className="wk-card" 
-                    style={{ 
-                      padding: '12px 16px', 
-                      border: '2px dashed transparent',
-                      transition: 'all 0.2s'
-                    }}
+                    className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 transition-all duration-200"
                     onDragOver={(e) => {
                       e.preventDefault(); 
-                      e.currentTarget.style.borderColor = 'var(--wk-accent)';
-                      e.currentTarget.style.background = '#f8fafc';
+                      e.currentTarget.classList.add('border-orange-500', 'bg-orange-50');
                     }}
                     onDragLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'transparent';
-                      e.currentTarget.style.background = '#fff';
+                      e.currentTarget.classList.remove('border-orange-500', 'bg-orange-50');
                     }}
                     onDrop={(e) => {
                       e.preventDefault();
-                      e.currentTarget.style.borderColor = 'transparent';
-                      e.currentTarget.style.background = '#fff';
+                      e.currentTarget.classList.remove('border-orange-500', 'bg-orange-50');
                       handleDropToSprint(sprint.id);
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <h4 style={{ margin: 0, fontSize: 15 }}>{sprint.name}</h4>
-                        <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 999, background: sprint.status === 'ACTIVE' ? '#dcfce7' : '#f1f5f9', color: sprint.status === 'ACTIVE' ? '#166534' : '#475569', fontWeight: 500 }}>
-                          {sprint.status}
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center gap-3">
+                        <h4 className="text-base font-semibold text-slate-900">{sprint.name}</h4>
+                        <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${sprint.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-700'}`}>
+                          {formatEnum(sprint.status)}
                         </span>
                       </div>
-                      <Link to={`/projects/${projectId}/board`} className="wk-btn wk-btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }}>View Board</Link>
+                      <Link to={`/projects/${projectId}/board`} className="text-xs font-medium text-orange-600 hover:text-orange-700">View Board →</Link>
                     </div>
-                    {sprint.goal && <p style={{ fontSize: 13, color: '#475569', margin: '6px 0 0 0' }}>{sprint.goal}</p>}
-                    <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0 0' }}>{sprint.startDate} to {sprint.endDate} — Drag backlog items here to assign</p>
+                    {sprint.goal && <p className="text-sm text-slate-700 mb-2">{sprint.goal}</p>}
+                    <p className="text-xs font-medium text-slate-500">{sprint.startDate} to {sprint.endDate} — Drag backlog items here to assign</p>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <h3 style={{ fontSize: 16, marginBottom: 12 }}>Backlog</h3>
-          <div className="wk-card" style={{ padding: 0 }}>
-            {loading ? (
-              <p className="wk-empty">Loading backlog…</p>
-            ) : items.length === 0 ? (
-              <p className="wk-empty">Backlog is empty.</p>
-            ) : (
-              <div className="ag-backlog-list">
-                {items.map((item) => {
-                  const pStyle = PRIORITY_STYLE[item.priority] || PRIORITY_STYLE.Medium
-                  return (
-                    <div 
-                      key={item.id} 
-                      className="ag-backlog-row"
-                      draggable={CAN_MANAGE.includes(role)}
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData('text/plain', item.id)
-                        setDragTaskId(item.id)
-                      }}
-                      style={{ cursor: CAN_MANAGE.includes(role) ? 'grab' : 'default' }}
-                    >
-                      <span className="ag-points-chip">{item.storyPoints ?? item.points ?? 0}</span>
-                      <div className="ag-backlog-main">
-                        <span className="ag-backlog-title">{item.title}</span>
-                        {item.specTitle && <span className="ag-backlog-spec">Traces to: {item.specTitle}</span>}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-6 border-b border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-800">Backlog</h3>
+            </div>
+            
+            <div className="p-0">
+              {loading ? (
+                <div className="p-8 text-center text-sm text-slate-500">Loading backlog…</div>
+              ) : items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 bg-slate-50 border-t border-slate-200 text-center">
+                  <svg className="w-10 h-10 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <p className="text-sm font-medium text-slate-600">Backlog is empty</p>
+                  <p className="text-xs text-slate-400 mt-1">Add items to populate the backlog.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {items.map((item) => {
+                    const pClass = PRIORITY_STYLE[item.priority] || PRIORITY_STYLE.Medium
+                    return (
+                      <div 
+                        key={item.id} 
+                        className={`flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors ${CAN_MANAGE.includes(role) ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                        draggable={CAN_MANAGE.includes(role)}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', item.id)
+                          setDragTaskId(item.id)
+                        }}
+                      >
+                        <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+                          {item.storyPoints ?? item.points ?? 0}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-900 truncate">{item.title}</p>
+                          {item.specTitle && <p className="text-xs text-slate-500 mt-0.5 truncate">Traces to: {item.specTitle}</p>}
+                        </div>
+                        <div className="hidden md:flex flex-wrap gap-1 items-center justify-end">
+                          {(item.labels || []).map((l) => (
+                            <span key={l} className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                              {l}
+                            </span>
+                          ))}
+                        </div>
+                        <span className={`flex-shrink-0 text-xs font-medium px-2 py-1 rounded-md ${pClass}`}>
+                          {formatEnum(item.priority)}
+                        </span>
                       </div>
-                      <div className="ag-backlog-labels">
-                        {(item.labels || []).map((l) => (
-                          <span key={l} className="ag-label-chip">{l}</span>
-                        ))}
-                      </div>
-                      <span className="ag-priority-chip" style={{ background: pStyle.bg, color: pStyle.color }}>
-                        {item.priority}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
+        {/* AI Copilot Panel */}
         {showAiCopilot && (
-          <div className="wk-card" style={{ flex: '0 0 380px', position: 'sticky', top: 20, padding: 20 }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>🤖</span> NeuroForge AI Copilot
-            </h3>
-            
-            <div style={{ display: 'flex', gap: 4, marginBottom: 16, background: '#f1f5f9', padding: 4, borderRadius: 8 }}>
-              <button 
-                type="button"
-                onClick={() => setAiTab('task')} 
-                style={{ 
-                  flex: 1, 
-                  padding: '6px 12px', 
-                  border: 'none', 
-                  borderRadius: 6, 
-                  background: aiTab === 'task' ? '#fff' : 'transparent', 
-                  fontWeight: aiTab === 'task' ? 600 : 500, 
-                  cursor: 'pointer',
-                  boxShadow: aiTab === 'task' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                }}
-              >
-                Task Assist
-              </button>
-              <button 
-                type="button"
-                onClick={() => setAiTab('project')} 
-                style={{ 
-                  flex: 1, 
-                  padding: '6px 12px', 
-                  border: 'none', 
-                  borderRadius: 6, 
-                  background: aiTab === 'project' ? '#fff' : 'transparent', 
-                  fontWeight: aiTab === 'project' ? 600 : 500, 
-                  cursor: 'pointer',
-                  boxShadow: aiTab === 'project' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                }}
-              >
-                Project Risks
-              </button>
-            </div>
-
-            {aiError && <p className="wk-alert wk-alert-error" style={{ fontSize: 12.5, margin: '0 0 12px 0', padding: '8px 12px' }}>{aiError}</p>}
-
-            {aiTab === 'task' ? (
-              <div>
-                <div className="wk-field" style={{ marginBottom: 12 }}>
-                  <label className="wk-label" style={{ fontSize: 12 }}>Task Title</label>
-                  <input 
-                    className="wk-input" 
-                    value={aiForm.title} 
-                    onChange={e => setAiForm(f => ({ ...f, title: e.target.value }))}
-                    placeholder="e.g. Integrate Stripe payment gateway" 
-                    style={{ fontSize: 13 }}
-                  />
-                </div>
-                <div className="wk-field" style={{ marginBottom: 16 }}>
-                  <label className="wk-label" style={{ fontSize: 12 }}>Description (optional)</label>
-                  <textarea 
-                    className="wk-textarea" 
-                    rows={3}
-                    value={aiForm.description} 
-                    onChange={e => setAiForm(f => ({ ...f, description: e.target.value }))}
-                    placeholder="Provide details for better recommendations…" 
-                    style={{ fontSize: 13, width: '100%' }}
-                  />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-                  <button type="button" className="wk-btn" style={{ fontSize: 12, padding: '8px 10px', background: '#e2e8f0', color: '#1e293b' }} onClick={() => runAiTaskTool('estimate')} disabled={aiLoading}>
-                    Estimate Points
-                  </button>
-                  <button type="button" className="wk-btn" style={{ fontSize: 12, padding: '8px 10px', background: '#e2e8f0', color: '#1e293b' }} onClick={() => runAiTaskTool('priority')} disabled={aiLoading}>
-                    Recommend Priority
-                  </button>
-                  <button type="button" className="wk-btn" style={{ fontSize: 12, padding: '8px 10px', background: '#e2e8f0', color: '#1e293b' }} onClick={() => runAiTaskTool('breakdown')} disabled={aiLoading}>
-                    Break Down
-                  </button>
-                  <button type="button" className="wk-btn" style={{ fontSize: 12, padding: '8px 10px', background: '#e2e8f0', color: '#1e293b' }} onClick={() => runAiTaskTool('criteria')} disabled={aiLoading}>
-                    Gen Criteria
-                  </button>
-                  <button type="button" className="wk-btn" style={{ gridColumn: 'span 2', fontSize: 12, padding: '8px 10px', background: '#e2e8f0', color: '#1e293b' }} onClick={() => runAiTaskTool('enhance')} disabled={aiLoading}>
-                    Enhance Task Description
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ marginBottom: 16 }}>
-                <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.5, margin: '0 0 16px 0' }}>
-                  Analyze all current tasks in the backlog to identify delivery risks, dependency bottlenecks, and testing challenges.
-                </p>
-                <button type="button" className="wk-btn wk-btn-primary" onClick={runAiProjectRisk} disabled={aiLoading}>
-                  {aiLoading ? 'Analyzing…' : 'Run Backlog Risk Analysis'}
+          <div className="w-full lg:w-96 flex-shrink-0 sticky top-6">
+            <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6">
+              <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-4">
+                <span>🤖</span> NeuroForge AI Copilot
+              </h3>
+              
+              <div className="flex p-1 bg-slate-100 rounded-lg mb-5">
+                <button 
+                  type="button"
+                  onClick={() => setAiTab('task')} 
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-shadow ${aiTab === 'task' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                >
+                  Task Assist
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setAiTab('project')} 
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-shadow ${aiTab === 'project' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                >
+                  Project Risks
                 </button>
               </div>
-            )}
 
-            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 16 }}>
-              <label className="wk-label" style={{ fontSize: 12, color: '#64748b' }}>AI Response</label>
-              <div style={{ 
-                background: '#f8fafc', 
-                border: '1px solid #cbd5e1', 
-                borderRadius: 8, 
-                padding: 12, 
-                minHeight: 120, 
-                maxHeight: 250, 
-                overflowY: 'auto',
-                fontSize: 13,
-                fontFamily: 'monospace',
-                whiteSpace: 'pre-wrap',
-                color: '#0f172a',
-                lineHeight: 1.5
-              }}>
-                {aiLoading ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 8 }}>
-                    <div style={{ height: 12, background: '#e2e8f0', borderRadius: 4 }} />
-                    <div style={{ height: 12, background: '#e2e8f0', borderRadius: 4, width: '80%' }} />
-                    <div style={{ height: 12, background: '#e2e8f0', borderRadius: 4, width: '60%' }} />
+              {aiError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
+                  {aiError}
+                </div>
+              )}
+
+              {aiTab === 'task' ? (
+                <div>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Task Title</label>
+                    <input 
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" 
+                      value={aiForm.title} 
+                      onChange={e => setAiForm(f => ({ ...f, title: e.target.value }))}
+                      placeholder="e.g. Integrate Stripe payment gateway" 
+                    />
                   </div>
-                ) : aiResult ? aiResult : 'Run a tool to see AI insights here.'}
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Description (optional)</label>
+                    <textarea 
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" 
+                      rows={3}
+                      value={aiForm.description} 
+                      onChange={e => setAiForm(f => ({ ...f, description: e.target.value }))}
+                      placeholder="Provide details for better recommendations…" 
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 mb-5">
+                    <button type="button" className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors disabled:opacity-50" onClick={() => runAiTaskTool('estimate')} disabled={aiLoading}>
+                      Estimate Points
+                    </button>
+                    <button type="button" className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors disabled:opacity-50" onClick={() => runAiTaskTool('priority')} disabled={aiLoading}>
+                      Recommend Priority
+                    </button>
+                    <button type="button" className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors disabled:opacity-50" onClick={() => runAiTaskTool('breakdown')} disabled={aiLoading}>
+                      Break Down
+                    </button>
+                    <button type="button" className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors disabled:opacity-50" onClick={() => runAiTaskTool('criteria')} disabled={aiLoading}>
+                      Gen Criteria
+                    </button>
+                    <button type="button" className="col-span-2 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors disabled:opacity-50" onClick={() => runAiTaskTool('enhance')} disabled={aiLoading}>
+                      Enhance Task Description
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-5">
+                  <p className="text-sm text-slate-600 mb-4">
+                    Analyze all current tasks in the backlog to identify delivery risks, dependency bottlenecks, and testing challenges.
+                  </p>
+                  <button type="button" className="w-full py-2 px-4 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50" onClick={runAiProjectRisk} disabled={aiLoading}>
+                    {aiLoading ? 'Analyzing…' : 'Run Backlog Risk Analysis'}
+                  </button>
+                </div>
+              )}
+
+              <div className="border-t border-slate-200 pt-4">
+                <label className="block text-xs font-medium text-slate-500 mb-2">AI Response</label>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-[120px] max-h-[250px] overflow-y-auto text-sm font-mono whitespace-pre-wrap text-slate-800">
+                  {aiLoading ? (
+                    <div className="animate-pulse flex flex-col gap-2">
+                      <div className="h-2.5 bg-slate-200 rounded w-full"></div>
+                      <div className="h-2.5 bg-slate-200 rounded w-4/5"></div>
+                      <div className="h-2.5 bg-slate-200 rounded w-3/5"></div>
+                    </div>
+                  ) : aiResult ? aiResult : <span className="text-slate-400">Run a tool to see AI insights here.</span>}
+                </div>
               </div>
             </div>
           </div>

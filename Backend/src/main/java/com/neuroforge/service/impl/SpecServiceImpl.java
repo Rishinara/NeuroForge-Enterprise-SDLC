@@ -17,6 +17,10 @@ import com.neuroforge.repository.SpecRepository;
 import com.neuroforge.repository.UserRepository;
 import com.neuroforge.repository.UserStoryRepository;
 import com.neuroforge.service.SpecService;
+import com.neuroforge.service.ActivityService;
+import com.neuroforge.ai.GroqService;
+import com.neuroforge.exception.SpecGenerationException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,6 +39,9 @@ public class SpecServiceImpl implements SpecService {
     private final UserStoryRepository userStoryRepository;
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
+    private final GroqService groqService;
+    private final ObjectMapper objectMapper;
+    private final ActivityService activityService;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
@@ -91,6 +98,20 @@ public class SpecServiceImpl implements SpecService {
                 .collect(Collectors.toList());
     }
 
+    private String cleanJson(String jsonStr) {
+        if (jsonStr == null) return "";
+        jsonStr = jsonStr.trim();
+        if (jsonStr.startsWith("```json")) {
+            jsonStr = jsonStr.substring(7);
+        } else if (jsonStr.startsWith("```")) {
+            jsonStr = jsonStr.substring(3);
+        }
+        if (jsonStr.endsWith("```")) {
+            jsonStr = jsonStr.substring(0, jsonStr.length() - 3);
+        }
+        return jsonStr.trim();
+    }
+
     private SpecResponse mapToSpecResponse(Spec spec) {
         List<UserStoryDTO> stories = spec.getUserStories().stream()
                 .map(this::mapStoryToDTO)
@@ -105,6 +126,7 @@ public class SpecServiceImpl implements SpecService {
                 .userStories(stories)
                 .functionalRequirements(new ArrayList<>(spec.getFunctionalRequirements()))
                 .nonFunctionalRequirements(new ArrayList<>(spec.getNonFunctionalRequirements()))
+                .reviewNote(spec.getReviewNote())
                 .versions(getVersionHistory(spec))
                 .build();
     }
@@ -159,6 +181,38 @@ public class SpecServiceImpl implements SpecService {
         spec.setProject(project);
         spec.setCreatedBy(user);
 
+        if (request.getTone() != null || request.getComplexity() != null) {
+            String jsonStr = groqService.generateSpecJson(request.getTitle(), request.getDescription(), request.getTone(), request.getComplexity());
+            
+            if (jsonStr != null && jsonStr.contains("AI Service is temporarily unavailable")) {
+                throw new SpecGenerationException("AI Service is temporarily unavailable. Please try again later.");
+            }
+            if (jsonStr != null && jsonStr.contains("No response from AI")) {
+                throw new SpecGenerationException("No response from AI. Please try again later.");
+            }
+            
+            jsonStr = cleanJson(jsonStr);
+
+            try {
+                com.neuroforge.dto.spec.SpecRequest generated = objectMapper.readValue(jsonStr, com.neuroforge.dto.spec.SpecRequest.class);
+                if (generated.getUserStories() != null) request.setUserStories(generated.getUserStories());
+                if (generated.getFunctionalRequirements() != null) request.setFunctionalRequirements(generated.getFunctionalRequirements());
+                if (generated.getNonFunctionalRequirements() != null) request.setNonFunctionalRequirements(generated.getNonFunctionalRequirements());
+            } catch (Exception e) {
+                String retryPrompt = "Your previous response was not valid JSON. Return ONLY a valid JSON object. No explanation, no markdown tags. Original request: " + request.getTitle();
+                String retryJson = groqService.askGroq(retryPrompt);
+                retryJson = cleanJson(retryJson);
+                try {
+                    com.neuroforge.dto.spec.SpecRequest generated = objectMapper.readValue(retryJson, com.neuroforge.dto.spec.SpecRequest.class);
+                    if (generated.getUserStories() != null) request.setUserStories(generated.getUserStories());
+                    if (generated.getFunctionalRequirements() != null) request.setFunctionalRequirements(generated.getFunctionalRequirements());
+                    if (generated.getNonFunctionalRequirements() != null) request.setNonFunctionalRequirements(generated.getNonFunctionalRequirements());
+                } catch (Exception ex) {
+                    throw new SpecGenerationException("AI Spec Generation failed due to malformed JSON. Please try again.");
+                }
+            }
+        }
+
         if (request.getFunctionalRequirements() != null) {
             spec.setFunctionalRequirements(new ArrayList<>(request.getFunctionalRequirements()));
         }
@@ -175,6 +229,9 @@ public class SpecServiceImpl implements SpecService {
             userStoryRepository.saveAll(stories);
             savedSpec.setUserStories(stories);
         }
+
+        String logMsg = "Created spec: " + savedSpec.getTitle() + (request.getTone() != null ? " (AI Generated)" : "");
+        activityService.logActivity(project.getOrganization().getId(), "Spec Created", logMsg, username);
 
         return mapToSpecResponse(savedSpec);
     }
@@ -213,6 +270,7 @@ public class SpecServiceImpl implements SpecService {
                 userStoryRepository.saveAll(stories);
                 savedNextSpec.setUserStories(stories);
             }
+            activityService.logActivity(existingSpec.getProject().getOrganization().getId(), "Spec Version Created", "Created new version for spec: " + savedNextSpec.getTitle(), username);
             return mapToSpecResponse(savedNextSpec);
         } else {
             // Update in-place
@@ -241,6 +299,8 @@ public class SpecServiceImpl implements SpecService {
                 savedSpec.getUserStories().addAll(stories);
                 specRepository.save(savedSpec);
             }
+
+            activityService.logActivity(existingSpec.getProject().getOrganization().getId(), "Spec Edited", "Edited spec: " + savedSpec.getTitle(), username);
 
             return mapToSpecResponse(savedSpec);
         }
@@ -278,6 +338,8 @@ public class SpecServiceImpl implements SpecService {
             throw new InvalidRequestException("Only Draft specs can be submitted for review");
         }
         spec.setStatus(SpecStatus.In_Review);
+        spec.setReviewNote(null);
+        activityService.logActivity(spec.getProject().getOrganization().getId(), "Spec Submitted", "Submitted spec for review: " + spec.getTitle(), username);
         return mapToSpecResponse(specRepository.save(spec));
     }
 
@@ -289,6 +351,7 @@ public class SpecServiceImpl implements SpecService {
             throw new InvalidRequestException("Only In Review specs can be approved");
         }
         spec.setStatus(SpecStatus.Approved);
+        activityService.logActivity(spec.getProject().getOrganization().getId(), "Spec Approved", "Approved spec: " + spec.getTitle(), username);
         return mapToSpecResponse(specRepository.save(spec));
     }
 
@@ -300,6 +363,9 @@ public class SpecServiceImpl implements SpecService {
             throw new InvalidRequestException("Only In Review specs can have changes requested");
         }
         spec.setStatus(SpecStatus.Draft);
+        spec.setReviewNote(note);
+        String excerpt = note != null && note.length() > 50 ? note.substring(0, 47) + "..." : note;
+        activityService.logActivity(spec.getProject().getOrganization().getId(), "Spec Changes Requested", "Requested changes on spec: " + spec.getTitle() + " - " + excerpt, username);
         return mapToSpecResponse(specRepository.save(spec));
     }
 }

@@ -16,8 +16,8 @@ import OrgSettingsPage from './pages/OrgSettingsPage.jsx'
 import ProjectsPortfolioPage from './pages/ProjectsPortfolioPage.jsx'
 import CreateProjectPage from './pages/CreateProjectPage.jsx'
 import ProjectDetailPage from './pages/ProjectDetailPage.jsx'
-import SpecsListPage from './pages/SpecsListPage.jsx'
-import SpecEditorPage from './pages/SpecEditorPage.jsx'
+import SpecList from './pages/SpecList.jsx'
+import SpecDetail from './pages/SpecDetail.jsx'
 import BacklogPage from './pages/BacklogPage.jsx'
 import KanbanBoardPage from './pages/KanbanBoardPage.jsx'
 import BugsPage from './pages/BugsPage.jsx'
@@ -61,9 +61,8 @@ export default function App() {
               }
             />
             <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
-            <Route path="/projects/:projectId/specs" element={<SpecsListPage />} />
-<Route path="/projects/:projectId/specs/new" element={<SpecEditorPage />} />
-<Route path="/projects/:projectId/specs/:specId" element={<SpecEditorPage />} />
+            <Route path="/projects/:projectId/specs" element={<SpecList />} />
+            <Route path="/projects/:projectId/specs/:specId" element={<SpecDetail />} />
 <Route path="/projects/:projectId/backlog" element={<BacklogPage />} />
 <Route path="/projects/:projectId/bugs" element={<BugsPage />} />
 <Route path="/projects/:projectId/test-cases" element={<TestCasesPage />} />

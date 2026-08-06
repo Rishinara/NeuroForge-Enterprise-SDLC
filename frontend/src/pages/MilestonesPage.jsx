@@ -6,7 +6,14 @@ import { api } from '../api/client.js'
 import { extractErrorMessage } from '../api/client.js'
 
 const MILESTONE_STATUS = ['PENDING', 'IN_PROGRESS', 'ACHIEVED', 'DELAYED']
-const STATUS_COLORS = { PENDING: '#cbd5e1', IN_PROGRESS: '#3b82f6', ACHIEVED: '#10b981', DELAYED: '#ef4444' }
+const STATUS_COLORS = { 
+  PENDING: 'bg-slate-100 text-slate-700', 
+  IN_PROGRESS: 'bg-blue-100 text-blue-700', 
+  ACHIEVED: 'bg-emerald-100 text-emerald-700', 
+  DELAYED: 'bg-red-100 text-red-700' 
+}
+
+const formatEnum = (val) => val ? val.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown';
 
 export default function MilestonesPage() {
   const { projectId } = useParams()
@@ -56,69 +63,101 @@ export default function MilestonesPage() {
     }
   }
 
-  if (loading) return <div style={{ padding: 24 }}>Loading milestones...</div>
+  if (loading) return <div className="p-6 text-sm text-slate-700">Loading milestones...</div>
 
   const isClient = role === ROLES.CLIENT
   const isDevQA = role === ROLES.DEVELOPER || role === ROLES.QA_TESTER
   const canManage = !isClient && !isDevQA
 
   return (
-    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
-      <div className="wk-page-header">
-        <h1 className="wk-page-title">Project Milestones</h1>
-        {canManage && (
-          <button className="wk-btn wk-btn-primary" onClick={() => setNewModalOpen(true)}>
-            Add Milestone
-          </button>
-        )}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-slate-900">Project Milestones</h1>
+        <div className="flex flex-1 items-center justify-end gap-3">
+          {canManage && (
+            <button 
+              className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm" 
+              onClick={() => setNewModalOpen(true)}
+            >
+              Add Milestone
+            </button>
+          )}
+        </div>
       </div>
 
-      {error && <p className="wk-alert wk-alert-error" style={{ marginBottom: 20 }}>{error}</p>}
+      {error && <p className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-200">{error}</p>}
 
       {newModalOpen && (
-        <div className="wk-card" style={{ marginBottom: 24 }}>
-          <h3>Create Milestone</h3>
-          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-            <input className="wk-input" placeholder="Title" value={newMilestone.title} onChange={e => setNewMilestone({ ...newMilestone, title: e.target.value })} required />
-            <textarea className="wk-textarea" placeholder="Description" value={newMilestone.description} onChange={e => setNewMilestone({ ...newMilestone, description: e.target.value })} />
-            <input className="wk-input" type="date" value={newMilestone.expectedDeliveryDate} onChange={e => setNewMilestone({ ...newMilestone, expectedDeliveryDate: e.target.value })} required />
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button type="submit" className="wk-btn wk-btn-primary">Save</button>
-              <button type="button" className="wk-btn wk-btn-secondary" onClick={() => setNewModalOpen(false)}>Cancel</button>
+        <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">Create Milestone</h3>
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Title</label>
+              <input className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="Title" value={newMilestone.title || ''} onChange={e => setNewMilestone({ ...newMilestone, title: e.target.value })} required />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
+              <textarea className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[100px]" placeholder="Description" value={newMilestone.description || ''} onChange={e => setNewMilestone({ ...newMilestone, description: e.target.value })} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Expected Delivery Date</label>
+              <input className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" type="date" value={newMilestone.expectedDeliveryDate || ''} onChange={e => setNewMilestone({ ...newMilestone, expectedDeliveryDate: e.target.value })} required />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button type="submit" className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">Save</button>
+              <button type="button" className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={() => setNewModalOpen(false)}>Cancel</button>
             </div>
           </form>
         </div>
       )}
 
-      <div style={{ display: 'grid', gap: 16 }}>
-        {milestones.length === 0 ? (
-          <p className="wk-empty">No milestones defined yet.</p>
+      <div className="space-y-4">
+        {(!milestones || milestones.length === 0) ? (
+          <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
+            <svg className="w-10 h-10 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <p className="text-sm font-medium text-slate-600">No milestones found</p>
+            <p className="text-xs text-slate-400 mt-1">There are no milestones defined for this project yet.</p>
+          </div>
         ) : (
           milestones.map(m => (
-            <div key={m.id} className="wk-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: 16, color: '#1e293b' }}>
-                  {m.title}
-                  <span style={{ marginLeft: 12, fontSize: 12, fontWeight: 600, padding: '4px 8px', borderRadius: 999, background: STATUS_COLORS[m.status], color: '#fff' }}>
-                    {m.status.replace('_', ' ')}
+            <div key={m.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row md:justify-between md:items-start md:items-center gap-4">
+              <div className="flex-1">
+                <div className="flex flex-wrap items-center gap-3 mb-2">
+                  <h4 className="text-base font-semibold text-slate-900">
+                    {m.title || 'Untitled Milestone'}
+                  </h4>
+                  <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${STATUS_COLORS[m.status] || 'bg-slate-100 text-slate-700'}`}>
+                    {formatEnum(m.status)}
                   </span>
-                </h4>
-                <p style={{ margin: '0 0 4px 0', fontSize: 14, color: '#475569' }}>{m.description}</p>
-                <div style={{ fontSize: 13, color: '#64748b', display: 'flex', gap: 16 }}>
-                  <span><strong>Expected:</strong> {m.expectedDeliveryDate}</span>
-                  {m.actualDeliveryDate && <span><strong>Actual:</strong> {m.actualDeliveryDate}</span>}
+                </div>
+                <p className="text-sm text-slate-700 mb-4">{m.description || 'No description provided.'}</p>
+                <div className="flex flex-wrap gap-4">
+                  <div className="bg-slate-50 rounded-lg border border-slate-100 p-5 flex-1 min-w-[150px]">
+                    <p className="text-xs font-medium text-slate-500 mb-1">Expected</p>
+                    <p className="text-sm text-slate-700 font-medium">{m.expectedDeliveryDate || 'Not set'}</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg border border-slate-100 p-5 flex-1 min-w-[150px]">
+                    <p className="text-xs font-medium text-slate-500 mb-1">Actual</p>
+                    <p className="text-sm text-slate-700 font-medium">{m.actualDeliveryDate || 'Pending'}</p>
+                  </div>
                 </div>
               </div>
               
-              <div>
+              <div className="mt-4 md:mt-0 flex-shrink-0">
                 {canManage && (
-                  <select 
-                    className="wk-select" 
-                    value={m.status} 
-                    onChange={e => handleUpdateStatus(m.id, e.target.value)}
-                  >
-                    {MILESTONE_STATUS.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                  </select>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-medium text-slate-500 mb-1">Update Status</label>
+                    <select 
+                      className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white" 
+                      value={m.status || ''} 
+                      onChange={e => handleUpdateStatus(m.id, e.target.value)}
+                    >
+                      <option value="" disabled>Select status</option>
+                      {MILESTONE_STATUS.map(s => <option key={s} value={s}>{formatEnum(s)}</option>)}
+                    </select>
+                  </div>
                 )}
               </div>
             </div>

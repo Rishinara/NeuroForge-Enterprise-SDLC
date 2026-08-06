@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { IconDashboard, IconProjects, IconUsers, IconSettings, IconLogout, IconPlus } from './icons.jsx'
+import { LayoutDashboard, Folder, Users, Settings, LogOut, Plus, ChevronDown, Sparkles } from 'lucide-react'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import { projectApi } from '../api/projectApi.js'
 import Avatar from './Avatar.jsx'
-import './sidebar.css'
 
 function getNavSections(currentProjectId, role, hasProjects) {
   if (role === ROLES.SUPER_ADMIN) {
@@ -12,44 +11,44 @@ function getNavSections(currentProjectId, role, hasProjects) {
       {
         label: 'Platform Administration',
         items: [
-          { to: '/dashboard', label: 'Overview', icon: IconDashboard, roles: null },
-          { to: '/projects', label: 'Projects Portfolio', icon: IconProjects, roles: null },
-          { to: '/org/teams', label: 'Users & Org Admins', icon: IconUsers, roles: null },
-          { to: '/org/settings', label: 'Organizations & Settings', icon: IconSettings, roles: null },
-          { to: '/profile', label: 'Profile', icon: IconSettings, roles: null },
+          { to: '/dashboard', label: 'Overview', icon: LayoutDashboard, roles: null },
+          { to: '/projects', label: 'Projects Portfolio', icon: Folder, roles: null },
+          { to: '/org/teams', label: 'Users & Org Admins', icon: Users, roles: null },
+          { to: '/org/settings', label: 'Organizations & Settings', icon: Settings, roles: null },
+          { to: '/profile', label: 'Profile', icon: Settings, roles: null },
         ],
       },
     ]
   }
 
   const workspaceItems = [
-    { to: '/dashboard', label: 'Dashboard', icon: IconDashboard, roles: null },
-    { to: '/projects', label: 'Projects', icon: IconProjects, roles: null },
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: null },
+    { to: '/projects', label: 'Projects', icon: Folder, roles: null },
   ]
   
   if (hasProjects) {
     workspaceItems.push(
-      { to: `/projects/${currentProjectId}/specs`, label: 'Specs', icon: IconProjects, roles: null },
-      { to: `/projects/${currentProjectId}/backlog`, label: 'Backlog & Board', icon: IconDashboard, roles: null },
-      { to: `/projects/${currentProjectId}/bugs`, label: 'Bugs', icon: IconProjects, roles: null },
-      { to: `/projects/${currentProjectId}/test-cases`, label: 'Test Cases', icon: IconProjects, roles: null },
-      { to: `/projects/${currentProjectId}/milestones`, label: 'Milestones', icon: IconProjects, roles: null },
-      { to: `/projects/${currentProjectId}/approvals`, label: 'Approvals', icon: IconProjects, roles: null },
-      { to: `/projects/${currentProjectId}/reports`, label: 'Reports', icon: IconDashboard, roles: null }
+      { to: `/projects/${currentProjectId}/specs`, label: 'AI Spec Studio', icon: Sparkles, roles: null },
+      { to: `/projects/${currentProjectId}/backlog`, label: 'Backlog & Board', icon: LayoutDashboard, roles: null },
+      { to: `/projects/${currentProjectId}/bugs`, label: 'Bugs', icon: Folder, roles: null },
+      { to: `/projects/${currentProjectId}/test-cases`, label: 'Test Cases', icon: Folder, roles: null },
+      { to: `/projects/${currentProjectId}/milestones`, label: 'Milestones', icon: Folder, roles: null },
+      { to: `/projects/${currentProjectId}/approvals`, label: 'Approvals', icon: Folder, roles: null },
+      { to: `/projects/${currentProjectId}/reports`, label: 'Reports', icon: LayoutDashboard, roles: null }
     )
   }
 
   return [
     {
-      label: 'Workspace',
+      label: 'CORE',
       items: workspaceItems,
     },
     {
-      label: 'Organization',
+      label: 'ORGANIZATION',
       items: [
-        { to: '/org/teams', label: 'Teams & Members', icon: IconUsers, roles: [ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER] },
-        { to: '/org/invites', label: 'Pending Invites', icon: IconUsers, roles: [ROLES.ORG_ADMIN] },
-        { to: '/org/settings', label: 'Org Settings', icon: IconSettings, roles: [ROLES.ORG_ADMIN] },
+        { to: '/org/teams', label: 'Teams & Members', icon: Users, roles: [ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER] },
+        { to: '/org/invites', label: 'Pending Invites', icon: Users, roles: [ROLES.ORG_ADMIN] },
+        { to: '/org/settings', label: 'Org Settings', icon: Settings, roles: [ROLES.ORG_ADMIN] },
       ],
     },
   ]
@@ -114,8 +113,8 @@ export default function Sidebar() {
   const visibleSections = isUnassigned
     ? [
         {
-          label: 'Account Status',
-          items: [{ to: '/dashboard', label: 'Overview', icon: IconDashboard }],
+          label: 'ACCOUNT STATUS',
+          items: [{ to: '/dashboard', label: 'Overview', icon: LayoutDashboard }],
         },
       ]
     : getNavSections(currentProjectId, role, projects.length > 0)
@@ -128,82 +127,94 @@ export default function Sidebar() {
   const canCreateProject = !isUnassigned && [ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN].includes(role)
 
   return (
-    <aside className="sb-shell">
-      <div className="sb-brand">
-        <div className="sb-wordmark">
-          <span className="sb-wordmark-dot" />
-          NeuroForge
+    <aside className="w-64 flex-shrink-0 bg-sidebar-bg text-slate-300 flex flex-col h-screen fixed left-0 top-0 border-r border-slate-800">
+      {/* Brand Header */}
+      <div className="h-16 flex items-center px-6 border-b border-slate-800">
+        <div className="w-8 h-8 rounded-lg bg-accent text-white flex items-center justify-center font-bold mr-3 shadow-sm">
+          NF
         </div>
-        <div className="sb-org-pill" title={user?.orgName}>
-          {user?.orgName || 'Organization'}
+        <div className="flex flex-col">
+          <span className="font-bold text-white leading-tight">NeuroForge</span>
+          <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">SDLC Platform</span>
         </div>
       </div>
 
-      {canCreateProject && (
-        <NavLink to="/projects/new" className="sb-cta">
-          <IconPlus size={15} strokeWidth={2.5} />
-          New project
-        </NavLink>
-      )}
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-8 scrollbar-hide">
+        {canCreateProject && (
+          <NavLink 
+            to="/projects/new" 
+            className="flex items-center justify-center gap-2 bg-sidebar-hover text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors mb-6 border border-slate-700"
+          >
+            <Plus size={16} />
+            New Project
+          </NavLink>
+        )}
 
-      <nav className="sb-nav">
         {visibleSections.map((section) => (
-          <div key={section.label} className="sb-nav-section">
-            {section.label === 'Workspace' && projects.length > 0 ? (
-              <div style={{ marginBottom: 8, padding: '0 12px' }}>
-                <select
-                  value={currentProjectId || ''}
-                  onChange={handleProjectSelect}
-                  style={{
-                    width: '100%',
-                    padding: '6px 8px',
-                    borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    background: '#f1f5f9',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: '#0f172a',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+          <div key={section.label}>
+            {section.label === 'CORE' && projects.length > 0 ? (
+              <div className="mb-3">
+                <div className="relative">
+                  <select
+                    value={currentProjectId || ''}
+                    onChange={handleProjectSelect}
+                    className="w-full appearance-none bg-sidebar-hover text-white text-sm py-2 pl-3 pr-8 rounded-lg border border-slate-700 focus:outline-none focus:border-accent cursor-pointer"
+                  >
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-2.5 text-slate-400 pointer-events-none" size={16} />
+                </div>
               </div>
             ) : (
-              <p className="sb-nav-heading">{section.label}</p>
+              <p className="text-xs font-semibold text-slate-500 tracking-widest uppercase mb-3 px-2">
+                {section.label}
+              </p>
             )}
-            {section.items.map((item) => {
-              const Icon = item.icon
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.to === '/dashboard'}
-                  className={({ isActive }) => `sb-nav-item ${isActive ? 'sb-nav-item-active' : ''}`}
-                >
-                  <Icon size={16} strokeWidth={2} />
-                  {item.label}
-                </NavLink>
-              )
-            })}
+            
+            <div className="space-y-1">
+              {section.items.map((item) => {
+                const Icon = item.icon
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === '/dashboard'}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group ${
+                        isActive
+                          ? 'bg-sidebar-active text-white relative'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-sidebar-hover/50'
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {isActive && <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-accent rounded-r-full" />}
+                        <Icon size={18} className={isActive ? 'text-accent' : 'text-slate-500 group-hover:text-slate-400'} />
+                        {item.label}
+                      </>
+                    )}
+                  </NavLink>
+                )
+              })}
+            </div>
           </div>
         ))}
       </nav>
 
-      <div className="sb-footer">
-        <div className="sb-user-card">
-          <Avatar name={user?.fullName || '?'} size={34} />
-          <div className="sb-user-info">
-            <div className="sb-user-name">{user?.fullName}</div>
-            <div className="sb-user-role">{role?.replaceAll('_', ' ')}</div>
+      {/* User Footer */}
+      <div className="p-4 border-t border-slate-800">
+        <div className="flex items-center gap-3 bg-sidebar-hover/30 p-2 rounded-xl">
+          <Avatar name={user?.fullName || '?'} size={36} className="rounded-full border border-slate-700" />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold text-white truncate">{user?.fullName || 'Guest'}</div>
+            <div className="text-xs text-slate-400 truncate">{role?.replaceAll('_', ' ')}</div>
           </div>
-          <button className="sb-logout-icon" onClick={logout} title="Log out" aria-label="Log out">
-            <IconLogout size={15} />
-          </button>
         </div>
       </div>
     </aside>

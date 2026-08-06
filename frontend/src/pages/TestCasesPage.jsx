@@ -6,7 +6,14 @@ import { api } from '../api/client.js'
 import { extractErrorMessage } from '../api/client.js'
 
 const TC_STATUS = ['PENDING', 'PASSED', 'FAILED', 'BLOCKED']
-const STATUS_COLORS = { PENDING: '#cbd5e1', PASSED: '#10b981', FAILED: '#ef4444', BLOCKED: '#f59e0b' }
+const STATUS_COLORS = { 
+  PENDING: 'bg-slate-100 text-slate-700 border border-slate-200', 
+  PASSED: 'bg-emerald-50 text-emerald-700 border border-emerald-200', 
+  FAILED: 'bg-red-50 text-red-700 border border-red-200', 
+  BLOCKED: 'bg-amber-50 text-amber-700 border border-amber-200' 
+}
+
+const formatEnum = (val) => val ? val.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown';
 
 export default function TestCasesPage() {
   const { projectId } = useParams()
@@ -56,62 +63,103 @@ export default function TestCasesPage() {
     }
   }
 
-  if (loading) return <div style={{ padding: 24 }}>Loading test cases...</div>
+  if (loading) return <div className="p-6 text-slate-700">Loading test cases...</div>
 
   return (
-    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
-      <div className="wk-page-header">
-        <h1 className="wk-page-title">Test Execution</h1>
-        {role !== ROLES.DEVELOPER && role !== ROLES.CLIENT && role !== ROLES.QA_TESTER && (
-          <button className="wk-btn wk-btn-primary" onClick={() => setNewTcOpen(true)}>
-            Add Test Case
-          </button>
-        )}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-slate-900">Test Execution</h1>
+        <div className="flex items-center justify-end gap-3">
+          {role !== ROLES.DEVELOPER && role !== ROLES.CLIENT && role !== ROLES.QA_TESTER && (
+            <button 
+              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm" 
+              onClick={() => setNewTcOpen(true)}
+            >
+              Add Test Case
+            </button>
+          )}
+        </div>
       </div>
 
-      {error && <p className="wk-alert wk-alert-error" style={{ marginBottom: 20 }}>{error}</p>}
+      {error && (
+        <div className="p-4 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm">
+          {error}
+        </div>
+      )}
 
       {newTcOpen && (
-        <div className="wk-card" style={{ marginBottom: 24 }}>
-          <h3>Add New Test Case</h3>
-          <form onSubmit={handleCreateTc} style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-            <input className="wk-input" placeholder="Title" value={newTc.title} onChange={e => setNewTc({ ...newTc, title: e.target.value })} required />
-            <textarea className="wk-textarea" placeholder="Description / Steps" value={newTc.description} onChange={e => setNewTc({ ...newTc, description: e.target.value })} />
-            <textarea className="wk-textarea" placeholder="Expected Result" value={newTc.expectedResult} onChange={e => setNewTc({ ...newTc, expectedResult: e.target.value })} />
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button type="submit" className="wk-btn wk-btn-primary">Save</button>
-              <button type="button" className="wk-btn wk-btn-secondary" onClick={() => setNewTcOpen(false)}>Cancel</button>
+        <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">Add New Test Case</h3>
+          <form onSubmit={handleCreateTc} className="flex flex-col gap-4">
+            <input 
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm" 
+              placeholder="Title" 
+              value={newTc.title} 
+              onChange={e => setNewTc({ ...newTc, title: e.target.value })} 
+              required 
+            />
+            <textarea 
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm min-h-[100px]" 
+              placeholder="Description / Steps" 
+              value={newTc.description} 
+              onChange={e => setNewTc({ ...newTc, description: e.target.value })} 
+            />
+            <textarea 
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm min-h-[100px]" 
+              placeholder="Expected Result" 
+              value={newTc.expectedResult} 
+              onChange={e => setNewTc({ ...newTc, expectedResult: e.target.value })} 
+            />
+            <div className="flex gap-3 pt-2">
+              <button type="submit" className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+                Save
+              </button>
+              <button type="button" className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors" onClick={() => setNewTcOpen(false)}>
+                Cancel
+              </button>
             </div>
           </form>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: 16 }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {testCases.length === 0 ? (
-          <p className="wk-empty" style={{ gridColumn: '1 / -1' }}>No test cases created yet.</p>
+          <div className="col-span-full flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
+            <svg className="w-10 h-10 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <p className="text-sm font-medium text-slate-600">No test cases found</p>
+            <p className="text-xs text-slate-400 mt-1">Add a new test case to get started.</p>
+          </div>
         ) : (
           testCases.map(tc => (
-            <div key={tc.id} className="wk-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <h4 style={{ margin: 0, fontSize: 15, color: '#1e293b' }}>{tc.title}</h4>
-                <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 8px', borderRadius: 999, background: STATUS_COLORS[tc.status], color: '#fff' }}>
-                  {tc.status}
+            <div key={tc.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4 hover:shadow-md transition-shadow duration-200">
+              <div className="flex justify-between items-start gap-3">
+                <h4 className="text-base font-semibold text-slate-900 leading-tight">{tc.title || 'Untitled Test Case'}</h4>
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${STATUS_COLORS[tc.status] || 'bg-slate-100 text-slate-600'}`}>
+                  {formatEnum(tc.status)}
                 </span>
               </div>
-              <p style={{ margin: 0, fontSize: 13.5, color: '#475569', flex: 1 }}>{tc.description}</p>
-              <div style={{ background: '#f8fafc', padding: 8, borderRadius: 6, fontSize: 13, color: '#334155' }}>
-                <strong>Expected:</strong> {tc.expectedResult || 'N/A'}
+              <p className="text-sm text-slate-700 flex-1 whitespace-pre-wrap">{tc.description || 'No description provided.'}</p>
+              
+              <div className="bg-slate-50 rounded-lg border border-slate-100 p-5 mt-2">
+                <span className="text-xs font-medium text-slate-500 block mb-1">Expected Result</span>
+                <p className="text-sm text-slate-700">{tc.expectedResult || 'N/A'}</p>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                <span style={{ fontSize: 12, color: '#64748b' }}>Assigned: {tc.assignedTesterName || 'Unassigned'}</span>
+
+              <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-100">
+                <div className="flex flex-col">
+                  <span className="text-xs font-medium text-slate-500">Assigned To</span>
+                  <span className="text-sm text-slate-700">{tc.assignedTesterName || 'Unassigned'}</span>
+                </div>
+                
                 {role !== ROLES.DEVELOPER && role !== ROLES.CLIENT && (
                   <select 
-                    className="wk-select" 
-                    value={tc.status} 
+                    className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm" 
+                    value={tc.status || 'PENDING'} 
                     onChange={e => handleUpdateStatus(tc.id, e.target.value)}
-                    style={{ padding: '4px 8px', fontSize: 12, width: 'auto' }}
                   >
-                    {TC_STATUS.map(s => <option key={s} value={s}>{s}</option>)}
+                    {TC_STATUS.map(s => <option key={s} value={s}>{formatEnum(s)}</option>)}
                   </select>
                 )}
               </div>

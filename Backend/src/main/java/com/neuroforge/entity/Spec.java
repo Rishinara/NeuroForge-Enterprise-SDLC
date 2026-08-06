@@ -70,6 +70,9 @@ public class Spec {
     @Builder.Default
     private List<String> nonFunctionalRequirements = new ArrayList<>();
 
+    @Column(name = "review_note", length = 3000)
+    private String reviewNote;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
