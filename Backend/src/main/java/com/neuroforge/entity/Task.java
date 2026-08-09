@@ -30,6 +30,9 @@ public class Task {
     @Column(length = 3000)
     private String description;
 
+    @Column(name = "category")
+    private String category;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TaskStatus status = TaskStatus.TODO;

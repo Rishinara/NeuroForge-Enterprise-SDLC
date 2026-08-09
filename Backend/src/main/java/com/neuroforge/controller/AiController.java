@@ -21,9 +21,11 @@ import java.util.Map;
 public class AiController {
 
     private final GroqService groqService;
+    private final com.neuroforge.service.TriageService triageService;
 
-    public AiController(GroqService groqService) {
+    public AiController(GroqService groqService, com.neuroforge.service.TriageService triageService) {
         this.groqService = groqService;
+        this.triageService = triageService;
     }
 
     // ---------------------------------------
@@ -147,5 +149,38 @@ public class AiController {
         );
 
         return new RiskAnalysisResponse(response);
+    }
+
+    // ---------------------------------------
+    // AI Ticket Triage & Smart Assignment (Module 6)
+    // ---------------------------------------
+    @Operation(summary = "Trigger AI Ticket Triage")
+    @PostMapping("/triage/{taskId}")
+    public org.springframework.http.ResponseEntity<com.neuroforge.dto.ai.AiTriageResponse> triggerTriage(@PathVariable Long taskId) {
+        com.neuroforge.dto.ai.AiTriageResponse response = triageService.autoTriageTask(taskId);
+        return org.springframework.http.ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Get AI Triage Suggestion for Task")
+    @GetMapping("/triage/{taskId}")
+    public org.springframework.http.ResponseEntity<com.neuroforge.dto.ai.AiTriageResponse> getTriageSuggestion(@PathVariable Long taskId) {
+        com.neuroforge.dto.ai.AiTriageResponse response = triageService.getTriageSuggestion(taskId);
+        return org.springframework.http.ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Accept AI Triage Suggestion (One-Click)")
+    @PostMapping("/triage/{taskId}/accept")
+    public org.springframework.http.ResponseEntity<com.neuroforge.entity.Task> acceptTriage(@PathVariable Long taskId) {
+        com.neuroforge.entity.Task updatedTask = triageService.acceptTriageSuggestion(taskId);
+        return org.springframework.http.ResponseEntity.ok(updatedTask);
+    }
+
+    @Operation(summary = "Override AI Triage Suggestion")
+    @PostMapping("/triage/{taskId}/override")
+    public org.springframework.http.ResponseEntity<com.neuroforge.entity.Task> overrideTriage(
+            @PathVariable Long taskId,
+            @RequestBody com.neuroforge.dto.ai.AiTriageOverrideRequest request) {
+        com.neuroforge.entity.Task updatedTask = triageService.overrideTriageSuggestion(taskId, request);
+        return org.springframework.http.ResponseEntity.ok(updatedTask);
     }
 }

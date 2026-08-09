@@ -28,6 +28,7 @@ public class TaskServiceImpl implements TaskService {
     private final SprintRepository sprintRepository;
     private final UserRepository userRepository;
     private final TaskStatusHistoryRepository taskStatusHistoryRepository;
+    private final com.neuroforge.service.TriageService triageService;
 
     private TaskResponse mapToResponse(Task task) {
 
@@ -156,6 +157,12 @@ public class TaskServiceImpl implements TaskService {
         task.setAssignee(assignee);
 
         Task savedTask = taskRepository.save(task);
+
+        try {
+            triageService.autoTriageTaskAsync(savedTask.getId());
+        } catch (Exception e) {
+            // Ignore async triage dispatch failures
+        }
 
         Task loadedTask = taskRepository.findTaskById(savedTask.getId())
                 .orElseThrow(() ->
