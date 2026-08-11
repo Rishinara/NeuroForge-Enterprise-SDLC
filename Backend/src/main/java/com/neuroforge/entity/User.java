@@ -52,6 +52,11 @@ public class User implements UserDetails {
 @JoinColumn(name = "org_id")
     @com.fasterxml.jackson.annotation.JsonIgnore    private Organization organization;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "requested_org_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private Organization requestedOrganization;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "team_members",
@@ -85,6 +90,9 @@ public class User implements UserDetails {
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public Organization getOrganization() { return organization; }
     public void setOrganization(Organization organization) { this.organization = organization; }
+
+    public Organization getRequestedOrganization() { return requestedOrganization; }
+    public void setRequestedOrganization(Organization requestedOrganization) { this.requestedOrganization = requestedOrganization; }
     public List<Team> getTeams() { return teams; }
     public void setTeams(List<Team> teams) { this.teams = teams; }
 

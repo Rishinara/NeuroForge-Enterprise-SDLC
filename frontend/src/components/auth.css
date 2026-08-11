@@ -366,3 +366,37 @@
     grid-template-columns: 1fr;
   }
 }
+
+.nf-password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.nf-password-wrapper .nf-input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.nf-password-toggle {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--nf-slate);
+  transition: color 0.15s;
+}
+
+.nf-password-toggle:hover {
+  color: var(--nf-ink);
+}
+
+.nf-password-toggle svg {
+  width: 18px;
+  height: 18px;
+}

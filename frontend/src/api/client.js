@@ -12,6 +12,15 @@ api.interceptors.request.use((config) => {
   
   const orgId = localStorage.getItem('neuroforge_org_id')
   if (orgId) config.headers['X-Org-Id'] = orgId
+
+  const method = (config.method || 'get').toLowerCase()
+  if (method === 'get') {
+    config.params = {
+      ...config.params,
+      _t: new Date().getTime()
+    }
+  }
+  
   return config
 })
 

@@ -31,6 +31,11 @@ export const orgApi = {
   // Activities
   listActivities: (orgId) => api.get(`/orgs/${orgId}/activities`),
 
+  // Join Requests
+  getJoinRequests: (orgId) => api.get(`/orgs/${orgId}/join-requests`),
+  approveJoinRequest: (orgId, userId) => api.post(`/orgs/${orgId}/join-requests/${userId}/approve`),
+  rejectJoinRequest: (orgId, userId) => api.post(`/orgs/${orgId}/join-requests/${userId}/reject`),
+
   // Org settings
   getOrgSettings: (orgId) => api.get(`/orgs/${orgId}/settings`),
   updateOrgSettings: (orgId, payload) => api.put(`/orgs/${orgId}/settings`, payload),

@@ -35,6 +35,8 @@ public class SignupRequest {
     )
     private String password;
 
+    private Long orgId;
+
     public SignupRequest() {}
 
     public String getFullName() { return fullName; }
@@ -51,4 +53,7 @@ public class SignupRequest {
     public void setRole(Role role) { this.role = role; }
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+    
+    public Long getOrgId() { return orgId; }
+    public void setOrgId(Long orgId) { this.orgId = orgId; }
 }

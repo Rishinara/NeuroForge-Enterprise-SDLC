@@ -276,4 +276,38 @@ public class GroqService {
 
         return askGroq(prompt);
     }
+
+    // -------------------------------------------------
+    // AI Specification Generation
+    // -------------------------------------------------
+
+    public String generateSpecJson(String title, String description, String tone, String complexity) {
+        String prompt = """
+                You are an expert Technical Business Analyst.
+                Generate a software specification for the following feature.
+
+                Title: %s
+                Description: %s
+                Tone: %s
+                Complexity: %s
+
+                Return ONLY a valid JSON object with EXACTLY the following structure (no markdown tags, just raw JSON):
+                {
+                  "userStories": [
+                    {
+                      "asA": "string",
+                      "iWant": "string",
+                      "soThat": "string",
+                      "criteria": ["string", "string"]
+                    }
+                  ],
+                  "functionalRequirements": ["string", "string"],
+                  "nonFunctionalRequirements": ["string", "string"]
+                }
+                
+                Adjust the amount of detail and edge cases based on the Complexity, and the writing style based on the Tone.
+                """.formatted(title, description, tone != null ? tone : "TECHNICAL", complexity != null ? complexity : "MODERATE");
+
+        return askGroq(prompt);
+    }
 }

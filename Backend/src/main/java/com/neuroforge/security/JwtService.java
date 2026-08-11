@@ -56,9 +56,9 @@ public class JwtService {
             getClaims(token);
             return true;
         } catch (ExpiredJwtException e) {
-            log.debug("JWT token expired", e);
+            log.debug("JWT token expired: {}", e.getMessage());
         } catch (JwtException e) {
-            log.debug("JWT token invalid: {}", e.getClass().getSimpleName(), e);
+            log.debug("JWT token invalid: {} - {}", e.getClass().getSimpleName(), e.getMessage());
         }
         return false;
     }

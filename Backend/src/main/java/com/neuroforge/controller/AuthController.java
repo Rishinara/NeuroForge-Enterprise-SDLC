@@ -20,18 +20,28 @@ public class AuthController {
     private final AuthenticationService authenticationService;
     private final RefreshTokenService refreshTokenService;
     private final JwtService jwtService;
+    private final com.neuroforge.repository.OrganizationRepository organizationRepository;
 
     public AuthController(UserService userService, 
                           AuthenticationService authenticationService,
                           RefreshTokenService refreshTokenService, 
-                          JwtService jwtService) {
+                          JwtService jwtService,
+                          com.neuroforge.repository.OrganizationRepository organizationRepository) {
         this.userService = userService;
         this.authenticationService = authenticationService;
         this.refreshTokenService = refreshTokenService;
         this.jwtService = jwtService;
+        this.organizationRepository = organizationRepository;
     }
 
     // ---- V2 API Endpoints ----
+    
+    @GetMapping("/api/auth/organizations")
+    public java.util.List<com.neuroforge.dto.organization.PublicOrgResponse> getPublicOrganizations() {
+        return organizationRepository.findAll().stream()
+                .map(org -> new com.neuroforge.dto.organization.PublicOrgResponse(org.getId(), org.getName()))
+                .toList();
+    }
 
     @PostMapping("/api/auth/signup")
     public AuthResponse signupV2(@Valid @RequestBody SignupRequest request) {

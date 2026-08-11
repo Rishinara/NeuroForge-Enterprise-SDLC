@@ -50,9 +50,10 @@ export function AuthProvider({ children }) {
 
     try {
       const res = await api.get('/auth/me')
-      setUser(res.data)
-      if (res.data?.orgId) {
-        localStorage.setItem('neuroforge_org_id', res.data.orgId)
+      const userData = res.data?.user || res.data
+      setUser(userData)
+      if (userData?.orgId) {
+        localStorage.setItem('neuroforge_org_id', userData.orgId)
       } else {
         localStorage.removeItem('neuroforge_org_id')
       }
@@ -81,8 +82,8 @@ export function AuthProvider({ children }) {
   )
 
   const signup = useCallback(
-    async ({ fullName, email, phone, role, password }) => {
-      const res = await api.post('/auth/signup', { fullName, email, phone, role, password })
+    async ({ fullName, email, phone, role, password, orgId }) => {
+      const res = await api.post('/auth/signup', { fullName, email, phone, role, password, orgId })
       setToken(res.data.token)
       setUser(res.data.user)
       return res.data.user

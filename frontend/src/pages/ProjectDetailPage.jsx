@@ -8,7 +8,6 @@ import HealthBadge from '../components/HealthBadge.jsx'
 import Tabs from '../components/Tabs.jsx'
 import EditProjectModal from '../components/EditProjectModal.jsx'
 import Can from '../components/Can.jsx'
-import './workspace.css'
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
@@ -69,14 +68,27 @@ export default function ProjectDetailPage() {
   }, [load])
 
   if (loading) {
-    return <div className="wk-page"><p className="wk-empty">Loading project…</p></div>
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col items-center justify-center min-h-[400px]">
+        <svg className="w-10 h-10 text-slate-300 mb-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p className="text-sm font-medium text-slate-500">Loading project details...</p>
+      </div>
+    )
   }
 
   if (!project) {
     return (
-      <div className="wk-page">
-        <Link to="/projects" style={{ fontSize: 12.5, color: 'var(--wk-slate)', textDecoration: 'none' }}>← Back to projects</Link>
-        <p className="wk-alert wk-alert-error" style={{ marginTop: 16 }}>{error || 'Project not found or access denied.'}</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        <Link to="/projects" className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm mb-6 w-fit">
+          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+          Back to projects
+        </Link>
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+          <p className="text-sm text-red-600">{error || 'Project not found or access denied.'}</p>
+        </div>
       </div>
     )
   }
@@ -92,34 +104,58 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="wk-page">
-      <Link to="/projects" style={{ fontSize: 12.5, color: 'var(--wk-slate)', textDecoration: 'none' }}>← Back to projects</Link>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8">
+      <div>
+        <Link to="/projects" className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm mb-6 w-fit">
+          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+          Back to projects
+        </Link>
 
-      {error && (
-        <p className="wk-alert wk-alert-error" style={{ marginTop: 12 }}>
-          {error}
-        </p>
-      )}
-
-      <div className="wk-page-header" style={{ marginTop: 12 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <h1 className="wk-page-title">{project.name}</h1>
-            <HealthBadge status={project.health} />
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <p className="text-sm text-red-600">{error}</p>
           </div>
-          <p className="wk-page-subtitle">{project.methodology === 'AGILE' ? 'Agile' : 'Waterfall'} · {project.startDate} → {project.endDate}</p>
+        )}
+
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{project.name}</h1>
+              <HealthBadge status={project.health} />
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
+              <span className="px-2.5 py-1 bg-slate-100 rounded-md border border-slate-200 text-xs font-bold uppercase tracking-wider">
+                {project.methodology === 'AGILE' ? 'Agile' : 'Waterfall'}
+              </span>
+              <span className="text-slate-300">•</span>
+              <span>{project.startDate} <span className="text-slate-400 mx-1">→</span> {project.endDate}</span>
+            </div>
+          </div>
+          
+          <Can roles={[ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]}>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link 
+                to={`/projects/${projectId}/specs`}
+                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm inline-flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                Generate AI Spec
+              </Link>
+              <button 
+                className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors shadow-sm"
+                onClick={() => setEditOpen(true)}
+              >
+                Edit project
+              </button>
+              <button 
+                className="px-4 py-2 bg-white border border-red-200 hover:bg-red-50 text-red-600 hover:text-red-700 text-sm font-medium rounded-lg transition-colors shadow-sm"
+                onClick={handleDelete}
+              >
+                Delete
+              </button>
+            </div>
+          </Can>
         </div>
-        
-        <Can roles={[ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN]}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="wk-btn wk-btn-secondary" onClick={() => setEditOpen(true)}>
-              Edit project
-            </button>
-            <button className="wk-btn" style={{ color: 'var(--wk-error)' }} onClick={handleDelete}>
-              Delete
-            </button>
-          </div>
-        </Can>
       </div>
 
       <EditProjectModal 
@@ -140,40 +176,57 @@ export default function ProjectDetailPage() {
       />
 
       {tab === 'overview' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="wk-card">
-            <h3 style={{ fontSize: 16, marginBottom: 12 }}>Description</h3>
-            <p style={{ fontSize: 13.5, lineHeight: 1.7, color: '#334155', marginBottom: 16 }}>{project.description}</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {(project.techStack || []).map((tag) => (
-                <span key={tag} style={{ background: '#eef2ff', color: 'var(--wk-accent)', fontSize: 11.5, fontWeight: 600, padding: '4px 10px', borderRadius: 999 }}>
-                  {tag}
-                </span>
-              ))}
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 shadow-sm h-full flex flex-col">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">Project Description</h3>
+            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap mb-6 flex-grow">
+              {project.description || 'No description provided.'}
+            </p>
+            {project.techStack && project.techStack.length > 0 && (
+              <div className="mt-auto pt-4 border-t border-slate-100">
+                <h4 className="text-sm font-bold text-slate-900 mb-3">Technologies</h4>
+                <div className="flex flex-wrap gap-2">
+                  {project.techStack.map((tag) => (
+                    <span key={tag} className="px-3 py-1 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-full">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           
           {progress && (
-            <div className="wk-card">
-              <h3 style={{ fontSize: 16, marginBottom: 12 }}>Project Progress</h3>
-              <div style={{ display: 'flex', gap: 24, marginBottom: 16 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: '#475569' }}>Task Completion</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{progress.completedTasks} / {progress.totalTasks} ({progress.taskCompletionPercentage}%)</span>
+            <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 shadow-sm h-full flex flex-col justify-center">
+              <h3 className="text-lg font-bold text-slate-900 mb-8">Project Progress</h3>
+              <div className="flex flex-col gap-8">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-semibold text-slate-600">Task Completion</span>
+                    <span className="text-sm font-bold text-slate-900">
+                      {progress.completedTasks} / {progress.totalTasks} <span className="text-slate-400 font-medium ml-1">({progress.taskCompletionPercentage}%)</span>
+                    </span>
                   </div>
-                  <div style={{ width: '100%', height: 8, background: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ width: `${progress.taskCompletionPercentage}%`, height: '100%', background: 'var(--wk-accent)', borderRadius: 4 }}></div>
+                  <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-orange-500 rounded-full transition-all duration-500" 
+                      style={{ width: `${progress.taskCompletionPercentage}%` }}
+                    />
                   </div>
                 </div>
                 
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: '#475569' }}>Story Points Completion</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{progress.completedStoryPoints} / {progress.totalStoryPoints} ({progress.pointCompletionPercentage}%)</span>
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-semibold text-slate-600">Story Points</span>
+                    <span className="text-sm font-bold text-slate-900">
+                      {progress.completedStoryPoints} / {progress.totalStoryPoints} <span className="text-slate-400 font-medium ml-1">({progress.pointCompletionPercentage}%)</span>
+                    </span>
                   </div>
-                  <div style={{ width: '100%', height: 8, background: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ width: `${progress.pointCompletionPercentage}%`, height: '100%', background: '#10b981', borderRadius: 4 }}></div>
+                  <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-emerald-500 rounded-full transition-all duration-500" 
+                      style={{ width: `${progress.pointCompletionPercentage}%` }}
+                    />
                   </div>
                 </div>
               </div>
@@ -183,71 +236,100 @@ export default function ProjectDetailPage() {
       )}
 
       {tab === 'milestones' && (
-        <div className="wk-card">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           {milestones.length === 0 ? (
-            <p className="wk-empty">No milestones yet.</p>
+            <div className="p-12 text-center">
+              <p className="text-sm font-medium text-slate-500">No milestones established for this project.</p>
+            </div>
           ) : (
-            <table className="wk-table">
-              <thead>
-                <tr><th>Milestone</th><th>Target date</th><th>Status</th></tr>
-              </thead>
-              <tbody>
-                {milestones.map((m) => (
-                  <tr key={m.id}>
-                    <td>{m.name}</td>
-                    <td>{m.date}</td>
-                    <td><HealthBadge status={m.status} /></td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Milestone Name</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Target Date</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {milestones.map((m) => (
+                    <tr key={m.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-semibold text-slate-900">{m.name}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600">{m.date}</td>
+                      <td className="px-6 py-4"><HealthBadge status={m.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
 
       {tab === 'team' && (
-        <div className="wk-card">
-          <h3 style={{ fontSize: 16, marginBottom: 12 }}>Assigned Teams</h3>
-          {!project.assignedTeams || project.assignedTeams.length === 0 ? (
-            <p className="wk-empty" style={{ marginBottom: 20 }}>No teams assigned.</p>
-          ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
-              {project.assignedTeams.map(team => (
-                <div 
-                  key={team.id} 
-                  style={{ 
-                    padding: '8px 12px', 
-                    background: '#f1f5f9', 
-                    borderRadius: 6, 
-                    color: '#334155',
-                    fontSize: 13,
-                    fontWeight: 500
-                  }}
-                >
-                  🏢 {team.name}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <h3 style={{ fontSize: 16, marginBottom: 12 }}>Assigned Members</h3>
-          {!project.team || project.team.length === 0 ? (
-            <p className="wk-empty">No members assigned to this project yet.</p>
-          ) : (
-            <table className="wk-table">
-              <thead>
-                <tr><th>Name</th><th>Role</th></tr>
-              </thead>
-              <tbody>
-                {project.team.map((m) => (
-                  <tr key={m.id}>
-                    <td>{m.fullName}</td>
-                    <td>{m.projectRole?.replaceAll('_', ' ')}</td>
-                  </tr>
+        <div className="grid grid-cols-1 gap-6">
+          <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">Assigned Teams</h3>
+            {!project.assignedTeams || project.assignedTeams.length === 0 ? (
+              <p className="text-sm text-slate-500 italic">No external teams assigned.</p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {project.assignedTeams.map(team => (
+                  <div 
+                    key={team.id} 
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 shadow-sm"
+                  >
+                    <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                    {team.name}
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          )}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-6 sm:px-8 py-5 border-b border-slate-200 bg-slate-50/50">
+              <h3 className="text-lg font-bold text-slate-900">Project Members</h3>
+            </div>
+            {!project.team || project.team.length === 0 ? (
+              <div className="p-8 text-center">
+                <p className="text-sm text-slate-500">No members assigned to this project yet.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-6 sm:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-2/3">Member</th>
+                      <th className="px-6 sm:px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-1/3">Project Role</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {project.team.map((m) => (
+                      <tr key={m.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 sm:px-8 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs">
+                              {m.fullName.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-slate-900">{m.fullName}</div>
+                              <div className="text-xs text-slate-500">{m.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 sm:px-8 py-4">
+                          <span className="inline-block px-2.5 py-1 bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold uppercase tracking-wider rounded-md">
+                            {m.projectRole?.replaceAll('_', ' ')}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

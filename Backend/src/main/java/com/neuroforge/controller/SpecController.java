@@ -25,7 +25,7 @@ public class SpecController {
     private final SpecService specService;
 
     @GetMapping("/projects/{projectId}/specs")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','DEVELOPER','QA_TESTER','CLIENT')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','DEVELOPER','QA_TESTER','CLIENT','USER','ROLE_USER')")
     public ResponseEntity<List<SpecSummaryResponse>> getSpecsByProject(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -33,7 +33,7 @@ public class SpecController {
     }
 
     @PostMapping("/projects/{projectId}/specs")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','USER','ROLE_USER')")
     public ResponseEntity<SpecResponse> createSpec(
             @PathVariable Long projectId,
             @RequestBody SpecRequest request,
@@ -42,7 +42,7 @@ public class SpecController {
     }
 
     @GetMapping("/specs/{specId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','DEVELOPER','QA_TESTER','CLIENT')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','DEVELOPER','QA_TESTER','CLIENT','USER','ROLE_USER')")
     public ResponseEntity<SpecResponse> getSpecById(
             @PathVariable Long specId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -50,7 +50,7 @@ public class SpecController {
     }
 
     @PutMapping("/specs/{specId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','USER','ROLE_USER')")
     public ResponseEntity<SpecResponse> updateSpec(
             @PathVariable Long specId,
             @RequestBody SpecRequest request,
@@ -59,7 +59,7 @@ public class SpecController {
     }
 
     @GetMapping("/specs/{specId}/versions")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','DEVELOPER','QA_TESTER','CLIENT')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','DEVELOPER','QA_TESTER','CLIENT','USER','ROLE_USER')")
     public ResponseEntity<List<SpecVersionDTO>> getSpecVersions(
             @PathVariable Long specId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -67,7 +67,7 @@ public class SpecController {
     }
 
     @GetMapping("/specs/{specId}/versions/{version}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','DEVELOPER','QA_TESTER','CLIENT')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','DEVELOPER','QA_TESTER','CLIENT','USER','ROLE_USER')")
     public ResponseEntity<SpecResponse> getSpecByVersion(
             @PathVariable Long specId,
             @PathVariable Integer version,
@@ -76,7 +76,7 @@ public class SpecController {
     }
 
     @PostMapping("/specs/{specId}/submit")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','USER','ROLE_USER')")
     public ResponseEntity<SpecResponse> submitForReview(
             @PathVariable Long specId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -84,7 +84,7 @@ public class SpecController {
     }
 
     @PostMapping("/specs/{specId}/approve")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','CLIENT')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','CLIENT','USER','ROLE_USER')")
     public ResponseEntity<SpecResponse> approveSpec(
             @PathVariable Long specId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -92,7 +92,7 @@ public class SpecController {
     }
 
     @PostMapping("/specs/{specId}/request-changes")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','CLIENT')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','CLIENT','USER','ROLE_USER')")
     public ResponseEntity<SpecResponse> requestChanges(
             @PathVariable Long specId,
             @RequestBody Map<String, String> body,

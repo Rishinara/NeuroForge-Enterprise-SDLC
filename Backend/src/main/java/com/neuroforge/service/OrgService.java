@@ -9,6 +9,7 @@ import com.neuroforge.exception.DuplicateResourceException;
 import com.neuroforge.exception.InvalidRequestException;
 import com.neuroforge.exception.ResourceNotFoundException;
 import com.neuroforge.repository.*;
+import com.neuroforge.repository.ProjectRepository;
 import com.neuroforge.security.JwtService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,7 @@ public class OrgService {
     private final JwtService jwtService;
     private final EmailService emailService;
     private final ActivityService activityService;
+    private final ProjectRepository projectRepository;
 
     public OrgService(OrganizationRepository organizationRepository,
                       TeamRepository teamRepository,
@@ -38,7 +40,8 @@ public class OrgService {
                       InviteRepository inviteRepository,
                       JwtService jwtService,
                       EmailService emailService,
-                      ActivityService activityService) {
+                      ActivityService activityService,
+                      ProjectRepository projectRepository) {
         this.organizationRepository = organizationRepository;
         this.teamRepository = teamRepository;
         this.userRepository = userRepository;
@@ -46,6 +49,7 @@ public class OrgService {
         this.jwtService = jwtService;
         this.emailService = emailService;
         this.activityService = activityService;
+        this.projectRepository = projectRepository;
     }
 
 
@@ -69,12 +73,24 @@ public class OrgService {
         Organization org = organizationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
 
-        // Unlink users from this organization
+        // Unlink users from this organization and remove their org teams to clear many-to-many FK constraints
         List<User> orgUsers = userRepository.findByOrganizationId(id);
         for (User u : orgUsers) {
             u.setOrganization(null);
+            u.getTeams().removeIf(t -> t.getOrganization().getId().equals(id));
             userRepository.save(u);
         }
+
+        // Clear teams from projects to prevent FK constraint violations
+        List<Project> orgProjects = projectRepository.findByOrganizationIdOrderByCreatedAtDesc(id);
+        for (Project p : orgProjects) {
+            p.getAssignedTeams().clear();
+            projectRepository.save(p);
+        }
+
+        // Delete all invites as they might reference a team
+        List<Invite> invites = inviteRepository.findByOrganizationId(id);
+        inviteRepository.deleteAll(invites);
 
         // Delete teams belonging to this organization
         List<Team> teams = teamRepository.findByOrganizationId(id);
@@ -376,6 +392,51 @@ public class OrgService {
         user.setRole(Role.DEVELOPER);
         //remove from organization
         user.setOrganization(null);
+        userRepository.save(user);
+    }
+    
+    // ---- Join Requests ----
+
+    @Transactional(readOnly = true)
+    public List<MemberResponse> getJoinRequests(Long orgId, String loggedInEmail) {
+        validateOrganizationAccess(orgId, loggedInEmail);
+        return userRepository.findByRequestedOrganizationIdAndOrganizationIsNull(orgId)
+                .stream()
+                .map(u -> new MemberResponse(
+                        u.getId(),
+                        u.getFullName(),
+                        u.getEmail(),
+                        u.getPhoneNumber(),
+                        u.getRole(),
+                        u.isEnabled(),
+                        u.getCreatedAt(),
+                        List.of()
+                ))
+                .toList();
+    }
+
+    @Transactional
+    public void approveJoinRequest(Long orgId, Long userId, String loggedInEmail) {
+        validateOrganizationAccess(orgId, loggedInEmail);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (user.getRequestedOrganization() == null || !user.getRequestedOrganization().getId().equals(orgId)) {
+            throw new InvalidRequestException("Invalid request");
+        }
+        user.setOrganization(user.getRequestedOrganization());
+        user.setRequestedOrganization(null);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void rejectJoinRequest(Long orgId, Long userId, String loggedInEmail) {
+        validateOrganizationAccess(orgId, loggedInEmail);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (user.getRequestedOrganization() == null || !user.getRequestedOrganization().getId().equals(orgId)) {
+            throw new InvalidRequestException("Invalid request");
+        }
+        user.setRequestedOrganization(null);
         userRepository.save(user);
     }
 

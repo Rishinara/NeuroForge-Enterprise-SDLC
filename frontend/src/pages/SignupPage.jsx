@@ -1,8 +1,25 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
-import { extractErrorMessage } from '../api/client.js'
+import { extractErrorMessage, api } from '../api/client.js'
 import AuthLayout from '../components/AuthLayout.jsx'
+import { useEffect } from 'react'
+
+const EyeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+)
+
+const EyeOffIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+    <line x1="2" y1="2" x2="22" y2="22" />
+  </svg>
+)
 
 
 const ROLE_OPTIONS = [
@@ -43,6 +60,16 @@ export default function SignupPage() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
 
+  const [organizations, setOrganizations] = useState([])
+  const [loadingOrgs, setLoadingOrgs] = useState(true)
+
+  useEffect(() => {
+    api.get('/auth/organizations')
+      .then(res => setOrganizations(res.data))
+      .catch(err => console.error('Failed to load organizations', err))
+      .finally(() => setLoadingOrgs(false))
+  }, [])
+
   const [form, setForm] = useState({
     fullName: '',
     email: searchParams.get('email') || '',
@@ -50,9 +77,12 @@ export default function SignupPage() {
     role: '',
     password: '',
     confirmPassword: '',
+    orgId: '',
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const redirectTo = location.state?.from?.pathname || '/dashboard'
 
@@ -68,6 +98,9 @@ export default function SignupPage() {
     if (form.password.length < 8) return 'Password must be at least 8 characters.'
     if (!PASSWORD_PATTERN.test(form.password)) return 'Password must contain uppercase, lowercase, digit, and special character (@$!%*?&).'
     if (form.password !== form.confirmPassword) return 'Passwords do not match.'
+    if (form.role && form.role !== ROLES.SUPER_ADMIN && form.role !== ROLES.ORG_ADMIN && !form.orgId) {
+      return 'Please select an organization to join.'
+    }
     return ''
   }
 
@@ -88,6 +121,7 @@ export default function SignupPage() {
         phone: form.phone.trim(),
         role: form.role,
         password: form.password,
+        orgId: form.orgId ? Number(form.orgId) : null,
       })
       navigate(redirectTo, { replace: true })
     } catch (err) {
@@ -175,35 +209,72 @@ export default function SignupPage() {
           {selectedRole && <p className="nf-role-hint">{selectedRole.hint}</p>}
         </div>
 
+        {form.role && form.role !== ROLES.SUPER_ADMIN && form.role !== ROLES.ORG_ADMIN && (
+          <div className="nf-field">
+            <label className="nf-label" htmlFor="orgId">
+              Organization *
+            </label>
+            <select id="orgId" className="nf-select" value={form.orgId} onChange={update('orgId')} disabled={loadingOrgs}>
+              <option value="">
+                {loadingOrgs ? 'Loading organizations...' : 'Select an organization to request to join'}
+              </option>
+              {organizations.map(org => (
+                <option key={org.id} value={org.id}>{org.name}</option>
+              ))}
+            </select>
+            <p className="nf-role-hint">An approval request will be sent to the Org Admin.</p>
+          </div>
+        )}
+
         <div className="nf-row-2">
           <div className="nf-field">
             <label className="nf-label" htmlFor="password">
               Password
             </label>
-            <input
-              id="password"
-              type="password"
-              className="nf-input"
-              autoComplete="new-password"
-              placeholder="At least 8 characters"
-              value={form.password}
-              onChange={update('password')}
-            />
+            <div className="nf-password-wrapper">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                className="nf-input"
+                autoComplete="new-password"
+                placeholder="At least 8 characters"
+                value={form.password}
+                onChange={update('password')}
+              />
+              <button
+                type="button"
+                className="nf-password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeIcon /> : <EyeOffIcon />}
+              </button>
+            </div>
           </div>
 
           <div className="nf-field">
             <label className="nf-label" htmlFor="confirmPassword">
               Confirm password
             </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              className="nf-input"
-              autoComplete="new-password"
-              placeholder="Re-enter password"
-              value={form.confirmPassword}
-              onChange={update('confirmPassword')}
-            />
+            <div className="nf-password-wrapper">
+              <input
+                id="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                className="nf-input"
+                autoComplete="new-password"
+                placeholder="Re-enter password"
+                value={form.confirmPassword}
+                onChange={update('confirmPassword')}
+              />
+              <button
+                type="button"
+                className="nf-password-toggle"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+              >
+                {showConfirmPassword ? <EyeIcon /> : <EyeOffIcon />}
+              </button>
+            </div>
           </div>
         </div>
 

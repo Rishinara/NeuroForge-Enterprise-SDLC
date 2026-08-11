@@ -205,8 +205,11 @@ export default function SpecEditorPage() {
 
   if (!spec) {
     return (
-      <div className="wk-page">
-        <Link to={`/projects/${projectId}/specs`} className="sp-back-link">← Back to specs</Link>
+      <div className="sp-page">
+        <Link to={`/projects/${projectId}/specs`} className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm mb-6 w-fit no-underline">
+          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+          Back to specs
+        </Link>
         <p className="wk-alert wk-alert-error" style={{ marginTop: 12 }}>
           {error || 'This spec could not be found.'}
         </p>
@@ -215,8 +218,11 @@ export default function SpecEditorPage() {
   }
 
   return (
-    <div className="wk-page">
-      <Link to={`/projects/${projectId}/specs`} className="sp-back-link">← Back to specs</Link>
+    <div className="sp-page">
+      <Link to={`/projects/${projectId}/specs`} className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm mb-6 w-fit no-underline">
+        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+        Back to specs
+      </Link>
 
       {error && <p className="wk-alert wk-alert-error" style={{ marginTop: 12 }}>{error}</p>}
       {savedNote && <p className="wk-alert wk-alert-success" style={{ marginTop: 12 }}>{savedNote}</p>}

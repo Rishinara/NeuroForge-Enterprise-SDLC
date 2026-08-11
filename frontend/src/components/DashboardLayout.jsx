@@ -21,11 +21,14 @@ export default function DashboardLayout() {
   const { title, subtitle } = useRouteTitle()
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
+    <div className="flex min-h-screen bg-canvas font-sans">
       <Sidebar />
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="flex-1 min-w-0 ml-64 flex flex-col min-h-screen">
         <Topbar title={title} subtitle={subtitle} />
-        <Outlet />
+        
+        <main className="flex-1 flex flex-col overflow-auto bg-slate-50">
+          <Outlet />
+        </main>
       </div>
     </div>
   )

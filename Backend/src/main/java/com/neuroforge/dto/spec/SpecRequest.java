@@ -19,4 +19,6 @@ public class SpecRequest {
     private List<UserStoryDTO> userStories;
     private List<String> functionalRequirements;
     private List<String> nonFunctionalRequirements;
+    private String tone;
+    private String complexity;
 }

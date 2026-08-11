@@ -137,6 +137,36 @@ public class OrgController {
         orgService.removeMember(orgId, memberId, userDetails.getUsername());
         return ResponseEntity.noContent().build();
     }
+    
+    // ---- Join Requests ----
+    
+    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @GetMapping("/api/orgs/{orgId}/join-requests")
+    public List<MemberResponse> getJoinRequests(
+            @PathVariable Long orgId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return orgService.getJoinRequests(orgId, userDetails.getUsername());
+    }
+
+    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PostMapping("/api/orgs/{orgId}/join-requests/{userId}/approve")
+    public ResponseEntity<Void> approveJoinRequest(
+            @PathVariable Long orgId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        orgService.approveJoinRequest(orgId, userId, userDetails.getUsername());
+        return ResponseEntity.ok().build();
+    }
+
+    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PostMapping("/api/orgs/{orgId}/join-requests/{userId}/reject")
+    public ResponseEntity<Void> rejectJoinRequest(
+            @PathVariable Long orgId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        orgService.rejectJoinRequest(orgId, userId, userDetails.getUsername());
+        return ResponseEntity.ok().build();
+    }
 
     // ---- Invites ----
 

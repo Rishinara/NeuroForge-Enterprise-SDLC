@@ -72,6 +72,12 @@ public class UserService {
         user.setPhoneNumber(request.getPhone());
         user.setCreatedAt(LocalDateTime.now());
         user.setOrganization(null);
+        
+        if (request.getOrgId() != null) {
+            Organization org = organizationRepository.findById(request.getOrgId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
+            user.setRequestedOrganization(org);
+        }
 
         userRepository.save(user);
 

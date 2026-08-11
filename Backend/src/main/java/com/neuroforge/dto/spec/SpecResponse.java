@@ -22,5 +22,6 @@ public class SpecResponse {
     private List<UserStoryDTO> userStories;
     private List<String> functionalRequirements;
     private List<String> nonFunctionalRequirements;
+    private String reviewNote;
     private List<SpecVersionDTO> versions;
 }
