@@ -7,5 +7,9 @@ public enum ProjectRole {
 
     QA,
 
-    CLIENT
+    CLIENT,
+    
+    ORG_ADMIN,
+    
+    SUPER_ADMIN
 }

@@ -54,7 +54,9 @@ export default function UnassignedOrgNotice() {
         <p style={{ fontSize: 14.5, lineHeight: 1.6, color: '#475569', marginBottom: 24 }}>
           Your account (<strong>{user?.email}</strong>) has been created successfully.
           <br />
-          {user?.role === ROLES.ORG_ADMIN ? (
+          {user?.orgId && user?.orgApproved === false ? (
+            <>Your account has been assigned to an organization and is waiting for Organization Admin approval.</>
+          ) : user?.role === ROLES.ORG_ADMIN ? (
             <>Please wait until the <strong>Super Admin</strong> assigns you to an organization.</>
           ) : (
             <>Please wait until your <strong>Organization Admin</strong> invites you to an organization.</>
@@ -63,7 +65,11 @@ export default function UnassignedOrgNotice() {
 
         <div style={{ background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid #f1f5f9', marginBottom: 28 }}>
           <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
-            🔒 Organization features, projects, teams, specs, backlogs, and board items are restricted until an organization assignment is granted.
+            {user?.orgId && user?.orgApproved === false ? (
+              <>🔒 Organization features, projects, teams, specs, backlogs, and board items are restricted until your Organization Admin approves your account.</>
+            ) : (
+              <>🔒 Organization features, projects, teams, specs, backlogs, and board items are restricted until an organization assignment is granted.</>
+            )}
           </p>
         </div>
 

@@ -5,6 +5,7 @@ import { projectApi } from '../api/projectApi.js'
 import { sprintApi } from '../api/sprintApi.js'
 import { aiApi } from '../api/aiApi.js'
 import { api, extractErrorMessage } from '../api/client.js'
+import { orgApi } from '../api/orgApi.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import Can from '../components/Can.jsx'
 
@@ -29,11 +30,14 @@ export default function BacklogPage() {
   const { user, role } = useAuth()
   const [items, setItems] = useState([])
   const [sprints, setSprints] = useState([])
+  const [projectData, setProjectData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [endpointMissing, setEndpointMissing] = useState(false)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ title: '', points: 3, priority: 'Medium', labels: '' })
+  const [form, setForm] = useState({ title: '', points: 3, priority: 'Medium', labels: '', teamId: '', assigneeId: '' })
+  const [teams, setTeams] = useState([])
+  const [teamMembers, setTeamMembers] = useState([])
 
   const [showSprintForm, setShowSprintForm] = useState(false)
   const [sprintForm, setSprintForm] = useState({ name: '', goal: '', startDate: '', endDate: '' })
@@ -70,13 +74,15 @@ export default function BacklogPage() {
     setError('')
     setEndpointMissing(false)
     try {
-      const [tasksRes, sprintsRes] = await Promise.all([
+      const [tasksRes, sprintsRes, projectRes] = await Promise.all([
         api.get(`/tasks/project/${projectId}/backlog`),
-        sprintApi.listProjectSprints(projectId).catch(() => ({ data: [] }))
+        sprintApi.listProjectSprints(projectId).catch(() => ({ data: [] })),
+        projectApi.getProject(projectId).catch(() => ({ data: null }))
       ])
       if (!Array.isArray(tasksRes.data)) throw new Error('Unexpected response shape')
       setItems(tasksRes.data)
       setSprints(Array.isArray(sprintsRes.data) ? sprintsRes.data : [])
+      setProjectData(projectRes.data)
     } catch (err) {
       if (err?.response?.status === 404) {
         setEndpointMissing(true)
@@ -93,6 +99,33 @@ export default function BacklogPage() {
     load()
   }, [load])
 
+  // Load teams for assignment
+  useEffect(() => {
+    if (!user?.orgId || !projectData) return
+    orgApi.listTeamsWithMembers(user.orgId)
+      .then((res) => {
+        const allTeams = Array.isArray(res.data) ? res.data : []
+        const assignedTeamIds = new Set(projectData.assignedTeams?.map(t => t.id) || [])
+        setTeams(allTeams.filter(t => assignedTeamIds.has(t.id)))
+      })
+      .catch(() => setTeams([]))
+  }, [user?.orgId, projectData])
+
+  // When team selection changes, update assignee list
+  useEffect(() => {
+    if (!form.teamId) {
+      const projDevs = (projectData?.team || []).filter(m => m.projectRole === 'DEVELOPER' || m.role === 'DEVELOPER' || m.user?.role === 'DEVELOPER')
+      setTeamMembers(projDevs)
+      setForm((f) => ({ ...f, assigneeId: '' }))
+      return
+    }
+    const selectedTeam = teams.find((t) => String(t.id) === String(form.teamId))
+    const rawMembers = selectedTeam?.members || selectedTeam?.users || []
+    const members = rawMembers.filter(m => m.role === 'DEVELOPER' || m.user?.role === 'DEVELOPER')
+    setTeamMembers(members)
+    setForm((f) => ({ ...f, assigneeId: '' }))
+  }, [form.teamId, teams, projectData])
+
   async function handleAdd(e) {
     e.preventDefault()
     if (!form.title.trim()) return
@@ -102,7 +135,9 @@ export default function BacklogPage() {
       storyPoints: Math.max(1, Math.min(13, Number(form.points) || 1)),
       priority: (form.priority || 'MEDIUM').toUpperCase(),
       labels: form.labels.split(',').map((l) => l.trim()).filter(Boolean),
-      sprintId: null, 
+      sprintId: null,
+      teamId: form.teamId ? Number(form.teamId) : null,
+      assigneeId: form.assigneeId ? Number(form.assigneeId) : null,
     }
     try {
       const res = await taskApi.createTask(numericProjId, payload)
@@ -111,7 +146,7 @@ export default function BacklogPage() {
       setError(extractErrorMessage(err))
       return
     }
-    setForm({ title: '', points: 3, priority: 'Medium', labels: '' })
+    setForm({ title: '', points: 3, priority: 'Medium', labels: '', teamId: '', assigneeId: '' })
     setShowForm(false)
   }
 
@@ -136,7 +171,7 @@ export default function BacklogPage() {
       } else if (toolName === 'enhance') {
         res = await aiApi.enhanceTaskDescription(aiForm.title, aiForm.description)
       }
-      
+
       let resStr = ''
       if (res && res.data) {
         if (res.data.response) {
@@ -177,10 +212,10 @@ export default function BacklogPage() {
     if (!dragTaskId) return
     const taskId = dragTaskId
     setDragTaskId(null)
-    
+
     // Optimistic UI update
     setItems((prev) => prev.filter(t => t.id !== taskId))
-    
+
     try {
       await taskApi.assignSprint(taskId, targetSprintId)
     } catch (err) {
@@ -238,12 +273,15 @@ export default function BacklogPage() {
       </div>
 
       {endpointMissing && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex gap-3 text-sm text-blue-800">
-          <p>
-            Your backend doesn't have a "list tasks by project" endpoint yet
-            (tried <code>GET /api/tasks/project/{'{projectId}'}/backlog</code>, got 404).
-            Ask your backend developer to add one — until then this list stays empty,
-            though adding new items still works via the real <code>POST /api/tasks</code> endpoint.
+        <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-dashed border-slate-300 text-center">
+          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 border border-slate-100">
+            <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-bold text-slate-900 mb-1">Project Backlog Unavailable</h3>
+          <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">
+            The backlog for this project could not be found or has not been initialized yet. Create a project to start managing tasks.
           </p>
         </div>
       )}
@@ -282,9 +320,9 @@ export default function BacklogPage() {
                   </div>
                   <div className="flex-1">
                     <label className="block text-xs font-medium text-slate-500 mb-1">Priority</label>
-                    <select 
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white" 
-                      value={form.priority} 
+                    <select
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                      value={form.priority}
                       onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
                     >
                       <option>High</option>
@@ -301,6 +339,34 @@ export default function BacklogPage() {
                     onChange={(e) => setForm((f) => ({ ...f, labels: e.target.value }))}
                     placeholder="frontend, payments"
                   />
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Assign Team</label>
+                    <select
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                      value={form.teamId}
+                      onChange={(e) => setForm((f) => ({ ...f, teamId: e.target.value }))}
+                    >
+                      <option value="">— No team —</option>
+                      {teams.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Assignee</label>
+                    <select
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                      value={form.assigneeId}
+                      onChange={(e) => setForm((f) => ({ ...f, assigneeId: e.target.value }))}
+                    >
+                      <option value="">— Unassigned —</option>
+                      {teamMembers.map((m) => (
+                        <option key={m.id} value={m.id}>{m.fullName || m.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <button className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg shadow-sm" type="submit">
                   Add to backlog
@@ -319,33 +385,33 @@ export default function BacklogPage() {
                 </button>
               </Can>
             </div>
-            
+
             {showSprintForm && (
               <form className="bg-slate-50 rounded-lg border border-slate-100 p-5 mb-5" onSubmit={handleCreateSprint}>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-500 mb-1">Sprint name *</label>
-                    <input className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" required value={sprintForm.name} onChange={e => setSprintForm(f => ({...f, name: e.target.value}))} placeholder="Sprint 1" />
+                    <input className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" required value={sprintForm.name} onChange={e => setSprintForm(f => ({ ...f, name: e.target.value }))} placeholder="Sprint 1" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-500 mb-1">Goal</label>
-                    <input className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" value={sprintForm.goal} onChange={e => setSprintForm(f => ({...f, goal: e.target.value}))} placeholder="Complete authentication flow" />
+                    <input className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" value={sprintForm.goal} onChange={e => setSprintForm(f => ({ ...f, goal: e.target.value }))} placeholder="Complete authentication flow" />
                   </div>
                   <div className="flex gap-4">
                     <div className="flex-1">
                       <label className="block text-xs font-medium text-slate-500 mb-1">Start Date *</label>
-                      <input type="date" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" value={sprintForm.startDate} onChange={e => setSprintForm(f => ({...f, startDate: e.target.value}))} />
+                      <input type="date" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" value={sprintForm.startDate} onChange={e => setSprintForm(f => ({ ...f, startDate: e.target.value }))} />
                     </div>
                     <div className="flex-1">
                       <label className="block text-xs font-medium text-slate-500 mb-1">End Date *</label>
-                      <input type="date" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" value={sprintForm.endDate} onChange={e => setSprintForm(f => ({...f, endDate: e.target.value}))} />
+                      <input type="date" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" value={sprintForm.endDate} onChange={e => setSprintForm(f => ({ ...f, endDate: e.target.value }))} />
                     </div>
                   </div>
                   <button className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg shadow-sm" type="submit">Save Sprint</button>
                 </div>
               </form>
             )}
-            
+
             {sprints.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
                 <svg className="w-10 h-10 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -357,11 +423,11 @@ export default function BacklogPage() {
             ) : (
               <div className="flex flex-col gap-3">
                 {sprints.map(sprint => (
-                  <div 
-                    key={sprint.id} 
+                  <div
+                    key={sprint.id}
                     className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 transition-all duration-200"
                     onDragOver={(e) => {
-                      e.preventDefault(); 
+                      e.preventDefault();
                       e.currentTarget.classList.add('border-orange-500', 'bg-orange-50');
                     }}
                     onDragLeave={(e) => {
@@ -380,7 +446,7 @@ export default function BacklogPage() {
                           {formatEnum(sprint.status)}
                         </span>
                       </div>
-                      <Link to={`/projects/${projectId}/board`} className="text-xs font-medium text-orange-600 hover:text-orange-700">View Board →</Link>
+                      <Link to={`/projects/${projectId}/sprints/${sprint.id}/board`} className="text-xs font-medium text-orange-600 hover:text-orange-700">View Board →</Link>
                     </div>
                     {sprint.goal && <p className="text-sm text-slate-700 mb-2">{sprint.goal}</p>}
                     <p className="text-xs font-medium text-slate-500">{sprint.startDate} to {sprint.endDate} — Drag backlog items here to assign</p>
@@ -394,7 +460,7 @@ export default function BacklogPage() {
             <div className="p-6 border-b border-slate-200">
               <h3 className="text-lg font-semibold text-slate-800">Backlog</h3>
             </div>
-            
+
             <div className="p-0">
               {loading ? (
                 <div className="p-8 text-center text-sm text-slate-500">Loading backlog…</div>
@@ -411,8 +477,8 @@ export default function BacklogPage() {
                   {items.map((item) => {
                     const pClass = PRIORITY_STYLE[item.priority] || PRIORITY_STYLE.Medium
                     return (
-                      <div 
-                        key={item.id} 
+                      <div
+                        key={item.id}
                         className={`flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors ${CAN_MANAGE.includes(role) ? 'cursor-grab active:cursor-grabbing' : ''}`}
                         draggable={CAN_MANAGE.includes(role)}
                         onDragStart={(e) => {
@@ -425,7 +491,21 @@ export default function BacklogPage() {
                         </span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-slate-900 truncate">{item.title}</p>
-                          {item.specTitle && <p className="text-xs text-slate-500 mt-0.5 truncate">Traces to: {item.specTitle}</p>}
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            {item.assigneeName && (
+                              <span className="text-xs text-slate-500 flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                {item.assigneeName}
+                              </span>
+                            )}
+                            {item.teamName && (
+                              <span className="text-xs text-slate-400 flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                {item.teamName}
+                              </span>
+                            )}
+                            {item.specTitle && <p className="text-xs text-slate-500 truncate">Traces to: {item.specTitle}</p>}
+                          </div>
                         </div>
                         <div className="hidden md:flex flex-wrap gap-1 items-center justify-end">
                           {(item.labels || []).map((l) => (
@@ -453,18 +533,18 @@ export default function BacklogPage() {
               <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-4">
                 <span>🤖</span> NeuroForge AI Copilot
               </h3>
-              
+
               <div className="flex p-1 bg-slate-100 rounded-lg mb-5">
-                <button 
+                <button
                   type="button"
-                  onClick={() => setAiTab('task')} 
+                  onClick={() => setAiTab('task')}
                   className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-shadow ${aiTab === 'task' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
                 >
                   Task Assist
                 </button>
-                <button 
+                <button
                   type="button"
-                  onClick={() => setAiTab('project')} 
+                  onClick={() => setAiTab('project')}
                   className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-shadow ${aiTab === 'project' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
                 >
                   Project Risks
@@ -481,21 +561,21 @@ export default function BacklogPage() {
                 <div>
                   <div className="mb-3">
                     <label className="block text-xs font-medium text-slate-500 mb-1">Task Title</label>
-                    <input 
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" 
-                      value={aiForm.title} 
+                    <input
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      value={aiForm.title}
                       onChange={e => setAiForm(f => ({ ...f, title: e.target.value }))}
-                      placeholder="e.g. Integrate Stripe payment gateway" 
+                      placeholder="e.g. Integrate Stripe payment gateway"
                     />
                   </div>
                   <div className="mb-4">
                     <label className="block text-xs font-medium text-slate-500 mb-1">Description (optional)</label>
-                    <textarea 
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" 
+                    <textarea
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500"
                       rows={3}
-                      value={aiForm.description} 
+                      value={aiForm.description}
                       onChange={e => setAiForm(f => ({ ...f, description: e.target.value }))}
-                      placeholder="Provide details for better recommendations…" 
+                      placeholder="Provide details for better recommendations…"
                     />
                   </div>
 

@@ -15,6 +15,17 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     @EntityGraph(attributePaths = {
             "project",
             "sprint",
+            "team",
+            "assignee",
+            "reporter",
+            "labels"
+    })
+    List<Task> findByAssigneeId(Long assigneeId);
+
+    @EntityGraph(attributePaths = {
+            "project",
+            "sprint",
+            "team",
             "assignee",
             "reporter",
             "labels"
@@ -24,6 +35,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     @EntityGraph(attributePaths = {
             "project",
             "sprint",
+            "team",
             "assignee",
             "reporter",
             "labels"
@@ -33,6 +45,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     @EntityGraph(attributePaths = {
             "project",
             "sprint",
+            "team",
             "assignee",
             "reporter",
             "labels"
@@ -42,6 +55,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     @EntityGraph(attributePaths = {
             "project",
             "sprint",
+            "team",
             "assignee",
             "reporter",
             "labels"

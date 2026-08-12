@@ -10,10 +10,12 @@ export const orgApi = {
 
   // Teams
   listTeams: (orgId) => api.get(`/orgs/${orgId}/teams`),
+  listTeamsWithMembers: (orgId) => api.get(`/orgs/${orgId}/teams-with-members`),
   getTeam: (orgId, teamId) => api.get(`/orgs/${orgId}/teams/${teamId}`),
   createTeam: (orgId, payload) => api.post(`/orgs/${orgId}/teams`, payload),
   updateTeam: (orgId, teamId, payload) => api.put(`/orgs/${orgId}/teams/${teamId}`, payload),
   deleteTeam: (orgId, teamId) => api.delete(`/orgs/${orgId}/teams/${teamId}`),
+  removeTeamMember: (orgId, teamId, memberId) => api.delete(`/orgs/${orgId}/teams/${teamId}/members/${memberId}`),
 
   // Members
   listMembers: (orgId) => api.get(`/orgs/${orgId}/members`),
@@ -35,6 +37,10 @@ export const orgApi = {
   getJoinRequests: (orgId) => api.get(`/orgs/${orgId}/join-requests`),
   approveJoinRequest: (orgId, userId) => api.post(`/orgs/${orgId}/join-requests/${userId}/approve`),
   rejectJoinRequest: (orgId, userId) => api.post(`/orgs/${orgId}/join-requests/${userId}/reject`),
+
+  // Pending Approvals
+  getPendingUsers: (orgId) => api.get(`/orgs/${orgId}/pending-users`),
+  approveUser: (orgId, userId) => api.post(`/orgs/${orgId}/users/${userId}/approve`),
 
   // Org settings
   getOrgSettings: (orgId) => api.get(`/orgs/${orgId}/settings`),

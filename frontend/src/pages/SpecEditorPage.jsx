@@ -28,7 +28,7 @@ const BLANK_SPEC = {
   versions: [{ version: 1, status: 'Draft', updatedAt: '—', updatedBy: '—' }],
 }
 
-const CAN_EDIT_ROLES = [ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]
+const CAN_EDIT_ROLES = [ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN]
 
 export default function SpecEditorPage() {
   const { projectId = 'p1', specId } = useParams()

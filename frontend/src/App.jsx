@@ -13,6 +13,8 @@ import TeamsPage from './pages/TeamsPage.jsx'
 import PendingInvitesPage from './pages/PendingInvitesPage.jsx'
 import TeamDetailPage from './pages/TeamDetailPage.jsx'
 import OrgSettingsPage from './pages/OrgSettingsPage.jsx'
+import OrganizationsPage from './pages/OrganizationsPage.jsx'
+import SuperAdminSettingsPage from './pages/SuperAdminSettingsPage.jsx'
 import ProjectsPortfolioPage from './pages/ProjectsPortfolioPage.jsx'
 import CreateProjectPage from './pages/CreateProjectPage.jsx'
 import ProjectDetailPage from './pages/ProjectDetailPage.jsx'
@@ -46,10 +48,12 @@ export default function App() {
             }
           >
             <Route path="/dashboard" element={<DashboardHome />} />
+            <Route path="/organizations" element={<OrganizationsPage />} />
             <Route path="/org/teams" element={<TeamsPage />} />
             <Route path="/org/teams/:teamId" element={<TeamDetailPage />} />
             <Route path="/org/invites" element={<PendingInvitesPage />} />
             <Route path="/org/settings" element={<OrgSettingsPage />} />
+            <Route path="/admin/settings" element={<SuperAdminSettingsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/projects" element={<ProjectsPortfolioPage />} />
             <Route

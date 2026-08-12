@@ -14,6 +14,7 @@ public class UserResponse {
     private String phoneNumber;
     private Long organizationId;
     private String organizationName;
+    private Boolean orgApproved;
 
     public UserResponse() {
     }
@@ -28,7 +29,7 @@ public class UserResponse {
         this.phoneNumber = phoneNumber;
     }
 
-    public UserResponse(Long id, String fullName, String email, Role role, LocalDateTime createdAt, boolean enabled, String phoneNumber, Long organizationId, String organizationName) {
+    public UserResponse(Long id, String fullName, String email, Role role, LocalDateTime createdAt, boolean enabled, String phoneNumber, Long organizationId, String organizationName, Boolean orgApproved) {
         this.id = id;
         this.fullName = fullName;
         this.email = email;
@@ -38,6 +39,7 @@ public class UserResponse {
         this.phoneNumber = phoneNumber;
         this.organizationId = organizationId;
         this.organizationName = organizationName;
+        this.orgApproved = orgApproved;
     }
 
     public Long getId() {
@@ -99,4 +101,8 @@ public class UserResponse {
     public String getOrganizationName() { return organizationName; }
 
     public void setOrganizationName(String organizationName) { this.organizationName = organizationName; }
+
+    public Boolean getOrgApproved() { return orgApproved; }
+
+    public void setOrgApproved(Boolean orgApproved) { this.orgApproved = orgApproved; }
 }

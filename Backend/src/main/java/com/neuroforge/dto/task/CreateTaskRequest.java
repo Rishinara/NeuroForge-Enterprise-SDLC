@@ -33,5 +33,7 @@ public class CreateTaskRequest {
 
     private Long sprintId;
 
+    private Long teamId;
+
     private Long assigneeId;
 }

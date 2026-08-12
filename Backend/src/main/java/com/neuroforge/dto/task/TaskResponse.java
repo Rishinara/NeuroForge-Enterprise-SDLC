@@ -34,6 +34,9 @@ public class TaskResponse {
     private Long sprintId;
     private String sprintName;
 
+    private Long teamId;
+    private String teamName;
+
     private Long assigneeId;
     private String assigneeName;
 

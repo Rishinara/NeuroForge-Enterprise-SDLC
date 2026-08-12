@@ -44,7 +44,7 @@ export default function EditProjectModal({ open, onClose, project, onUpdated }) 
       setTagInput('')
       
       if (user?.orgId) {
-        orgApi.listTeams(user.orgId).then(res => setAvailableTeams(res.data || []))
+        orgApi.listTeamsWithMembers(user.orgId).then(res => setAvailableTeams(res.data || []))
       }
     }
   }, [open, project, user?.orgId])
@@ -184,9 +184,16 @@ export default function EditProjectModal({ open, onClose, project, onUpdated }) 
               update('assignedTeamIds', selected)
             }}
           >
-            {availableTeams.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
+            {availableTeams.map(t => {
+              const memberNames = t.members && t.members.length > 0
+                ? t.members.map(m => m.fullName || m.name).join(', ')
+                : 'No members';
+              return (
+                <option key={t.id} value={t.id}>
+                  {t.name} — ({memberNames})
+                </option>
+              )
+            })}
           </select>
           <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Hold Ctrl/Cmd to select multiple teams.</p>
         </div>

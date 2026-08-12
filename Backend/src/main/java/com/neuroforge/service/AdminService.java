@@ -9,6 +9,8 @@ import com.neuroforge.entity.User;
 import com.neuroforge.exception.DuplicateResourceException;
 import com.neuroforge.exception.InvalidRequestException;
 import com.neuroforge.exception.ResourceNotFoundException;
+import com.neuroforge.entity.Organization;
+import com.neuroforge.repository.OrganizationRepository;
 import com.neuroforge.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,10 +24,12 @@ public class AdminService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final OrganizationRepository organizationRepository;
 
-    public AdminService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AdminService(UserRepository userRepository, PasswordEncoder passwordEncoder, OrganizationRepository organizationRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.organizationRepository = organizationRepository;
     }
 
     @Transactional
@@ -44,6 +48,15 @@ public class AdminService {
         user.setRole(request.getRole());
         user.setCreatedAt(LocalDateTime.now());
         user.setPhoneNumber(request.getPhoneNumber());
+
+        if (request.getOrganizationId() != null) {
+            Organization org = organizationRepository.findById(request.getOrganizationId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
+            user.setOrganization(org);
+            user.setOrgApproved(false); // Assigned by Super Admin, needs Org Admin approval
+        } else {
+            user.setOrgApproved(true);
+        }
 
         return toUserResponse(userRepository.save(user));
     }
@@ -105,7 +118,8 @@ public class AdminService {
                 user.isEnabled(),
                 user.getPhoneNumber(),
                 orgId,
-                orgName
+                orgName,
+                user.getOrgApproved()
         );
     }
 }

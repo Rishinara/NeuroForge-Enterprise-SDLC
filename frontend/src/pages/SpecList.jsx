@@ -12,7 +12,7 @@ export default function SpecList() {
   const { role } = useAuth();
   const navigate = useNavigate();
   const { listSpecs, loading, error } = useSpecs();
-  
+
   const [specs, setSpecs] = useState([]);
   const [project, setProject] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -72,8 +72,8 @@ export default function SpecList() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Can roles={[ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]}>
-            <button 
+          <Can roles={[ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN]}>
+            <button
               className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm whitespace-nowrap"
               onClick={() => setIsGenerateModalOpen(true)}
             >
@@ -91,16 +91,14 @@ export default function SpecList() {
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-colors border ${
-                isActive 
-                  ? 'bg-orange-50 border-orange-200 text-orange-700' 
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-colors border ${isActive
+                  ? 'bg-orange-50 border-orange-200 text-orange-700'
                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
+                }`}
             >
               {tab.label}
-              <span className={`px-1.5 py-0.5 rounded-full text-xs ${
-                isActive ? 'bg-orange-200/50 text-orange-700' : 'bg-slate-100 text-slate-500'
-              }`}>
+              <span className={`px-1.5 py-0.5 rounded-full text-xs ${isActive ? 'bg-orange-200/50 text-orange-700' : 'bg-slate-100 text-slate-500'
+                }`}>
                 {count}
               </span>
             </button>
@@ -131,8 +129,8 @@ export default function SpecList() {
             {statusFilter === 'ALL' ? 'No specs found' : `No ${statusFilter.toLowerCase().replace('_', ' ')} specs yet`}
           </p>
           {statusFilter === 'ALL' && (
-            <Can roles={[ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]}>
-              <button 
+            <Can roles={[ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN]}>
+              <button
                 className="mt-4 px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors shadow-sm"
                 onClick={() => setIsGenerateModalOpen(true)}
               >
@@ -154,8 +152,8 @@ export default function SpecList() {
             </thead>
             <tbody className="bg-white divide-y divide-slate-100">
               {filteredSpecs.map((s) => (
-                <tr 
-                  key={s.id} 
+                <tr
+                  key={s.id}
                   onClick={() => navigate(`/projects/${projectId}/specs/${s.id}`)}
                   className="hover:bg-slate-50 cursor-pointer transition-colors group"
                 >
@@ -181,12 +179,12 @@ export default function SpecList() {
       )}
 
       {isGenerateModalOpen && (
-        <SpecGenerateModal 
-          open={isGenerateModalOpen} 
+        <SpecGenerateModal
+          open={isGenerateModalOpen}
           onClose={(shouldReload) => {
             setIsGenerateModalOpen(false);
             if (shouldReload === true) load();
-          }} 
+          }}
           projectId={projectId}
           project={project}
         />

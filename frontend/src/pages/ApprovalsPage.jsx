@@ -61,7 +61,7 @@ export default function ApprovalsPage() {
     )
   }
 
-  const isClientOrPM = role === ROLES.CLIENT || role === ROLES.PROJECT_MANAGER || role === ROLES.SUPER_ADMIN
+  const isClientOrPM = role === ROLES.CLIENT || role === ROLES.PROJECT_MANAGER || role === ROLES.SUPER_ADMIN || role === ROLES.ORG_ADMIN
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">

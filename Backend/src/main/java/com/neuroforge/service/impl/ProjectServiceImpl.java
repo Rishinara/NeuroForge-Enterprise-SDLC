@@ -59,7 +59,24 @@ public class ProjectServiceImpl implements ProjectService {
                     dto.setId(member.getUser().getId());
                     dto.setFullName(member.getUser().getFullName());
                     dto.setEmail(member.getUser().getEmail());
-                    dto.setProjectRole(member.getRole());
+                    
+                    if (member.getRole() == ProjectRole.DEVELOPER) {
+                        if (member.getUser().getRole() == com.neuroforge.enums.Role.ORG_ADMIN) {
+                            dto.setProjectRole(ProjectRole.ORG_ADMIN);
+                        } else if (member.getUser().getRole() == com.neuroforge.enums.Role.SUPER_ADMIN) {
+                            dto.setProjectRole(ProjectRole.SUPER_ADMIN);
+                        } else if (member.getUser().getRole() == com.neuroforge.enums.Role.PROJECT_MANAGER) {
+                            dto.setProjectRole(ProjectRole.PROJECT_MANAGER);
+                        } else if (member.getUser().getRole() == com.neuroforge.enums.Role.QA_TESTER) {
+                            dto.setProjectRole(ProjectRole.QA);
+                        } else if (member.getUser().getRole() == com.neuroforge.enums.Role.CLIENT) {
+                            dto.setProjectRole(ProjectRole.CLIENT);
+                        } else {
+                            dto.setProjectRole(member.getRole());
+                        }
+                    } else {
+                        dto.setProjectRole(member.getRole());
+                    }
 
                     return dto;
 
@@ -98,7 +115,21 @@ public class ProjectServiceImpl implements ProjectService {
         ProjectMember member = new ProjectMember();
         member.setProject(project);
         member.setUser(user);
-        member.setRole(ProjectRole.DEVELOPER);
+        
+        if (user.getRole() == com.neuroforge.enums.Role.PROJECT_MANAGER) {
+            member.setRole(ProjectRole.PROJECT_MANAGER);
+        } else if (user.getRole() == com.neuroforge.enums.Role.QA_TESTER) {
+            member.setRole(ProjectRole.QA);
+        } else if (user.getRole() == com.neuroforge.enums.Role.CLIENT) {
+            member.setRole(ProjectRole.CLIENT);
+        } else if (user.getRole() == com.neuroforge.enums.Role.ORG_ADMIN) {
+            member.setRole(ProjectRole.ORG_ADMIN);
+        } else if (user.getRole() == com.neuroforge.enums.Role.SUPER_ADMIN) {
+            member.setRole(ProjectRole.SUPER_ADMIN);
+        } else {
+            member.setRole(ProjectRole.DEVELOPER);
+        }
+        
         member.setActive(true);
         member.setJoinedDate(LocalDate.now());
         return member;
@@ -140,9 +171,7 @@ public class ProjectServiceImpl implements ProjectService {
             project.setTechStack(request.getTechStack());
         }
         // Save Project
-        Project savedProject = projectRepository.save(project);
-
-        // Save Team Members
+        // Add Team Members
         if (request.getTeamMemberIds() != null && !request.getTeamMemberIds().isEmpty()) {
             for (Long userId : request.getTeamMemberIds()) {
                 User user = userRepository.findById(userId)
@@ -151,26 +180,39 @@ public class ProjectServiceImpl implements ProjectService {
                     throw new com.neuroforge.exception.InvalidRequestException("User " + user.getEmail() + " does not belong to the organization.");
                 }
                 ProjectMember member = createProjectMember(project, user);
-                projectMemberRepository.save(member);
+                project.getMembers().add(member);
             }
         }
         
-        // Save Assigned Teams
+        // Add Assigned Teams
         if (request.getAssignedTeamIds() != null && !request.getAssignedTeamIds().isEmpty()) {
             for (Long teamId : request.getAssignedTeamIds()) {
                 Team team = teamRepository.findById(teamId)
                         .orElseThrow(() -> new ResourceNotFoundException("Team not found with id : " + teamId));
+                if (!team.getOrganization().getId().equals(request.getOrgId())) {
+                    throw new com.neuroforge.exception.InvalidRequestException("Team does not belong to the organization.");
+                }
                 project.getAssignedTeams().add(team);
             }
-            projectRepository.save(project);
         }
+
+        // Automatically add Project Manager to project members if they created it
+        String actorEmail = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        User actor = userRepository.findByEmail(actorEmail).orElse(null);
+        if (actor != null && actor.getRole() == com.neuroforge.enums.Role.PROJECT_MANAGER) {
+            boolean alreadyAdded = project.getMembers().stream()
+                    .anyMatch(m -> m.getUser().getId().equals(actor.getId()));
+            if (!alreadyAdded) {
+                ProjectMember pmMember = createProjectMember(project, actor);
+                project.getMembers().add(pmMember);
+            }
+        }
+
+        // Save Project (and cascade members)
+        Project savedProject = projectRepository.save(project);
         // Build Response
         
         // Log Activity
-        // We need the actor's email. For simplicity, since createProjectRequest doesn't have it natively,
-        // we might not have it in the service layer unless we add it to the DTO or fetch from SecurityContext.
-        // I will fetch from SecurityContext in this case since we need it.
-        String actorEmail = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         activityService.logActivity(organization.getId(), "Project created", "Created project: " + savedProject.getName(), actorEmail);
         
         return mapToProjectResponse(savedProject);
@@ -303,6 +345,9 @@ public class ProjectServiceImpl implements ProjectService {
             for (Long teamId : request.getAssignedTeamIds()) {
                 Team team = teamRepository.findById(teamId)
                         .orElseThrow(() -> new ResourceNotFoundException("Team not found with id : " + teamId));
+                if (!team.getOrganization().getId().equals(project.getOrganization().getId())) {
+                    throw new com.neuroforge.exception.InvalidRequestException("Team does not belong to the organization.");
+                }
                 project.getAssignedTeams().add(team);
             }
         }
@@ -368,5 +413,23 @@ public class ProjectServiceImpl implements ProjectService {
                 .taskCompletionPercentage(Math.round(taskCompletionPercentage * 100.0) / 100.0)
                 .pointCompletionPercentage(Math.round(pointCompletionPercentage * 100.0) / 100.0)
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void updateProjectMemberRole(Long projectId, Long userId, ProjectRole newRole) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found with id : " + projectId));
+
+        ProjectMember memberToUpdate = project.getMembers().stream()
+                .filter(m -> m.getUser().getId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("User is not a member of this project"));
+
+        memberToUpdate.setRole(newRole);
+        projectRepository.save(project);
+        
+        String actorEmail = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        activityService.logActivity(project.getOrganization().getId(), "Project member role updated", "Updated role for user ID " + userId + " to " + newRole, actorEmail);
     }
 }

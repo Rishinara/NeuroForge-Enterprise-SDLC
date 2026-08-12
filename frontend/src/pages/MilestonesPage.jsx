@@ -44,7 +44,10 @@ export default function MilestonesPage() {
   const handleCreate = async (e) => {
     e.preventDefault()
     try {
-      await api.post(`/projects/${projectId}/milestones`, newMilestone)
+      await api.post(`/projects/${projectId}/milestones`, {
+        ...newMilestone,
+        projectId: Number(projectId)
+      })
       setNewModalOpen(false)
       setNewMilestone({ title: '', description: '', expectedDeliveryDate: '', status: 'PENDING' })
       loadMilestones()
@@ -56,7 +59,11 @@ export default function MilestonesPage() {
   const handleUpdateStatus = async (id, status) => {
     try {
       const milestone = milestones.find(m => m.id === id)
-      await api.put(`/projects/${projectId}/milestones/${id}`, { ...milestone, status })
+      await api.put(`/projects/${projectId}/milestones/${id}`, {
+        ...milestone,
+        status,
+        projectId: Number(projectId)
+      })
       loadMilestones()
     } catch (err) {
       alert(extractErrorMessage(err))

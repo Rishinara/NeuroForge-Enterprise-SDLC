@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   IconProjects,
@@ -12,11 +12,66 @@ import { useAuth, ROLES } from "../context/AuthContext.jsx";
 import { projectApi } from "../api/projectApi.js";
 import { orgApi } from "../api/orgApi.js";
 import { adminApi } from "../api/adminApi.js";
+import { taskApi } from "../api/taskApi.js";
 import { extractErrorMessage } from "../api/client.js";
 import Can from "../components/Can.jsx";
 import HealthBadge from "../components/HealthBadge.jsx";
 import UnassignedOrgNotice from "../components/UnassignedOrgNotice.jsx";
 import RecentActivities from "../components/RecentActivities.jsx";
+import PortalDropdown from "../components/PortalDropdown.jsx";
+const OrgAdminCell = ({ org, orgAdminUser, selectedOrgForAdmin, setSelectedOrgForAdmin, setShowAssignAdminModal, handleRemoveOrgAdmin }) => {
+  const triggerRef = useRef(null);
+  const isOpen = selectedOrgForAdmin?.id === org.id;
+
+  return (
+    <div className="relative inline-block">
+      <button
+        ref={triggerRef}
+        type="button"
+        className="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700 flex items-center gap-1 hover:bg-green-200 transition-colors"
+        onClick={() => setSelectedOrgForAdmin((prev) => (prev?.id === org.id ? null : org))}
+      >
+        <span>✅ Assigned</span>
+        <span className="text-[10px]">▼</span>
+      </button>
+      <PortalDropdown
+        isOpen={isOpen}
+        onClose={() => setSelectedOrgForAdmin(null)}
+        triggerRef={triggerRef}
+      >
+        <div className="px-3 py-2 border-b border-slate-100">
+          <div className="text-[11px] text-slate-500 font-medium">
+            Current Admin:
+          </div>
+          <div className="text-xs font-bold text-slate-900 mt-1 truncate">
+            👤 {orgAdminUser.fullName || orgAdminUser.name || orgAdminUser.email}
+          </div>
+        </div>
+        <button
+          type="button"
+          className="w-full text-left px-3 py-2 text-xs font-medium text-blue-600 hover:bg-slate-50 flex items-center gap-2"
+          onClick={() => {
+            setSelectedOrgForAdmin(org);
+            setShowAssignAdminModal(true);
+          }}
+        >
+          ✏️ Change Org Admin
+        </button>
+        <button
+          type="button"
+          className="w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-slate-50 flex items-center gap-2"
+          onClick={() => {
+            setSelectedOrgForAdmin(null);
+            handleRemoveOrgAdmin(org.id, orgAdminUser.id);
+          }}
+        >
+          🗑️ Remove Org Admin
+        </button>
+      </PortalDropdown>
+    </div>
+  );
+};
+
 const formatEnum = (val) =>
   val
     ? val.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
@@ -39,6 +94,7 @@ export default function DashboardHome() {
   const [teamsCount, setTeamsCount] = useState(0);
   const [membersCount, setMembersCount] = useState(0);
   const [joinRequests, setJoinRequests] = useState([]);
+  const [pendingUsers, setPendingUsers] = useState([]);
 
   // Super Admin live state
   const [orgs, setOrgs] = useState([]);
@@ -51,6 +107,10 @@ export default function DashboardHome() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // My Tasks for Developer / QA Tester
+  const [myTasks, setMyTasks] = useState([]);
+  const [myTasksLoading, setMyTasksLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -90,6 +150,7 @@ export default function DashboardHome() {
         if (role === ROLES.ORG_ADMIN) {
           promises.push(
             orgApi.getJoinRequests(user?.orgId).catch(() => ({ data: [] })),
+            orgApi.getPendingUsers(user?.orgId).catch(() => ({ data: [] }))
           );
         }
 
@@ -104,6 +165,9 @@ export default function DashboardHome() {
         if (role === ROLES.ORG_ADMIN && results[3]) {
           setJoinRequests(
             Array.isArray(results[3].data) ? results[3].data : [],
+          );
+          setPendingUsers(
+            Array.isArray(results[4].data) ? results[4].data : [],
           );
         }
       }
@@ -120,6 +184,15 @@ export default function DashboardHome() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (role !== ROLES.DEVELOPER && role !== ROLES.QA_TESTER) return;
+    setMyTasksLoading(true);
+    taskApi.getMyTasks()
+      .then((res) => setMyTasks(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setMyTasks([]))
+      .finally(() => setMyTasksLoading(false));
+  }, [role]);
 
   const stats = useMemo(() => {
     return {
@@ -152,6 +225,27 @@ export default function DashboardHome() {
     }
   }
 
+  async function handleApproveUser(userId) {
+    setActionError("");
+    try {
+      await orgApi.approveUser(user?.orgId, userId);
+      loadData();
+    } catch (err) {
+      setActionError(extractErrorMessage(err));
+    }
+  }
+
+  async function handleRejectUser(userId) {
+    if (!confirm("Are you sure you want to reject/disable this user?")) return;
+    setActionError("");
+    try {
+      await orgApi.removeMember(user?.orgId, userId);
+      loadData();
+    } catch (err) {
+      setActionError(extractErrorMessage(err));
+    }
+  }
+
   // State for Admin User Management
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [userForm, setUserForm] = useState({
@@ -160,6 +254,7 @@ export default function DashboardHome() {
     phoneNumber: "",
     password: "",
     role: "ORG_ADMIN",
+    organizationId: "",
   });
   const [creatingUser, setCreatingUser] = useState(false);
   const [createUserError, setCreateUserError] = useState("");
@@ -168,16 +263,24 @@ export default function DashboardHome() {
 
   async function handleCreateUser(e) {
     e.preventDefault();
+    if (!userForm.organizationId) {
+      setCreateUserError("Organization selection is required.");
+      return;
+    }
     setCreatingUser(true);
     setCreateUserError("");
     try {
-      await adminApi.createUser(userForm);
+      await adminApi.createUser({
+        ...userForm,
+        organizationId: Number(userForm.organizationId)
+      });
       setUserForm({
         fullName: "",
         email: "",
         phoneNumber: "",
         password: "",
         role: "ORG_ADMIN",
+        organizationId: "",
       });
       setShowCreateUserModal(false);
       loadData();
@@ -249,10 +352,10 @@ export default function DashboardHome() {
       prevUsers.map((item) =>
         item.id === u.id
           ? {
-              ...item,
-              enabled: nextEnabledState,
-              status: nextEnabledState ? "ACTIVE" : "INACTIVE",
-            }
+            ...item,
+            enabled: nextEnabledState,
+            status: nextEnabledState ? "ACTIVE" : "INACTIVE",
+          }
           : item,
       ),
     );
@@ -266,10 +369,10 @@ export default function DashboardHome() {
         prevUsers.map((item) =>
           item.id === u.id
             ? {
-                ...item,
-                enabled: currentEnabled,
-                status: currentEnabled ? "ACTIVE" : "INACTIVE",
-              }
+              ...item,
+              enabled: currentEnabled,
+              status: currentEnabled ? "ACTIVE" : "INACTIVE",
+            }
             : item,
         ),
       );
@@ -428,7 +531,10 @@ export default function DashboardHome() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {isSuperAdmin ? (
           <>
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+            <div
+              className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between cursor-pointer hover:shadow-md hover:border-orange-200 transition-all"
+              onClick={() => document.getElementById("organizations-section")?.scrollIntoView({ behavior: "smooth" })}
+            >
               <div className="text-sm font-medium text-slate-600 mb-2 flex items-center justify-between">
                 <span>Total Organizations</span>
                 <IconProjects className="w-5 h-5 text-slate-400" />
@@ -437,7 +543,10 @@ export default function DashboardHome() {
                 {orgs.length}
               </div>
             </div>
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+            <div
+              className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between cursor-pointer hover:shadow-md hover:border-orange-200 transition-all"
+              onClick={() => document.getElementById("users-section")?.scrollIntoView({ behavior: "smooth" })}
+            >
               <div className="text-sm font-medium text-slate-600 mb-2 flex items-center justify-between">
                 <span>Total Users</span>
                 <IconUsers className="w-5 h-5 text-slate-400" />
@@ -502,7 +611,7 @@ export default function DashboardHome() {
       {isSuperAdmin ? (
         <>
           {/* Organizations Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div id="organizations-section" style={{ scrollMarginTop: '100px' }} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-semibold text-slate-800">
                 Organizations
@@ -568,58 +677,14 @@ export default function DashboardHome() {
                           </td>
                           <td className="py-3 px-2">
                             {orgAdminUser ? (
-                              <div className="relative inline-block">
-                                <button
-                                  type="button"
-                                  className="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700 flex items-center gap-1 hover:bg-green-200 transition-colors"
-                                  onClick={() =>
-                                    setSelectedOrgForAdmin((prev) =>
-                                      prev?.id === org.id ? null : org,
-                                    )
-                                  }
-                                >
-                                  <span>✅ Assigned</span>
-                                  <span className="text-[10px]">▼</span>
-                                </button>
-                                {selectedOrgForAdmin?.id === org.id &&
-                                  !showAssignAdminModal && (
-                                    <div className="absolute top-full left-0 z-50 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg py-1">
-                                      <div className="px-3 py-2 border-b border-slate-100">
-                                        <div className="text-[11px] text-slate-500 font-medium">
-                                          Current Admin:
-                                        </div>
-                                        <div className="text-xs font-bold text-slate-900 mt-1 truncate">
-                                          👤{" "}
-                                          {orgAdminUser.fullName ||
-                                            orgAdminUser.name ||
-                                            orgAdminUser.email}
-                                        </div>
-                                      </div>
-                                      <button
-                                        type="button"
-                                        className="w-full text-left px-3 py-2 text-xs font-medium text-blue-600 hover:bg-slate-50 flex items-center gap-2"
-                                        onClick={() =>
-                                          setShowAssignAdminModal(true)
-                                        }
-                                      >
-                                        ✏️ Change Org Admin
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-slate-50 flex items-center gap-2"
-                                        onClick={() => {
-                                          setSelectedOrgForAdmin(null);
-                                          handleRemoveOrgAdmin(
-                                            org.id,
-                                            orgAdminUser.id,
-                                          );
-                                        }}
-                                      >
-                                        🗑️ Remove Org Admin
-                                      </button>
-                                    </div>
-                                  )}
-                              </div>
+                              <OrgAdminCell
+                                org={org}
+                                orgAdminUser={orgAdminUser}
+                                selectedOrgForAdmin={selectedOrgForAdmin}
+                                setSelectedOrgForAdmin={setSelectedOrgForAdmin}
+                                setShowAssignAdminModal={setShowAssignAdminModal}
+                                handleRemoveOrgAdmin={handleRemoveOrgAdmin}
+                              />
                             ) : (
                               <button
                                 type="button"
@@ -652,7 +717,7 @@ export default function DashboardHome() {
           </div>
 
           {/* Users Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div id="users-section" style={{ scrollMarginTop: '100px' }} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-semibold text-slate-800">
                 Platform Users & Admins
@@ -845,15 +910,15 @@ export default function DashboardHome() {
                             {formatEnum(p.methodology)}
                           </span>
                         </div>
-                        
+
                         <div className="flex items-center gap-4">
-                          <Link 
+                          <Link
                             to={`/projects/${p.id}/specs`}
                             className="px-3 py-1.5 bg-white border border-slate-200 shadow-sm hover:border-orange-300 hover:bg-orange-50 text-slate-700 hover:text-orange-700 text-xs font-semibold rounded-md transition-all z-10"
                           >
                             Generate / View Specs
                           </Link>
-                          
+
                           <div className="flex items-center gap-3 w-32 cursor-pointer" onClick={() => window.location.href = `/projects/${p.id}`}>
                             <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
                               <div
@@ -873,6 +938,75 @@ export default function DashboardHome() {
               </div>
             )}
           </div>
+
+          {/* My Tasks - Developer & QA Tester only */}
+          {(role === ROLES.DEVELOPER || role === ROLES.QA_TESTER) && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                  My Tasks
+                </h3>
+                <span className="text-xs font-medium text-slate-500">{myTasks.length} task(s)</span>
+              </div>
+              {myTasksLoading ? (
+                <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
+                  <svg className="w-8 h-8 text-slate-300 mb-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
+                  <p className="text-sm font-medium text-slate-600">Loading your tasks…</p>
+                </div>
+              ) : myTasks.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
+                  <svg className="w-10 h-10 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                  <p className="text-sm font-medium text-slate-600">No tasks assigned to you yet</p>
+                  <p className="text-xs text-slate-400 mt-1">Your Project Manager will assign tasks when they plan a sprint.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {myTasks.map((task) => {
+                    const statusColors = {
+                      TODO: 'bg-slate-100 text-slate-700',
+                      IN_PROGRESS: 'bg-blue-100 text-blue-700',
+                      CODE_REVIEW: 'bg-purple-100 text-purple-700',
+                      TESTING: 'bg-yellow-100 text-yellow-700',
+                      DONE: 'bg-green-100 text-green-700',
+                    };
+                    const priorityColors = {
+                      HIGH: 'bg-red-100 text-red-700',
+                      CRITICAL: 'bg-red-200 text-red-900',
+                      MEDIUM: 'bg-orange-100 text-orange-700',
+                      LOW: 'bg-slate-100 text-slate-600',
+                    };
+                    const sColor = statusColors[task.status] || 'bg-slate-100 text-slate-700';
+                    const pColor = priorityColors[task.priority] || 'bg-slate-100 text-slate-600';
+                    const fmtEnum = (v) => v ? v.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '—';
+                    return (
+                      <div key={task.id} className="flex items-start gap-4 py-4 hover:bg-slate-50 transition-colors rounded-lg px-2">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-50 border border-orange-100 flex items-center justify-center text-xs font-bold text-orange-600">
+                          {task.storyPoints ?? '?'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 truncate">{task.title}</p>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className="text-xs text-slate-500">{task.projectName}</span>
+                            {task.sprintName && (
+                              <span className="text-xs text-slate-400 flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                {task.sprintName}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0 flex items-center gap-2">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pColor}`}>{fmtEnum(task.priority)}</span>
+                          <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${sColor}`}>{fmtEnum(task.status)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Pending Join Requests for ORG_ADMIN */}
           {role === ROLES.ORG_ADMIN && (
@@ -947,6 +1081,85 @@ export default function DashboardHome() {
                                 type="button"
                                 className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-md transition-colors"
                                 onClick={() => handleRejectJoinRequest(req.id)}
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Pending User Approvals for ORG_ADMIN */}
+          {role === ROLES.ORG_ADMIN && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mt-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-slate-800">
+                  Pending User Approvals
+                </h3>
+                <span className="text-xs font-medium text-slate-500">
+                  {pendingUsers.length} total
+                </span>
+              </div>
+
+              {loading ? (
+                <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
+                  <IconUsers className="w-10 h-10 text-slate-300 mb-3" />
+                  <p className="text-sm font-medium text-slate-600">
+                    Loading...
+                  </p>
+                </div>
+              ) : pendingUsers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
+                  <IconUsers className="w-10 h-10 text-slate-300 mb-3" />
+                  <p className="text-sm font-medium text-slate-600">
+                    No pending user approvals
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    You're all caught up.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-700">
+                    <thead className="text-xs font-medium text-slate-500 uppercase border-b border-slate-200">
+                      <tr>
+                        <th className="pb-3 px-2">Name</th>
+                        <th className="pb-3 px-2">Email</th>
+                        <th className="pb-3 px-2">Role</th>
+                        <th className="pb-3 px-2 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {pendingUsers.map((req) => (
+                        <tr key={req.id} className="hover:bg-slate-50">
+                          <td className="py-4 px-2 font-medium text-slate-900">
+                            {req.fullName || req.name}
+                          </td>
+                          <td className="py-4 px-2 text-slate-500">{req.email}</td>
+                          <td className="py-4 px-2">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                              {req.role.replaceAll("_", " ")}
+                            </span>
+                          </td>
+                          <td className="py-4 px-2 text-right">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-md transition-colors"
+                                onClick={() => handleApproveUser(req.id)}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-md transition-colors"
+                                onClick={() => handleRejectUser(req.id)}
                               >
                                 Reject
                               </button>
@@ -1107,6 +1320,26 @@ export default function DashboardHome() {
                   placeholder="••••••••"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Organization *
+                </label>
+                <select
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
+                  value={userForm.organizationId}
+                  onChange={(e) =>
+                    setUserForm((f) => ({ ...f, organizationId: e.target.value }))
+                  }
+                  required
+                >
+                  <option value="">-- Choose Organization --</option>
+                  {orgs.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">

@@ -33,6 +33,7 @@ public class OrgService {
     private final EmailService emailService;
     private final ActivityService activityService;
     private final ProjectRepository projectRepository;
+    private final NotificationService notificationService;
 
     public OrgService(OrganizationRepository organizationRepository,
                       TeamRepository teamRepository,
@@ -41,7 +42,8 @@ public class OrgService {
                       JwtService jwtService,
                       EmailService emailService,
                       ActivityService activityService,
-                      ProjectRepository projectRepository) {
+                      ProjectRepository projectRepository,
+                      NotificationService notificationService) {
         this.organizationRepository = organizationRepository;
         this.teamRepository = teamRepository;
         this.userRepository = userRepository;
@@ -50,6 +52,7 @@ public class OrgService {
         this.emailService = emailService;
         this.activityService = activityService;
         this.projectRepository = projectRepository;
+        this.notificationService = notificationService;
     }
 
 
@@ -123,6 +126,7 @@ public class OrgService {
         // Link user to organization and set role to ORG_ADMIN
         targetUser.setOrganization(org);
         targetUser.setRole(Role.ORG_ADMIN);
+        targetUser.setOrgApproved(true);
         User savedUser = userRepository.save(targetUser);
 
         return new OrgAdminResponse(
@@ -173,6 +177,13 @@ public class OrgService {
                     "You are not authorized to access this organization."
             );
         }
+
+        if (Boolean.FALSE.equals(user.getOrgApproved())) {
+            throw new InvalidRequestException(
+                    "Your organization assignment is pending approval by an Organization Admin."
+            );
+        }
+
         return user;
     }
 
@@ -268,6 +279,40 @@ public class OrgService {
                 .toList();
     }
 
+    public List<TeamDetailResponse> listTeamsWithMembers(Long orgId, String loggedInEmail) {
+        validateOrganizationAccess(orgId, loggedInEmail);
+        List<User> orgUsers = userRepository.findByOrganizationId(orgId);
+        return teamRepository.findByOrganizationId(orgId).stream()
+                .map(t -> {
+                    List<MemberResponse> teamMembers = orgUsers.stream()
+                            .filter(u -> u.getTeams().stream().anyMatch(tm -> tm.getId().equals(t.getId())))
+                            .map(u -> new MemberResponse(
+                                    u.getId(),
+                                    u.getFullName(),
+                                    u.getEmail(),
+                                    u.getPhoneNumber(),
+                                    u.getRole(),
+                                    u.isEnabled(),
+                                    u.getCreatedAt(),
+                                    u.getTeams().stream().map(Team::getName).toList()
+                            ))
+                            .toList();
+
+                    TeamDetailResponse dto = new TeamDetailResponse();
+                    dto.setId(t.getId());
+                    dto.setName(t.getName());
+                    dto.setDescription(t.getDescription());
+                    dto.setLeadId(t.getLead() != null ? t.getLead().getId() : null);
+                    dto.setLeadName(t.getLead() != null ? t.getLead().getFullName() : null);
+                    dto.setCreatedAt(t.getCreatedAt());
+                    dto.setUpdatedAt(t.getUpdatedAt());
+                    dto.setMemberCount(teamMembers.size());
+                    dto.setMembers(teamMembers);
+                    return dto;
+                })
+                .toList();
+    }
+
     @Transactional
     public TeamResponse createTeam(Long orgId, String name, String loggedInEmail) {
         validateOrganizationAccess(orgId, loggedInEmail);
@@ -310,6 +355,20 @@ public class OrgService {
         teamRepository.delete(team);
         
         activityService.logActivity(orgId, "Team deleted", "Deleted team: " + teamName, loggedInEmail);
+    }
+
+    @Transactional
+    public void removeTeamMember(Long orgId, Long teamId, Long memberId, String loggedInEmail) {
+        validateOrganizationAccess(orgId, loggedInEmail);
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new ResourceNotFoundException("Team not found"));
+        if (!team.getOrganization().getId().equals(orgId)) {
+            throw new InvalidRequestException("Team does not belong to this organization");
+        }
+        User user = userRepository.findById(memberId)
+                .orElseThrow(() -> new ResourceNotFoundException("Member not found"));
+        user.getTeams().removeIf(t -> t.getId().equals(teamId));
+        userRepository.save(user);
     }
 
     // ---- Members ----
@@ -440,6 +499,39 @@ public class OrgService {
         userRepository.save(user);
     }
 
+    // ---- Pending Approvals ----
+
+    @Transactional(readOnly = true)
+    public List<MemberResponse> getPendingUsers(Long orgId, String loggedInEmail) {
+        validateOrganizationAccess(orgId, loggedInEmail);
+        return userRepository.findByOrganizationId(orgId)
+                .stream()
+                .filter(u -> Boolean.FALSE.equals(u.getOrgApproved()))
+                .map(u -> new MemberResponse(
+                        u.getId(),
+                        u.getFullName(),
+                        u.getEmail(),
+                        u.getPhoneNumber(),
+                        u.getRole(),
+                        u.isEnabled(),
+                        u.getCreatedAt(),
+                        List.of()
+                ))
+                .toList();
+    }
+
+    @Transactional
+    public void approveUser(Long orgId, Long userId, String loggedInEmail) {
+        validateOrganizationAccess(orgId, loggedInEmail);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (user.getOrganization() == null || !user.getOrganization().getId().equals(orgId)) {
+            throw new InvalidRequestException("User does not belong to this organization");
+        }
+        user.setOrgApproved(true);
+        userRepository.save(user);
+    }
+
     // ---- Invites ----
 
     private boolean isInviteExpired(Invite invite) {
@@ -487,6 +579,13 @@ public class OrgService {
 
         emailService.sendInviteEmail(request.getEmail(), token, org.getName(), request.getRole().name());
         log.info("INVITE successfully dispatched to org={} email=[redacted]", orgId);
+        
+        final Team finalTeam = team;
+        userRepository.findByEmail(request.getEmail()).ifPresent(invitedUser -> {
+            String teamName = finalTeam != null ? finalTeam.getName() : "the organization";
+            String msg = String.format("You have been invited to join %s by %s.", teamName, loggedInEmail);
+            notificationService.createNotification(invitedUser, "Team Invitation", msg, "TEAM_INVITE", invite.getId());
+        });
         
         activityService.logActivity(orgId, "Member invited", "Invited " + request.getEmail() + " as " + request.getRole(), loggedInEmail);
     }
@@ -588,7 +687,7 @@ public class OrgService {
         String orgName = user.getOrganization().getName();
         return new AuthResponse(jwtToken,
                 new AuthResponse.UserPayload(
-                        user.getId(), user.getEmail(), user.getFullName(), orgId, orgName, user.getRole()));
+                        user.getId(), user.getEmail(), user.getFullName(), orgId, orgName, user.getRole(), user.getOrgApproved()));
     }
 
     // ---- Org Settings ----

@@ -22,4 +22,6 @@ public interface ProjectService {
     void deleteProject(Long projectId);
     
     com.neuroforge.dto.project.ProjectProgressResponse getProjectProgress(Long projectId);
+    
+    void updateProjectMemberRole(Long projectId, Long userId, com.neuroforge.enums.ProjectRole newRole);
 }

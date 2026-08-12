@@ -58,7 +58,12 @@ public class Task {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
-@JoinColumn(name = "sprint_id")    private Sprint sprint;
+    @JoinColumn(name = "sprint_id")
+    private Sprint sprint;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
+    private Team team;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assignee_id")

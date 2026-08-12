@@ -25,6 +25,8 @@ public class CreateUserRequest {
             message = "Phone number must be a valid 10-digit Indian mobile number")
     private String phoneNumber;
 
+    private Long organizationId;
+
     public CreateUserRequest() {
     }
 
@@ -60,7 +62,11 @@ public class CreateUserRequest {
         this.role = role;
     }
 
-    public String getPhoneNumber() {return phoneNumber;}
+    public String getPhoneNumber() { return phoneNumber; }
 
     public void setPhoneNumber(String phoneNumber) {this.phoneNumber = phoneNumber;}
+
+    public Long getOrganizationId() { return organizationId; }
+
+    public void setOrganizationId(Long organizationId) { this.organizationId = organizationId; }
 }

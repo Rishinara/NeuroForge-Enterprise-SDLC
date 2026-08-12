@@ -8,4 +8,5 @@ export const projectApi = {
   listProjects: (orgId) => api.get(orgId ? `/orgs/${orgId}/projects` : '/projects'),
   listMilestones: (projectId) => api.get(`/projects/${projectId}/milestones`),
   getProjectProgress: (projectId) => api.get(`/projects/${projectId}/progress`),
+  updateProjectMemberRole: (projectId, userId, role) => api.put(`/projects/${projectId}/members/${userId}/role`, { role }),
 }

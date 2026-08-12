@@ -77,7 +77,7 @@ export default function SpecsListPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <Can roles={[ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]}>
+          <Can roles={[ROLES.PROJECT_MANAGER, ROLES.ORG_ADMIN]}>
             <Link to={`/projects/${projectId}/specs/new`} className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm whitespace-nowrap">
               + New Spec
             </Link>
@@ -116,9 +116,9 @@ export default function SpecsListPage() {
             const updatedAt = s.updatedAt || 'Unknown';
             const displayStatus = formatEnum(s.status);
             return (
-              <Link 
-                key={s.id} 
-                to={`/projects/${projectId}/specs/${s.id}`} 
+              <Link
+                key={s.id}
+                to={`/projects/${projectId}/specs/${s.id}`}
                 className="flex items-center justify-between p-6 hover:bg-slate-50 transition-colors group"
               >
                 <div className="flex flex-col gap-1">
