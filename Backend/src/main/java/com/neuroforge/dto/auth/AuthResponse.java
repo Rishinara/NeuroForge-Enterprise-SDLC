@@ -22,14 +22,16 @@ public class AuthResponse {
         private Long orgId;
         private String orgName;
         private Role role;
+        private Boolean orgApproved;
 
-        public UserPayload(Long userId, String email, String fullName, Long orgId, String orgName, Role role) {
+        public UserPayload(Long userId, String email, String fullName, Long orgId, String orgName, Role role, Boolean orgApproved) {
             this.userId = userId;
             this.email = email;
             this.fullName = fullName;
             this.orgId = orgId;
             this.orgName = orgName;
             this.role = role;
+            this.orgApproved = orgApproved;
         }
 
         public Long getUserId() { return userId; }
@@ -38,5 +40,6 @@ public class AuthResponse {
         public Long getOrgId() { return orgId; }
         public String getOrgName() { return orgName; }
         public Role getRole() { return role; }
+        public Boolean getOrgApproved() { return orgApproved; }
     }
 }

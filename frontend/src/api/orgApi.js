@@ -14,6 +14,7 @@ export const orgApi = {
   createTeam: (orgId, payload) => api.post(`/orgs/${orgId}/teams`, payload),
   updateTeam: (orgId, teamId, payload) => api.put(`/orgs/${orgId}/teams/${teamId}`, payload),
   deleteTeam: (orgId, teamId) => api.delete(`/orgs/${orgId}/teams/${teamId}`),
+  removeTeamMember: (orgId, teamId, memberId) => api.delete(`/orgs/${orgId}/teams/${teamId}/members/${memberId}`),
 
   // Members
   listMembers: (orgId) => api.get(`/orgs/${orgId}/members`),

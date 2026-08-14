@@ -42,6 +42,9 @@ export default function TeamsPage() {
   const [newTeamName, setNewTeamName] = useState('')
   const [creatingTeam, setCreatingTeam] = useState(false)
   const [search, setSearch] = useState('')
+  const [editingTeam, setEditingTeam] = useState(null)
+  const [editTeamName, setEditTeamName] = useState('')
+  const [savingEditTeam, setSavingEditTeam] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -121,6 +124,51 @@ export default function TeamsPage() {
       setCreatingTeam(false)
     }
   }
+  async function handleUpdateTeam(e) {
+    e.preventDefault()
+    if (!editTeamName.trim() || !editingTeam) return
+    setSavingEditTeam(true)
+    const activeOrgId = isSuperAdmin ? (selectedOrgId !== 'ALL' ? selectedOrgId : orgs[0]?.id) : user?.orgId
+    try {
+      await orgApi.updateTeam(activeOrgId, editingTeam.id, { name: editTeamName.trim() })
+      setEditingTeam(null)
+      load()
+    } catch (err) {
+      setError(extractErrorMessage(err))
+    } finally {
+      setSavingEditTeam(false)
+    }
+  }
+
+  async function handleRemoveMemberFromTeam(memberId) {
+    if (!confirm('Are you sure you want to remove this member from the team?')) return
+    const activeOrgId = isSuperAdmin ? (selectedOrgId !== 'ALL' ? selectedOrgId : orgs[0]?.id) : user?.orgId
+    try {
+      await orgApi.removeTeamMember(activeOrgId, editingTeam.id, memberId)
+      setEditingTeam(prev => ({
+        ...prev,
+        members: prev.members.filter(m => m.id !== memberId)
+      }))
+      load()
+    } catch (err) {
+      setError(extractErrorMessage(err))
+    }
+  }
+  async function handleDeleteTeam(team) {
+    if (team.memberCount > 0) {
+      setError('Cannot delete a team that still has members.')
+      return
+    }
+    if (!confirm(`Are you sure you want to delete team "${team.name}"?`)) return
+
+    const activeOrgId = isSuperAdmin ? (selectedOrgId !== 'ALL' ? selectedOrgId : orgs[0]?.id) : user?.orgId
+    try {
+      await orgApi.deleteTeam(activeOrgId, team.id)
+      load()
+    } catch (err) {
+      setError(extractErrorMessage(err))
+    }
+  }
 
   async function handleDeleteTeam(team) {
     if (team.memberCount > 0) {
@@ -168,9 +216,11 @@ export default function TeamsPage() {
   const filteredMembers = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return members
-    return members.filter(
-      (m) => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
-    )
+    return members.filter((m) => {
+      const nameVal = (m.fullName || m.name || '').toLowerCase()
+      const emailVal = (m.email || '').toLowerCase()
+      return nameVal.includes(q) || emailVal.includes(q)
+    })
   }, [members, search])
 
   const roleCounts = useMemo(() => {
@@ -363,6 +413,11 @@ export default function TeamsPage() {
                     <div>
                       <div className="tm-member-name">{m.name}</div>
                       <div className="tm-member-email">{m.email}</div>
+                      {m.teams && m.teams.length > 0 && (
+                        <div className="text-xs text-slate-500 mt-1 dark:text-slate-400">
+                          Teams: <span className="font-semibold text-slate-700 dark:text-slate-300">{m.teams.join(', ')}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

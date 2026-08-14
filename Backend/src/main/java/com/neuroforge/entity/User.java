@@ -47,6 +47,9 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "org_approved", columnDefinition = "boolean default true")
+    private Boolean orgApproved = true;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 @JoinColumn(name = "org_id")
@@ -88,6 +91,8 @@ public class User implements UserDetails {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public Boolean getOrgApproved() { return orgApproved; }
+    public void setOrgApproved(Boolean orgApproved) { this.orgApproved = orgApproved; }
     public Organization getOrganization() { return organization; }
     public void setOrganization(Organization organization) { this.organization = organization; }
 

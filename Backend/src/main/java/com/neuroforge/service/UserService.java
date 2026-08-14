@@ -192,6 +192,6 @@ public class UserService {
         Long orgId = user.getOrganization() != null ? user.getOrganization().getId() : null;
         String orgName = user.getOrganization() != null ? user.getOrganization().getName() : null;
         return new AuthResponse.UserPayload(
-                user.getId(), user.getEmail(), user.getFullName(), orgId, orgName, user.getRole());
+                user.getId(), user.getEmail(), user.getFullName(), orgId, orgName, user.getRole(), user.getOrgApproved());
     }
 }

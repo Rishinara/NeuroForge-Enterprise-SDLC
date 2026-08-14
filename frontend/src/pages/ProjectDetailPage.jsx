@@ -168,7 +168,7 @@ export default function ProjectDetailPage() {
       <Tabs
         tabs={[
           { key: 'overview', label: 'Overview' },
-          { key: 'milestones', label: 'Milestones' },
+          ...(role === ROLES.CLIENT ? [] : [{ key: 'milestones', label: 'Milestones' }]),
           { key: 'team', label: 'Team' },
         ]}
         active={tab}

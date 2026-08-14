@@ -108,6 +108,17 @@ public class OrgController {
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @DeleteMapping("/api/orgs/{orgId}/teams/{teamId}/members/{memberId}")
+    public ResponseEntity<Void> removeTeamMember(
+            @PathVariable Long orgId,
+            @PathVariable Long teamId,
+            @PathVariable Long memberId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        orgService.removeTeamMember(orgId, teamId, memberId, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
+
     // ---- Members ----
 
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER')")

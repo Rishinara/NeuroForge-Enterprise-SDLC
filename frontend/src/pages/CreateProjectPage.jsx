@@ -15,8 +15,6 @@ export default function CreateProjectPage() {
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [members, setMembers] = useState([])
-
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -24,9 +22,12 @@ export default function CreateProjectPage() {
     startDate: '',
     endDate: '',
     techStack: [],
+    assignedTeamIds: [],
     teamMemberIds: [],
   })
   const [tagInput, setTagInput] = useState('')
+  const [teams, setTeams] = useState([])
+  const [expandedTeams, setExpandedTeams] = useState({})
 
   useEffect(() => {
     orgApi
@@ -54,13 +55,65 @@ export default function CreateProjectPage() {
     update('techStack', form.techStack.filter((t) => t !== tag))
   }
 
-  function toggleMember(id) {
-    setForm((f) => ({
-      ...f,
-      teamMemberIds: f.teamMemberIds.includes(id)
-        ? f.teamMemberIds.filter((m) => m !== id)
-        : [...f.teamMemberIds, id],
-    }))
+  function toggleTeam(teamId) {
+    const team = teams.find(t => t.id === teamId);
+    if (!team) return;
+    
+    setForm((f) => {
+      const teamIsSelected = f.assignedTeamIds.includes(teamId);
+      const newAssignedTeamIds = teamIsSelected 
+        ? f.assignedTeamIds.filter(id => id !== teamId)
+        : [...f.assignedTeamIds, teamId];
+
+      let newTeamMemberIds = new Set(f.teamMemberIds);
+      
+      if (teamIsSelected) {
+        team.members.forEach(m => newTeamMemberIds.delete(m.id));
+        // Ensure members from other selected teams stay selected
+        teams.filter(t => newAssignedTeamIds.includes(t.id)).forEach(t => {
+          t.members.forEach(m => newTeamMemberIds.add(m.id));
+        });
+      } else {
+        team.members.forEach(m => newTeamMemberIds.add(m.id));
+      }
+
+      return {
+        ...f,
+        assignedTeamIds: newAssignedTeamIds,
+        teamMemberIds: Array.from(newTeamMemberIds)
+      };
+    });
+  }
+
+  function toggleMember(memberId, teamId) {
+    setForm((f) => {
+      const isSelected = f.teamMemberIds.includes(memberId);
+      let newTeamMemberIds = new Set(f.teamMemberIds);
+      
+      if (isSelected) {
+        newTeamMemberIds.delete(memberId);
+      } else {
+        newTeamMemberIds.add(memberId);
+      }
+
+      let newAssignedTeamIds = new Set(f.assignedTeamIds);
+      const team = teams.find(t => t.id === teamId);
+      
+      if (team) {
+        const allTeamMembersSelected = team.members.every(m => newTeamMemberIds.has(m.id));
+        if (allTeamMembersSelected && team.members.length > 0) {
+          newAssignedTeamIds.add(teamId);
+        } else {
+          newAssignedTeamIds.delete(teamId);
+        }
+      }
+
+      return {
+        ...f,
+        assignedTeamIds: Array.from(newAssignedTeamIds),
+        teamMemberIds: Array.from(newTeamMemberIds)
+      };
+    });
   }
 
   function validateStep() {
@@ -93,7 +146,11 @@ export default function CreateProjectPage() {
       }
       const res = await projectApi.createProject(payload)
       const newId = res?.data?.id
-      navigate(newId ? `/projects/${newId}` : '/projects')
+      if (newId) {
+        window.location.href = `/projects/${newId}`
+      } else {
+        window.location.href = '/projects'
+      }
     } catch (err) {
       setError(extractErrorMessage(err))
     } finally {

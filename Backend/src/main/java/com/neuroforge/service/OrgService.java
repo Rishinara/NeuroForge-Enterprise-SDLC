@@ -173,6 +173,13 @@ public class OrgService {
                     "You are not authorized to access this organization."
             );
         }
+
+        if (Boolean.FALSE.equals(user.getOrgApproved())) {
+            throw new InvalidRequestException(
+                    "Your organization assignment is pending approval by an Organization Admin."
+            );
+        }
+
         return user;
     }
 
@@ -264,6 +271,40 @@ public class OrgService {
                             .filter(u -> u.getTeams().stream().anyMatch(tm -> tm.getId().equals(t.getId())))
                             .count();
                     return new TeamResponse(t.getId(), t.getName(), count);
+                })
+                .toList();
+    }
+
+    public List<TeamDetailResponse> listTeamsWithMembers(Long orgId, String loggedInEmail) {
+        validateOrganizationAccess(orgId, loggedInEmail);
+        List<User> orgUsers = userRepository.findByOrganizationId(orgId);
+        return teamRepository.findByOrganizationId(orgId).stream()
+                .map(t -> {
+                    List<MemberResponse> teamMembers = orgUsers.stream()
+                            .filter(u -> u.getTeams().stream().anyMatch(tm -> tm.getId().equals(t.getId())))
+                            .map(u -> new MemberResponse(
+                                    u.getId(),
+                                    u.getFullName(),
+                                    u.getEmail(),
+                                    u.getPhoneNumber(),
+                                    u.getRole(),
+                                    u.isEnabled(),
+                                    u.getCreatedAt(),
+                                    u.getTeams().stream().map(Team::getName).toList()
+                            ))
+                            .toList();
+
+                    TeamDetailResponse dto = new TeamDetailResponse();
+                    dto.setId(t.getId());
+                    dto.setName(t.getName());
+                    dto.setDescription(t.getDescription());
+                    dto.setLeadId(t.getLead() != null ? t.getLead().getId() : null);
+                    dto.setLeadName(t.getLead() != null ? t.getLead().getFullName() : null);
+                    dto.setCreatedAt(t.getCreatedAt());
+                    dto.setUpdatedAt(t.getUpdatedAt());
+                    dto.setMemberCount(teamMembers.size());
+                    dto.setMembers(teamMembers);
+                    return dto;
                 })
                 .toList();
     }
@@ -588,7 +629,7 @@ public class OrgService {
         String orgName = user.getOrganization().getName();
         return new AuthResponse(jwtToken,
                 new AuthResponse.UserPayload(
-                        user.getId(), user.getEmail(), user.getFullName(), orgId, orgName, user.getRole()));
+                        user.getId(), user.getEmail(), user.getFullName(), orgId, orgName, user.getRole(), user.getOrgApproved()));
     }
 
     // ---- Org Settings ----
