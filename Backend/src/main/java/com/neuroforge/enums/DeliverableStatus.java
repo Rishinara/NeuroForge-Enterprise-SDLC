@@ -1,9 +1,9 @@
 package com.neuroforge.enums;
 
-public enum ApprovalStatus {
-    PENDING,
+public enum DeliverableStatus {
+    DRAFT,
+    SUBMITTED,
     APPROVED,
     CHANGES_REQUESTED,
     REJECTED
 }
-

@@ -8,6 +8,7 @@ import HealthBadge from '../components/HealthBadge.jsx'
 import Tabs from '../components/Tabs.jsx'
 import EditProjectModal from '../components/EditProjectModal.jsx'
 import Can from '../components/Can.jsx'
+import ClientDashboard from './ClientDashboard.jsx'
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
@@ -177,17 +178,21 @@ export default function ProjectDetailPage() {
         onUpdated={load}
       />
 
-      <Tabs
-        tabs={[
-          { key: 'overview', label: 'Overview' },
-          ...(role === ROLES.CLIENT ? [] : [{ key: 'milestones', label: 'Milestones' }]),
-          { key: 'team', label: 'Team' },
-        ]}
-        active={tab}
-        onChange={setTab}
-      />
+      {role === ROLES.CLIENT ? (
+        <ClientDashboard project={project} />
+      ) : (
+        <>
+          <Tabs
+            tabs={[
+              { key: 'overview', label: 'Overview' },
+              { key: 'milestones', label: 'Milestones' },
+              { key: 'team', label: 'Team' },
+            ]}
+            active={tab}
+            onChange={setTab}
+          />
 
-      {tab === 'overview' && (
+          {tab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 shadow-sm h-full flex flex-col">
             <h3 className="text-lg font-bold text-slate-900 mb-4">Project Description</h3>
@@ -364,6 +369,8 @@ export default function ProjectDetailPage() {
             )}
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   )

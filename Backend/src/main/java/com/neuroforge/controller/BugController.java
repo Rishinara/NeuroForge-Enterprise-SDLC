@@ -42,7 +42,7 @@ public class BugController {
     }
 
     @PutMapping("/{bugId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'QA_TESTER', 'SUPER_ADMIN', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'QA_TESTER', 'DEVELOPER', 'SUPER_ADMIN', 'ORG_ADMIN')")
     public BugResponse updateBug(
             @PathVariable Long projectId,
             @PathVariable Long bugId,
@@ -55,7 +55,7 @@ public class BugController {
 
     @DeleteMapping("/{bugId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'QA_TESTER', 'SUPER_ADMIN', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('QA_TESTER', 'SUPER_ADMIN')")
     public void deleteBug(
             @PathVariable Long projectId,
             @PathVariable Long bugId,

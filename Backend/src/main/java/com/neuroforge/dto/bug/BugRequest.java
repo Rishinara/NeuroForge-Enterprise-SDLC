@@ -3,7 +3,6 @@ package com.neuroforge.dto.bug;
 import com.neuroforge.enums.BugStatus;
 import com.neuroforge.enums.TaskPriority;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -16,16 +15,27 @@ public class BugRequest {
 
     private String description;
 
-    @NotNull(message = "Status is required")
     private BugStatus status;
 
-    @NotNull(message = "Priority is required")
     private TaskPriority priority;
 
-    @NotNull(message = "Project ID is required")
+    private TaskPriority severity;
+
     private Long projectId;
 
     private Long sprintId;
 
+    private Long taskId;
+
     private Long assigneeId;
+
+    private String stepsToReproduce;
+
+    private String expectedResult;
+
+    private String actualResult;
+
+    private String attachmentUrl;
+
+    private String retestComments;
 }

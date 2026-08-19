@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Folder, Users, Settings, LogOut, Plus, ChevronDown, Sparkles } from 'lucide-react'
+import { LayoutDashboard, Folder, Users, Settings, LogOut, Plus, ChevronDown, Sparkles, CheckSquare, Flag, BarChart3, Layers } from 'lucide-react'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import { projectApi } from '../api/projectApi.js'
 import Avatar from './Avatar.jsx'
@@ -22,25 +22,24 @@ function getNavSections(currentProjectId, role, hasProjects) {
   }
 
   const workspaceItems = [
-    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: null },
+    { to: '/dashboard', label: role === ROLES.CLIENT ? 'Client Dashboard' : 'Dashboard', icon: LayoutDashboard, roles: null },
     { to: '/projects', label: 'Projects', icon: Folder, roles: null },
   ]
 
   if (hasProjects) {
     workspaceItems.push(
-      { to: `/projects/${currentProjectId}/specs`, label: 'AI Spec Studio', icon: Sparkles, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.QA_TESTER] },
-      { to: `/projects/${currentProjectId}/backlog`, label: 'Backlog & Board', icon: LayoutDashboard, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.QA_TESTER] },
-      { to: `/projects/${currentProjectId}/bugs`, label: 'Bugs', icon: Folder, roles: [ROLES.QA_TESTER] },
-      { to: `/projects/${currentProjectId}/test-cases`, label: 'Test Cases', icon: Folder, roles: [ROLES.QA_TESTER] },
-      { to: `/projects/${currentProjectId}/milestones`, label: 'Milestones', icon: Folder, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.QA_TESTER] },
-      { to: `/projects/${currentProjectId}/approvals`, label: 'Approvals', icon: Folder, roles: null },
-      { to: `/projects/${currentProjectId}/reports`, label: 'Reports', icon: LayoutDashboard, roles: null }
+      { to: `/projects/${currentProjectId}/approvals`, label: 'Request Approvals', icon: CheckSquare, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.CLIENT] },
+      { to: `/projects/${currentProjectId}/specs`, label: 'AI Spec Studio', icon: Sparkles, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.QA_TESTER, ROLES.CLIENT] },
+      { to: `/projects/${currentProjectId}/backlog`, label: 'Backlog & Board', icon: Layers, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.QA_TESTER] },
+      { to: `/projects/${currentProjectId}/bugs`, label: 'Bugs', icon: Folder, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.QA_TESTER] },
+      { to: `/projects/${currentProjectId}/milestones`, label: 'Milestones', icon: Flag, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.QA_TESTER, ROLES.CLIENT] },
+      { to: `/projects/${currentProjectId}/reports`, label: 'Reports', icon: BarChart3, roles: null }
     )
   }
 
   return [
     {
-      label: 'CORE',
+      label: role === ROLES.CLIENT ? 'CLIENT PORTAL' : 'CORE',
       items: workspaceItems,
     },
     {
@@ -53,6 +52,7 @@ function getNavSections(currentProjectId, role, hasProjects) {
     },
   ]
 }
+
 
 export default function Sidebar({ width = 256, onMouseDown, isResizing }) {
   const { pathname } = useLocation()

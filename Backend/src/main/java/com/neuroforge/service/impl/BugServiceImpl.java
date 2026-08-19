@@ -2,17 +2,17 @@ package com.neuroforge.service.impl;
 
 import com.neuroforge.dto.bug.BugRequest;
 import com.neuroforge.dto.bug.BugResponse;
-import com.neuroforge.entity.Bug;
-import com.neuroforge.entity.Project;
-import com.neuroforge.entity.Sprint;
-import com.neuroforge.entity.User;
+import com.neuroforge.entity.*;
+import com.neuroforge.enums.BugStatus;
+import com.neuroforge.enums.Role;
+import com.neuroforge.enums.TaskPriority;
+import com.neuroforge.exception.InvalidRequestException;
 import com.neuroforge.exception.ResourceNotFoundException;
-import com.neuroforge.repository.BugRepository;
-import com.neuroforge.repository.ProjectRepository;
-import com.neuroforge.repository.SprintRepository;
-import com.neuroforge.repository.UserRepository;
+import com.neuroforge.repository.*;
 import com.neuroforge.service.BugService;
+import com.neuroforge.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +27,8 @@ public class BugServiceImpl implements BugService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final SprintRepository sprintRepository;
+    private final TaskRepository taskRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -34,36 +36,56 @@ public class BugServiceImpl implements BugService {
         User user = userRepository.findByEmail(loggedInEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        Project project = projectRepository.findById(request.getProjectId())
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
-                
-        if (user.getRole() != com.neuroforge.enums.Role.SUPER_ADMIN && (user.getOrganization() == null || !project.getOrganization().getId().equals(user.getOrganization().getId()))) {
-             throw new org.springframework.security.access.AccessDeniedException("User does not have access to this project");
+        if (request.getTaskId() == null) {
+            throw new InvalidRequestException("Affected Task is required when reporting a bug.");
         }
 
-        Sprint sprint = null;
-        if (request.getSprintId() != null) {
-            sprint = sprintRepository.findSprintById(request.getSprintId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Sprint not found"));
+        Task task = taskRepository.findTaskById(request.getTaskId())
+                .orElseThrow(() -> new ResourceNotFoundException("Selected task not found."));
+
+        if (task.getAssignee() == null) {
+            throw new InvalidRequestException("This task does not have a Developer assigned. Please assign a Developer to the task before reporting this bug.");
         }
 
-        User assignee = null;
-        if (request.getAssigneeId() != null) {
-            assignee = userRepository.findById(request.getAssigneeId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Assignee not found"));
+        Project project = task.getProject();
+        if (user.getRole() != Role.SUPER_ADMIN && (user.getOrganization() == null || !project.getOrganization().getId().equals(user.getOrganization().getId()))) {
+            throw new AccessDeniedException("User does not have access to this project.");
         }
 
         Bug bug = new Bug();
-        bug.setTitle(request.getTitle());
+        bug.setTitle(request.getTitle() != null ? request.getTitle().trim() : "");
         bug.setDescription(request.getDescription());
-        bug.setStatus(request.getStatus());
-        bug.setPriority(request.getPriority());
+        bug.setStatus(BugStatus.OPEN);
+        bug.setPriority(request.getPriority() != null ? request.getPriority() : TaskPriority.MEDIUM);
+        bug.setSeverity(request.getSeverity() != null ? request.getSeverity() : TaskPriority.MEDIUM);
+        
         bug.setProject(project);
-        bug.setSprint(sprint);
+        bug.setSprint(task.getSprint());
+        bug.setTask(task);
         bug.setReporter(user);
-        bug.setAssignee(assignee);
+        bug.setAssignee(task.getAssignee());
+
+        bug.setStepsToReproduce(request.getStepsToReproduce());
+        bug.setExpectedResult(request.getExpectedResult());
+        bug.setActualResult(request.getActualResult());
+        bug.setAttachmentUrl(request.getAttachmentUrl());
 
         Bug savedBug = bugRepository.save(bug);
+
+        // Notify assigned Developer
+        if (task.getAssignee() != null) {
+            try {
+                notificationService.createNotification(
+                    task.getAssignee(),
+                    "New Bug Assigned",
+                    "Bug '" + savedBug.getTitle() + "' linked to task '" + task.getTitle() + "' was assigned to you.",
+                    "BUG_ASSIGNED",
+                    savedBug.getId()
+                );
+            } catch (Exception ignored) {
+            }
+        }
+
         return mapToResponse(savedBug);
     }
 
@@ -76,34 +98,82 @@ public class BugServiceImpl implements BugService {
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bug not found"));
 
-        if (user.getRole() == com.neuroforge.enums.Role.QA_TESTER) {
-            if (bug.getAssignee() == null || !bug.getAssignee().getId().equals(user.getId())) {
-                if (!bug.getReporter().getId().equals(user.getId())) {
-                    throw new org.springframework.security.access.AccessDeniedException("QA Testers can only update bugs they reported or are assigned to.");
-                }
+        BugStatus oldStatus = bug.getStatus();
+        BugStatus newStatus = request.getStatus() != null ? request.getStatus() : oldStatus;
+
+        // Role-based status transition restrictions
+        if (user.getRole() == Role.DEVELOPER) {
+            if (newStatus == BugStatus.CLOSED) {
+                throw new AccessDeniedException("Developers cannot close bugs. Please mark the bug as READY_FOR_QA for QA retesting.");
+            }
+            if (newStatus == BugStatus.REOPENED) {
+                throw new AccessDeniedException("Developers cannot reopen bugs.");
             }
         }
 
-        Sprint sprint = null;
-        if (request.getSprintId() != null) {
-            sprint = sprintRepository.findSprintById(request.getSprintId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Sprint not found"));
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            bug.setTitle(request.getTitle().trim());
+        }
+        if (request.getDescription() != null) {
+            bug.setDescription(request.getDescription());
+        }
+        if (request.getPriority() != null) {
+            bug.setPriority(request.getPriority());
+        }
+        if (request.getSeverity() != null) {
+            bug.setSeverity(request.getSeverity());
+        }
+        if (request.getStepsToReproduce() != null) {
+            bug.setStepsToReproduce(request.getStepsToReproduce());
+        }
+        if (request.getExpectedResult() != null) {
+            bug.setExpectedResult(request.getExpectedResult());
+        }
+        if (request.getActualResult() != null) {
+            bug.setActualResult(request.getActualResult());
+        }
+        if (request.getAttachmentUrl() != null) {
+            bug.setAttachmentUrl(request.getAttachmentUrl());
+        }
+        if (request.getRetestComments() != null) {
+            bug.setRetestComments(request.getRetestComments());
         }
 
-        User assignee = null;
-        if (request.getAssigneeId() != null) {
-            assignee = userRepository.findById(request.getAssigneeId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Assignee not found"));
-        }
-
-        bug.setTitle(request.getTitle());
-        bug.setDescription(request.getDescription());
-        bug.setStatus(request.getStatus());
-        bug.setPriority(request.getPriority());
-        bug.setSprint(sprint);
-        bug.setAssignee(assignee);
-
+        bug.setStatus(newStatus);
         Bug savedBug = bugRepository.save(bug);
+
+        // Notifications on status change
+        if (oldStatus != newStatus) {
+            try {
+                if (newStatus == BugStatus.READY_FOR_QA && bug.getReporter() != null) {
+                    notificationService.createNotification(
+                        bug.getReporter(),
+                        "Bug Ready for Retest",
+                        "Developer " + user.getFullName() + " marked bug '" + bug.getTitle() + "' as READY_FOR_QA.",
+                        "BUG_READY_FOR_QA",
+                        bug.getId()
+                    );
+                } else if (newStatus == BugStatus.REOPENED && bug.getAssignee() != null) {
+                    notificationService.createNotification(
+                        bug.getAssignee(),
+                        "Bug Reopened",
+                        "QA Tester " + user.getFullName() + " retested and reopened bug '" + bug.getTitle() + "'.",
+                        "BUG_REOPENED",
+                        bug.getId()
+                    );
+                } else if (newStatus == BugStatus.CLOSED && bug.getAssignee() != null) {
+                    notificationService.createNotification(
+                        bug.getAssignee(),
+                        "Bug Verified & Closed",
+                        "QA Tester " + user.getFullName() + " verified and closed bug '" + bug.getTitle() + "'.",
+                        "BUG_CLOSED",
+                        bug.getId()
+                    );
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
         return mapToResponse(savedBug);
     }
 
@@ -116,19 +186,11 @@ public class BugServiceImpl implements BugService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
                 
-        if (user.getRole() != com.neuroforge.enums.Role.SUPER_ADMIN && (user.getOrganization() == null || !project.getOrganization().getId().equals(user.getOrganization().getId()))) {
-             throw new org.springframework.security.access.AccessDeniedException("User does not have access to this project");
+        if (user.getRole() != Role.SUPER_ADMIN && (user.getOrganization() == null || !project.getOrganization().getId().equals(user.getOrganization().getId()))) {
+            throw new AccessDeniedException("User does not have access to this project.");
         }
         
         List<Bug> bugs = bugRepository.findByProjectId(projectId);
-        
-        if (user.getRole() == com.neuroforge.enums.Role.QA_TESTER) {
-            bugs = bugs.stream()
-                .filter(b -> (b.getAssignee() != null && b.getAssignee().getId().equals(user.getId())) || 
-                             (b.getReporter().getId().equals(user.getId())))
-                .collect(Collectors.toList());
-        }
-
         return bugs.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
@@ -141,10 +203,8 @@ public class BugServiceImpl implements BugService {
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bug not found"));
 
-        if (user.getRole() == com.neuroforge.enums.Role.QA_TESTER) {
-            if (!bug.getReporter().getId().equals(user.getId())) {
-                throw new org.springframework.security.access.AccessDeniedException("QA Testers can only delete bugs they reported.");
-            }
+        if (user.getRole() != Role.QA_TESTER && user.getRole() != Role.SUPER_ADMIN) {
+            throw new AccessDeniedException("Only QA Testers have permission to delete bugs.");
         }
 
         bugRepository.delete(bug);
@@ -157,6 +217,7 @@ public class BugServiceImpl implements BugService {
         response.setDescription(bug.getDescription());
         response.setStatus(bug.getStatus());
         response.setPriority(bug.getPriority());
+        response.setSeverity(bug.getSeverity());
         
         if (bug.getProject() != null) {
             response.setProjectId(bug.getProject().getId());
@@ -166,6 +227,11 @@ public class BugServiceImpl implements BugService {
         if (bug.getSprint() != null) {
             response.setSprintId(bug.getSprint().getId());
             response.setSprintName(bug.getSprint().getName());
+        }
+
+        if (bug.getTask() != null) {
+            response.setTaskId(bug.getTask().getId());
+            response.setTaskTitle(bug.getTask().getTitle());
         }
         
         if (bug.getReporter() != null) {
@@ -177,6 +243,12 @@ public class BugServiceImpl implements BugService {
             response.setAssigneeId(bug.getAssignee().getId());
             response.setAssigneeName(bug.getAssignee().getFullName());
         }
+
+        response.setStepsToReproduce(bug.getStepsToReproduce());
+        response.setExpectedResult(bug.getExpectedResult());
+        response.setActualResult(bug.getActualResult());
+        response.setAttachmentUrl(bug.getAttachmentUrl());
+        response.setRetestComments(bug.getRetestComments());
         
         response.setCreatedAt(bug.getCreatedAt());
         response.setUpdatedAt(bug.getUpdatedAt());

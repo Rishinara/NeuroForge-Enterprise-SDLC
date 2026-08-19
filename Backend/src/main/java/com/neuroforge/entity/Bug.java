@@ -34,13 +34,38 @@ public class Bug {
     @Column(nullable = false)
     private TaskPriority priority;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
-@JoinColumn(name = "project_id", nullable = false)    private Project project;
+    @Enumerated(EnumType.STRING)
+    private TaskPriority severity;
+
+    @Column(columnDefinition = "TEXT")
+    private String stepsToReproduce;
+
+    @Column(columnDefinition = "TEXT")
+    private String expectedResult;
+
+    @Column(columnDefinition = "TEXT")
+    private String actualResult;
+
+    @Column(length = 1000)
+    private String attachmentUrl;
+
+    @Column(columnDefinition = "TEXT")
+    private String retestComments;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
-@JoinColumn(name = "sprint_id")    private Sprint sprint;
+    @JoinColumn(name = "project_id", nullable = false)
+    private Project project;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+    @JoinColumn(name = "sprint_id")
+    private Sprint sprint;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+    @JoinColumn(name = "task_id")
+    private Task task;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_id", nullable = false)

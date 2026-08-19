@@ -124,10 +124,7 @@ public class TaskServiceImpl implements TaskService {
                         "Sprint does not belong to the selected project");
             }
 
-            if (sprint.getStatus() == SprintStatus.COMPLETED) {
-                throw new InvalidRequestException(
-                        "Cannot add task to completed sprint");
-            }
+// Allowed: sprint will auto-reactivate if non-done task added
         }
 
         Team team = null;
@@ -215,10 +212,7 @@ public class TaskServiceImpl implements TaskService {
                         "Sprint does not belong to the task project");
             }
 
-            if (sprint.getStatus() == SprintStatus.COMPLETED) {
-                throw new InvalidRequestException(
-                        "Cannot move task to completed sprint");
-            }
+// Allowed: sprint will auto-reactivate if non-done task added
         }
 
         Team team = null;
@@ -261,11 +255,18 @@ public class TaskServiceImpl implements TaskService {
                         : request.getLabels()
         );
 
+        Sprint oldSprint = task.getSprint();
         task.setSprint(sprint);
         task.setTeam(team);
         task.setAssignee(assignee);
 
         taskRepository.save(task);
+        if (oldSprint != null) {
+            checkAndUpdateSprintStatus(oldSprint);
+        }
+        if (sprint != null && (oldSprint == null || !oldSprint.getId().equals(sprint.getId()))) {
+            checkAndUpdateSprintStatus(sprint);
+        }
         
         if (notifyNewAssignee) {
              notificationService.createNotification(assignee, "New task assigned", "You have been assigned '" + task.getTitle() + "' in " + sprint.getName() + ".", "TASK_ASSIGNED", task.getId());
@@ -290,7 +291,11 @@ public class TaskServiceImpl implements TaskService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Task not found"));
 
+        Sprint sprint = task.getSprint();
         taskRepository.delete(task);
+        if (sprint != null) {
+            checkAndUpdateSprintStatus(sprint);
+        }
     }
 
     @Override
@@ -356,15 +361,19 @@ public class TaskServiceImpl implements TaskService {
                     "Task and Sprint belong to different projects");
         }
 
-        if (sprint.getStatus() == SprintStatus.COMPLETED) {
-            throw new InvalidRequestException(
-                    "Cannot assign task to completed sprint");
-        }
+// Allowed: sprint will auto-reactivate if non-done task added
 
         boolean wasInSprint = task.getSprint() != null;
+        Sprint prevSprint = task.getSprint();
         task.setSprint(sprint);
 
         taskRepository.save(task);
+        if (prevSprint != null) {
+            checkAndUpdateSprintStatus(prevSprint);
+        }
+        if (sprint != null) {
+            checkAndUpdateSprintStatus(sprint);
+        }
         
         if (!wasInSprint && task.getAssignee() != null) {
              notificationService.createNotification(task.getAssignee(), "New task assigned", "You have been assigned '" + task.getTitle() + "' in " + sprint.getName() + ".", "TASK_ASSIGNED", task.getId());
@@ -395,9 +404,13 @@ public class TaskServiceImpl implements TaskService {
                     "Task is already in the backlog");
         }
 
+        Sprint prevSprint = task.getSprint();
         task.setSprint(null);
 
         taskRepository.save(task);
+        if (prevSprint != null) {
+            checkAndUpdateSprintStatus(prevSprint);
+        }
 
         Task updatedTask = taskRepository.findTaskById(task.getId())
                 .orElseThrow(() ->
@@ -487,6 +500,9 @@ public class TaskServiceImpl implements TaskService {
         task.setStatus(request.getStatus());
 
         taskRepository.save(task);
+        if (task.getSprint() != null) {
+            checkAndUpdateSprintStatus(task.getSprint());
+        }
 
         TaskStatusHistory history = new TaskStatusHistory();
 
@@ -580,6 +596,33 @@ public class TaskServiceImpl implements TaskService {
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
+    }
+
+
+    private void checkAndUpdateSprintStatus(Sprint sprint) {
+        if (sprint == null || sprint.getId() == null) return;
+        List<Task> sprintTasks = taskRepository.findBySprintId(sprint.getId());
+        if (sprintTasks.isEmpty()) {
+            if (sprint.getStatus() == SprintStatus.COMPLETED) {
+                sprint.setStatus(SprintStatus.PLANNED);
+                sprintRepository.save(sprint);
+            }
+            return;
+        }
+
+        boolean allDone = sprintTasks.stream().allMatch(t -> t.getStatus() == TaskStatus.DONE);
+
+        if (allDone) {
+            if (sprint.getStatus() != SprintStatus.COMPLETED) {
+                sprint.setStatus(SprintStatus.COMPLETED);
+                sprintRepository.save(sprint);
+            }
+        } else {
+            if (sprint.getStatus() == SprintStatus.COMPLETED) {
+                sprint.setStatus(SprintStatus.ACTIVE);
+                sprintRepository.save(sprint);
+            }
+        }
     }
 
 }
