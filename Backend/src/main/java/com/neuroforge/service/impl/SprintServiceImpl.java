@@ -53,6 +53,14 @@ public class SprintServiceImpl implements SprintService {
             throw new InvalidRequestException("Start date cannot be after end date");
         }
 
+        if (project.getStartDate() != null && request.getStartDate().isBefore(project.getStartDate())) {
+            throw new InvalidRequestException("Sprint start date cannot be before project start date (" + project.getStartDate() + ")");
+        }
+
+        if (project.getEndDate() != null && request.getEndDate().isAfter(project.getEndDate())) {
+            throw new InvalidRequestException("Sprint end date cannot be after project deadline (" + project.getEndDate() + ")");
+        }
+
         if (sprintRepository.existsByProjectIdAndNameIgnoreCase(
                 project.getId(),
                 request.getName())) {
@@ -118,6 +126,17 @@ public class SprintServiceImpl implements SprintService {
 
         if (request.getStartDate().isAfter(request.getEndDate())) {
             throw new InvalidRequestException("Start date cannot be after end date");
+        }
+
+        Project project = sprint.getProject();
+        if (project != null) {
+            if (project.getStartDate() != null && request.getStartDate().isBefore(project.getStartDate())) {
+                throw new InvalidRequestException("Sprint start date cannot be before project start date (" + project.getStartDate() + ")");
+            }
+
+            if (project.getEndDate() != null && request.getEndDate().isAfter(project.getEndDate())) {
+                throw new InvalidRequestException("Sprint end date cannot be after project deadline (" + project.getEndDate() + ")");
+            }
         }
 
         if (!sprint.getName().equalsIgnoreCase(request.getName())

@@ -33,29 +33,53 @@ export default function CreateProjectPage() {
     if (!user?.orgId) return;
 
     Promise.all([
-      orgApi.listMembers(user.orgId),
-      orgApi.listTeamsWithMembers(user.orgId)
+      orgApi.listMembers(user.orgId, { availableOnly: true }),
+      orgApi.listTeamsWithMembers(user.orgId, { availableOnly: true })
     ])
     .then(([membersRes, teamsRes]) => {
-      const allMembers = Array.isArray(membersRes.data) ? membersRes.data.filter(m => m.role !== 'ORG_ADMIN') : [];
-      const allTeams = Array.isArray(teamsRes.data) ? teamsRes.data : [];
+      const isPmCreator = user?.role === 'PROJECT_MANAGER';
+
+      let allMembers = Array.isArray(membersRes.data) 
+        ? membersRes.data.filter(m => m.role !== 'ORG_ADMIN' && m.role !== 'SUPER_ADMIN' && !m.assignedToProject) 
+        : [];
+      
+      if (isPmCreator) {
+        allMembers = allMembers.filter(m => m.role !== 'PROJECT_MANAGER');
+      }
+
+      let rawTeams = Array.isArray(teamsRes.data) ? teamsRes.data : [];
+
+      let filteredTeams = rawTeams
+        .filter(t => !(isPmCreator && t.name.toLowerCase() === 'project manager'))
+        .map(t => {
+          const validMembers = (t.members || []).filter(m => {
+            if (m.assignedToProject) return false;
+            if (isPmCreator && m.role === 'PROJECT_MANAGER') return false;
+            return true;
+          });
+          return {
+            ...t,
+            memberCount: validMembers.length,
+            members: validMembers
+          };
+        });
 
       // Calculate unassigned members
-      const assignedMemberIds = new Set(allTeams.flatMap(t => t.members.map(m => m.id)));
-      const unassignedMembers = allMembers.filter(m => !assignedMemberIds.has(m.id));
+      const assignedToTeamMemberIds = new Set(filteredTeams.flatMap(t => t.members.map(m => m.id)));
+      const unassignedMembers = allMembers.filter(m => !assignedToTeamMemberIds.has(m.id));
 
       if (unassignedMembers.length > 0) {
-        allTeams.push({
+        filteredTeams.push({
           id: -1,
           name: 'Unassigned Members',
           memberCount: unassignedMembers.length,
           members: unassignedMembers
         });
       }
-      setTeams(allTeams);
+      setTeams(filteredTeams);
     })
     .catch(() => setTeams([]));
-  }, [user?.orgId])
+  }, [user?.orgId, user?.role])
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }))
@@ -419,7 +443,7 @@ export default function CreateProjectPage() {
                   ) : (
                     <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                       {teams.map((team) => {
-                        const isExpanded = !!expandedTeams[team.id];
+                        const isExpanded = expandedTeams[team.id] !== false;
                         const teamMembersCount = team.members.length;
                         const selectedTeamMembersCount = team.members.filter(m => form.teamMemberIds.includes(m.id)).length;
                         
@@ -432,13 +456,18 @@ export default function CreateProjectPage() {
                         
                         return (
                           <div key={team.id} className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-                            <div className="flex items-center px-4 py-3 bg-slate-50 border-b border-slate-200">
+                            <div 
+                              className="flex items-center px-4 py-3 bg-slate-50 border-b border-slate-200 cursor-pointer select-none"
+                              onClick={() => {
+                                setExpandedTeams(prev => ({ ...prev, [team.id]: !isExpanded }));
+                              }}
+                            >
                               <button
                                 type="button"
                                 className="mr-2 text-slate-400 hover:text-slate-600 transition-colors"
                                 onClick={(e) => {
-                                  e.preventDefault();
-                                  setExpandedTeams(prev => ({ ...prev, [team.id]: !prev[team.id] }));
+                                  e.stopPropagation();
+                                  setExpandedTeams(prev => ({ ...prev, [team.id]: !isExpanded }));
                                 }}
                               >
                                 <svg 
@@ -451,7 +480,7 @@ export default function CreateProjectPage() {
                                 </svg>
                               </button>
                               
-                              <div className="flex items-center flex-1 cursor-pointer" onClick={() => toggleTeam(team.id)}>
+                              <div className="flex items-center flex-1">
                                 <input
                                   type="checkbox"
                                   className="w-4 h-4 text-orange-600 rounded border-slate-300 focus:ring-orange-500 cursor-pointer"
@@ -459,9 +488,10 @@ export default function CreateProjectPage() {
                                   ref={el => {
                                     if (el) el.indeterminate = checkboxState === 'indeterminate';
                                   }}
-                                  onChange={() => {}} 
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={() => toggleTeam(team.id)} 
                                 />
-                                <span className="ml-3 font-bold text-slate-800 text-sm select-none">{team.name}</span>
+                                <span className="ml-3 font-bold text-slate-800 text-sm">{team.name}</span>
                               </div>
                               <div className="text-xs font-semibold text-slate-500 bg-slate-200 px-2 py-1 rounded">
                                 {teamMembersCount} member{teamMembersCount !== 1 ? 's' : ''}
@@ -469,7 +499,7 @@ export default function CreateProjectPage() {
                             </div>
                             
                             {isExpanded && team.members.length > 0 && (
-                              <div className="bg-white p-2">
+                              <div className="bg-white p-2 border-t border-slate-100">
                                 {team.members.map((m) => {
                                   const isChecked = form.teamMemberIds.includes(m.id);
                                   return (
@@ -487,11 +517,11 @@ export default function CreateProjectPage() {
                                       />
                                       <div className="ml-3 flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between">
                                         <div>
-                                          <div className="text-sm font-semibold text-slate-900">{m.fullName}</div>
+                                          <div className="text-sm font-semibold text-slate-900">{m.fullName || m.name}</div>
                                           <div className="text-xs text-slate-500">{m.email}</div>
                                         </div>
                                         <div className="mt-1 sm:mt-0 text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded self-start sm:self-auto">
-                                          {m.role.replaceAll('_', ' ')}
+                                          {m.role ? m.role.toString().replaceAll('_', ' ') : ''}
                                         </div>
                                       </div>
                                     </label>

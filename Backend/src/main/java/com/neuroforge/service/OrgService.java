@@ -34,6 +34,7 @@ public class OrgService {
     private final ActivityService activityService;
     private final ProjectRepository projectRepository;
     private final NotificationService notificationService;
+    private final ProjectMemberRepository projectMemberRepository;
 
     public OrgService(OrganizationRepository organizationRepository,
                       TeamRepository teamRepository,
@@ -43,7 +44,8 @@ public class OrgService {
                       EmailService emailService,
                       ActivityService activityService,
                       ProjectRepository projectRepository,
-                      NotificationService notificationService) {
+                      NotificationService notificationService,
+                      ProjectMemberRepository projectMemberRepository) {
         this.organizationRepository = organizationRepository;
         this.teamRepository = teamRepository;
         this.userRepository = userRepository;
@@ -53,8 +55,87 @@ public class OrgService {
         this.activityService = activityService;
         this.projectRepository = projectRepository;
         this.notificationService = notificationService;
+        this.projectMemberRepository = projectMemberRepository;
     }
 
+    @Transactional
+    public void ensureDefaultTeams(Organization org) {
+        if (org == null || org.getId() == null) return;
+        List<Team> existingTeams = teamRepository.findByOrganizationId(org.getId());
+        java.util.Set<String> existingNames = existingTeams.stream()
+                .map(t -> t.getName().toLowerCase())
+                .collect(java.util.stream.Collectors.toSet());
+
+        List<String> defaultTeamNames = List.of(
+                "Frontend Developers",
+                "Backend Developers",
+                "QA Testers",
+                "Client",
+                "Project Manager"
+        );
+
+        List<Team> toSave = new java.util.ArrayList<>();
+        for (String name : defaultTeamNames) {
+            if (!existingNames.contains(name.toLowerCase())) {
+                toSave.add(new Team(name, org));
+            }
+        }
+        if (!toSave.isEmpty()) {
+            teamRepository.saveAll(toSave);
+        }
+    }
+
+    private String getDefaultTeamNameForRole(Role role) {
+        if (role == null) return null;
+        String r = role.name();
+        if ("FRONTEND_DEVELOPER".equalsIgnoreCase(r) || "DEVELOPER".equalsIgnoreCase(r)) {
+            return "Frontend Developers";
+        }
+        if ("BACKEND_DEVELOPER".equalsIgnoreCase(r)) {
+            return "Backend Developers";
+        }
+        if ("QA_TESTER".equalsIgnoreCase(r) || "QA".equalsIgnoreCase(r)) {
+            return "QA Testers";
+        }
+        if ("CLIENT".equalsIgnoreCase(r)) {
+            return "Client";
+        }
+        if ("PROJECT_MANAGER".equalsIgnoreCase(r)) {
+            return "Project Manager";
+        }
+        return null;
+    }
+
+    private boolean isUserInTeam(User u, String teamName, Long teamId) {
+        if (u == null) return false;
+        if (u.getTeams() != null && u.getTeams().stream().anyMatch(tm -> tm.getId().equals(teamId) || tm.getName().equalsIgnoreCase(teamName))) {
+            return true;
+        }
+        String defaultTeam = getDefaultTeamNameForRole(u.getRole());
+        return defaultTeam != null && defaultTeam.equalsIgnoreCase(teamName);
+    }
+
+    @Transactional
+    public void assignUserToDefaultTeam(User user, Organization org) {
+        if (user == null || org == null) return;
+        ensureDefaultTeams(org);
+        String targetTeamName = getDefaultTeamNameForRole(user.getRole());
+
+        if (targetTeamName != null) {
+            String finalName = targetTeamName;
+            teamRepository.findByOrganizationId(org.getId()).stream()
+                    .filter(t -> t.getName().equalsIgnoreCase(finalName))
+                    .findFirst()
+                    .ifPresent(team -> {
+                        boolean alreadyMember = user.getTeams().stream()
+                                .anyMatch(t -> t.getId().equals(team.getId()));
+                        if (!alreadyMember) {
+                            user.getTeams().add(team);
+                            userRepository.save(user);
+                        }
+                    });
+        }
+    }
 
     //---Organization---
 
@@ -64,7 +145,9 @@ public class OrgService {
         organization.setDescription(request.getDescription());
         organization.setSupportEmail(request.getSupportEmail());
         organization.setCreatedAt(LocalDateTime.now());
-        return organizationRepository.save(organization);
+        Organization saved = organizationRepository.save(organization);
+        ensureDefaultTeams(saved);
+        return saved;
     }
 
     public List<Organization> getAllOrganizations() {
@@ -128,6 +211,7 @@ public class OrgService {
         targetUser.setRole(Role.ORG_ADMIN);
         targetUser.setOrgApproved(true);
         User savedUser = userRepository.save(targetUser);
+        ensureDefaultTeams(org);
 
         return new OrgAdminResponse(
                 savedUser.getId(),
@@ -200,17 +284,24 @@ public class OrgService {
         
         List<User> orgUsers = userRepository.findByOrganizationId(orgId);
         List<MemberResponse> teamMembers = orgUsers.stream()
-                .filter(u -> u.getTeams().stream().anyMatch(tm -> tm.getId().equals(team.getId())))
-                .map(u -> new MemberResponse(
-                        u.getId(),
-                        u.getFullName(),
-                        u.getEmail(),
-                        u.getPhoneNumber(),
-                        u.getRole(),
-                        u.isEnabled(),
-                        u.getCreatedAt(),
-                        u.getTeams().stream().map(Team::getName).toList()
-                ))
+                .filter(u -> isUserInTeam(u, team.getName(), team.getId()))
+                .map(u -> {
+                    List<String> userTeamNames = new java.util.ArrayList<>(u.getTeams().stream().map(Team::getName).toList());
+                    String defaultTeam = getDefaultTeamNameForRole(u.getRole());
+                    if (defaultTeam != null && userTeamNames.stream().noneMatch(n -> n.equalsIgnoreCase(defaultTeam))) {
+                        userTeamNames.add(defaultTeam);
+                    }
+                    return new MemberResponse(
+                            u.getId(),
+                            u.getFullName(),
+                            u.getEmail(),
+                            u.getPhoneNumber(),
+                            u.getRole(),
+                            u.isEnabled(),
+                            u.getCreatedAt(),
+                            userTeamNames
+                    );
+                })
                 .toList();
 
         TeamDetailResponse dto = new TeamDetailResponse();
@@ -267,35 +358,82 @@ public class OrgService {
 
     @Transactional(readOnly = true)
     public List<TeamResponse> listTeams(Long orgId, String loggedInEmail) {
-        validateOrganizationAccess(orgId, loggedInEmail);
+        Organization org = validateOrganizationAccess(orgId, loggedInEmail).getOrganization();
+        if (org == null) {
+            org = organizationRepository.findById(orgId).orElse(null);
+        }
+        if (org != null) {
+            ensureDefaultTeams(org);
+        }
         List<User> orgUsers = userRepository.findByOrganizationId(orgId);
         return teamRepository.findByOrganizationId(orgId).stream()
                 .map(t -> {
                     int count = (int) orgUsers.stream()
-                            .filter(u -> u.getTeams().stream().anyMatch(tm -> tm.getId().equals(t.getId())))
+                            .filter(u -> isUserInTeam(u, t.getName(), t.getId()))
                             .count();
                     return new TeamResponse(t.getId(), t.getName(), count);
                 })
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<TeamDetailResponse> listTeamsWithMembers(Long orgId, String loggedInEmail) {
-        validateOrganizationAccess(orgId, loggedInEmail);
+        return listTeamsWithMembers(orgId, loggedInEmail, false, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TeamDetailResponse> listTeamsWithMembers(Long orgId, String loggedInEmail, Boolean availableOnly, Long forProjectId) {
+        Organization org = validateOrganizationAccess(orgId, loggedInEmail).getOrganization();
+        if (org == null) {
+            org = organizationRepository.findById(orgId).orElse(null);
+        }
+        if (org != null) {
+            ensureDefaultTeams(org);
+        }
+
+        List<Team> teams = teamRepository.findByOrganizationId(orgId);
         List<User> orgUsers = userRepository.findByOrganizationId(orgId);
-        return teamRepository.findByOrganizationId(orgId).stream()
+        List<ProjectMember> pms = projectMemberRepository.findByProjectOrganizationId(orgId);
+
+        java.util.Map<Long, String> userProjectMap = new java.util.HashMap<>();
+        for (ProjectMember pm : pms) {
+            if (forProjectId == null || !pm.getProject().getId().equals(forProjectId)) {
+                userProjectMap.put(pm.getUser().getId(), pm.getProject().getName());
+            }
+        }
+
+        return teams.stream()
                 .map(t -> {
                     List<MemberResponse> teamMembers = orgUsers.stream()
-                            .filter(u -> u.getTeams().stream().anyMatch(tm -> tm.getId().equals(t.getId())))
-                            .map(u -> new MemberResponse(
-                                    u.getId(),
-                                    u.getFullName(),
-                                    u.getEmail(),
-                                    u.getPhoneNumber(),
-                                    u.getRole(),
-                                    u.isEnabled(),
-                                    u.getCreatedAt(),
-                                    u.getTeams().stream().map(Team::getName).toList()
-                            ))
+                            .filter(u -> u.getRole() != Role.SUPER_ADMIN)
+                            .filter(u -> isUserInTeam(u, t.getName(), t.getId()))
+                            .map(u -> {
+                                List<String> userTeamNames = new java.util.ArrayList<>(u.getTeams().stream().map(Team::getName).toList());
+                                String defaultTeam = getDefaultTeamNameForRole(u.getRole());
+                                if (defaultTeam != null && userTeamNames.stream().noneMatch(n -> n.equalsIgnoreCase(defaultTeam))) {
+                                    userTeamNames.add(defaultTeam);
+                                }
+
+                                MemberResponse dto = new MemberResponse(
+                                        u.getId(),
+                                        u.getFullName(),
+                                        u.getEmail(),
+                                        u.getPhoneNumber(),
+                                        u.getRole(),
+                                        u.isEnabled(),
+                                        u.getCreatedAt(),
+                                        userTeamNames
+                                );
+                                String assignedProject = userProjectMap.get(u.getId());
+                                if (assignedProject != null) {
+                                    dto.setAssignedToProject(true);
+                                    dto.setAssignedProjectName(assignedProject);
+                                } else {
+                                    dto.setAssignedToProject(false);
+                                }
+                                return dto;
+                            })
+                            .filter(m -> availableOnly == null || !availableOnly || !Boolean.TRUE.equals(m.getAssignedToProject()))
                             .toList();
 
                     TeamDetailResponse dto = new TeamDetailResponse();
@@ -371,29 +509,64 @@ public class OrgService {
         userRepository.save(user);
     }
 
+    private MemberResponse buildMemberResponse(User u, java.util.Map<Long, String> userProjectMap) {
+        List<String> userTeamNames = new java.util.ArrayList<>(u.getTeams().stream().map(Team::getName).toList());
+        String defaultTeam = getDefaultTeamNameForRole(u.getRole());
+        if (defaultTeam != null && userTeamNames.stream().noneMatch(n -> n.equalsIgnoreCase(defaultTeam))) {
+            userTeamNames.add(defaultTeam);
+        }
+
+        MemberResponse dto = new MemberResponse(
+                u.getId(),
+                u.getFullName(),
+                u.getEmail(),
+                u.getPhoneNumber(),
+                u.getRole(),
+                u.isEnabled(),
+                u.getCreatedAt(),
+                userTeamNames
+        );
+        String assignedProject = userProjectMap != null ? userProjectMap.get(u.getId()) : null;
+        if (assignedProject != null) {
+            dto.setAssignedToProject(true);
+            dto.setAssignedProjectName(assignedProject);
+        } else {
+            dto.setAssignedToProject(false);
+        }
+        return dto;
+    }
+
     // ---- Members ----
 
     @Transactional(readOnly = true)
     public List<MemberResponse> listMembers(Long orgId, String loggedInEmail) {
+        return listMembers(orgId, loggedInEmail, false, null);
+    }
 
-        validateOrganizationAccess(orgId, loggedInEmail);
+    @Transactional(readOnly = true)
+    public List<MemberResponse> listMembers(Long orgId, String loggedInEmail, Boolean availableOnly, Long forProjectId) {
+        Organization org = validateOrganizationAccess(orgId, loggedInEmail).getOrganization();
+        if (org == null) {
+            org = organizationRepository.findById(orgId).orElse(null);
+        }
+        if (org != null) {
+            ensureDefaultTeams(org);
+        }
 
-        return userRepository.findByOrganizationId(orgId)
-                .stream()
+        List<User> orgUsers = userRepository.findByOrganizationId(orgId);
+        List<ProjectMember> pms = projectMemberRepository.findByProjectOrganizationId(orgId);
+
+        java.util.Map<Long, String> userProjectMap = new java.util.HashMap<>();
+        for (ProjectMember pm : pms) {
+            if (forProjectId == null || !pm.getProject().getId().equals(forProjectId)) {
+                userProjectMap.put(pm.getUser().getId(), pm.getProject().getName());
+            }
+        }
+
+        return orgUsers.stream()
                 .filter(u -> u.getRole() != Role.SUPER_ADMIN)
-                .map(u -> new MemberResponse(
-                        u.getId(),
-                        u.getFullName(),
-                        u.getEmail(),
-                        u.getPhoneNumber(),
-                        u.getRole(),
-                        u.isEnabled(),
-                        u.getCreatedAt(),
-                        u.getTeams()
-                                .stream()
-                                .map(Team::getName)
-                                .toList()
-                ))
+                .map(u -> buildMemberResponse(u, userProjectMap))
+                .filter(m -> availableOnly == null || !availableOnly || !Boolean.TRUE.equals(m.getAssignedToProject()))
                 .toList();
     }
 
@@ -417,19 +590,12 @@ public class OrgService {
         }
         user.setRole(role);
         userRepository.save(user);
-        return new MemberResponse(
-                user.getId(),
-                user.getFullName(),
-                user.getEmail(),
-                user.getPhoneNumber(),
-                user.getRole(),
-                user.isEnabled(),
-                user.getCreatedAt(),
-                user.getTeams()
-                        .stream()
-                        .map(Team::getName)
-                        .toList()
-        );
+        assignUserToDefaultTeam(user, user.getOrganization());
+
+        List<ProjectMember> userPms = projectMemberRepository.findByUserId(user.getId());
+        java.util.Map<Long, String> map = new java.util.HashMap<>();
+        if (!userPms.isEmpty()) map.put(user.getId(), userPms.get(0).getProject().getName());
+        return buildMemberResponse(user, map);
     }
 
     @Transactional
@@ -485,6 +651,7 @@ public class OrgService {
         user.setOrganization(user.getRequestedOrganization());
         user.setRequestedOrganization(null);
         userRepository.save(user);
+        assignUserToDefaultTeam(user, user.getOrganization());
     }
 
     @Transactional
@@ -530,6 +697,7 @@ public class OrgService {
         }
         user.setOrgApproved(true);
         userRepository.save(user);
+        assignUserToDefaultTeam(user, user.getOrganization());
     }
 
     // ---- Invites ----
@@ -679,6 +847,7 @@ public class OrgService {
         }
 
         userRepository.save(user);
+        assignUserToDefaultTeam(user, user.getOrganization());
         invite.setStatus(InviteStatus.ACCEPTED);
         inviteRepository.save(invite);
 

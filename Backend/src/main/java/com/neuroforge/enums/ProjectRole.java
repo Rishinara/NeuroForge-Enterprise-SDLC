@@ -5,6 +5,10 @@ public enum ProjectRole {
 
     DEVELOPER,
 
+    FRONTEND_DEVELOPER,
+
+    BACKEND_DEVELOPER,
+
     QA,
 
     CLIENT,

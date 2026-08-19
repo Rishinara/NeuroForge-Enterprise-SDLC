@@ -5,6 +5,8 @@ public enum Role {
     ORG_ADMIN,
     PROJECT_MANAGER,
     DEVELOPER,
+    FRONTEND_DEVELOPER,
+    BACKEND_DEVELOPER,
     QA_TESTER,
     CLIENT,
     ROLE_USER,

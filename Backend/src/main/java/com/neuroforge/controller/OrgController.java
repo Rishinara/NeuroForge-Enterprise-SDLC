@@ -102,8 +102,10 @@ public class OrgController {
     @GetMapping("/api/orgs/{orgId}/teams-with-members")
     public List<TeamDetailResponse> listTeamsWithMembers(
             @PathVariable Long orgId,
+            @RequestParam(required = false) Boolean availableOnly,
+            @RequestParam(required = false) Long forProjectId,
             @AuthenticationPrincipal UserDetails userDetails) {
-        return orgService.listTeamsWithMembers(orgId, userDetails.getUsername());
+        return orgService.listTeamsWithMembers(orgId, userDetails.getUsername(), availableOnly, forProjectId);
     }
 
     @PreAuthorize("hasRole('ORG_ADMIN')")
@@ -133,8 +135,10 @@ public class OrgController {
     @GetMapping("/api/orgs/{orgId}/members")
     public List<MemberResponse> listMembers(
             @PathVariable Long orgId,
+            @RequestParam(required = false) Boolean availableOnly,
+            @RequestParam(required = false) Long forProjectId,
             @AuthenticationPrincipal UserDetails userDetails) {
-        return orgService.listMembers(orgId, userDetails.getUsername());
+        return orgService.listMembers(orgId, userDetails.getUsername(), availableOnly, forProjectId);
     }
 
     @PreAuthorize("hasRole('ORG_ADMIN')")

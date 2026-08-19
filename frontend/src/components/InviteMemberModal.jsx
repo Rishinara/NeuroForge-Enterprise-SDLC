@@ -6,7 +6,9 @@ import Modal from './Modal.jsx'
 
 const INVITE_ROLE_OPTIONS = [
   { value: ROLES.PROJECT_MANAGER, label: 'Project Manager' },
-  { value: ROLES.DEVELOPER, label: 'Developer' },
+  { value: ROLES.FRONTEND_DEVELOPER, label: 'Frontend Developer' },
+  { value: ROLES.BACKEND_DEVELOPER, label: 'Backend Developer' },
+  { value: ROLES.DEVELOPER, label: 'Fullstack / General Developer' },
   { value: ROLES.QA_TESTER, label: 'QA / Tester' },
   { value: ROLES.CLIENT, label: 'Client / Stakeholder' },
 ]

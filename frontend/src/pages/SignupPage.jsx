@@ -34,8 +34,18 @@ const ROLE_OPTIONS = [
     hint: 'Create projects, plan sprints, assign tasks, and manage releases.',
   },
   {
+    value: ROLES.FRONTEND_DEVELOPER,
+    label: 'Frontend Developer',
+    hint: 'Build user interfaces, components, and frontend features.',
+  },
+  {
+    value: ROLES.BACKEND_DEVELOPER,
+    label: 'Backend Developer',
+    hint: 'Build APIs, business logic, databases, and microservices.',
+  },
+  {
     value: ROLES.DEVELOPER,
-    label: 'Developer',
+    label: 'Fullstack / General Developer',
     hint: 'View your tasks, submit code for AI review, and log your work.',
   },
   {

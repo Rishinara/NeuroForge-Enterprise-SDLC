@@ -193,6 +193,20 @@ export default function BacklogPage() {
   async function handleCreateSprint(e) {
     e.preventDefault()
     if (!sprintForm.name.trim() || !sprintForm.startDate || !sprintForm.endDate) return
+
+    if (projectData?.startDate && sprintForm.startDate < projectData.startDate) {
+      setError(`Sprint start date cannot be before project start date (${projectData.startDate})`)
+      return
+    }
+    if (projectData?.endDate && sprintForm.endDate > projectData.endDate) {
+      setError(`Sprint end date cannot be after project deadline (${projectData.endDate})`)
+      return
+    }
+    if (sprintForm.startDate > sprintForm.endDate) {
+      setError('Sprint start date cannot be after end date')
+      return
+    }
+
     const numericProjId = Number(projectId)
     const payload = {
       ...sprintForm,
@@ -203,6 +217,7 @@ export default function BacklogPage() {
       setSprints((prev) => [res.data, ...prev])
       setShowSprintForm(false)
       setSprintForm({ name: '', goal: '', startDate: '', endDate: '' })
+      setError('')
     } catch (err) {
       setError(extractErrorMessage(err))
     }
@@ -399,12 +414,32 @@ export default function BacklogPage() {
                   </div>
                   <div className="flex gap-4">
                     <div className="flex-1">
-                      <label className="block text-xs font-medium text-slate-500 mb-1">Start Date *</label>
-                      <input type="date" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" value={sprintForm.startDate} onChange={e => setSprintForm(f => ({ ...f, startDate: e.target.value }))} />
+                      <label className="block text-xs font-medium text-slate-500 mb-1">
+                        Start Date * {projectData?.startDate ? `(Min: ${projectData.startDate})` : ''}
+                      </label>
+                      <input 
+                        type="date" 
+                        required 
+                        min={projectData?.startDate || undefined}
+                        max={sprintForm.endDate || projectData?.endDate || undefined}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white" 
+                        value={sprintForm.startDate} 
+                        onChange={e => setSprintForm(f => ({ ...f, startDate: e.target.value }))} 
+                      />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-xs font-medium text-slate-500 mb-1">End Date *</label>
-                      <input type="date" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" value={sprintForm.endDate} onChange={e => setSprintForm(f => ({ ...f, endDate: e.target.value }))} />
+                      <label className="block text-xs font-medium text-slate-500 mb-1">
+                        End Date * {projectData?.endDate ? `(Max Deadline: ${projectData.endDate})` : ''}
+                      </label>
+                      <input 
+                        type="date" 
+                        required 
+                        min={sprintForm.startDate || projectData?.startDate || undefined}
+                        max={projectData?.endDate || undefined}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white" 
+                        value={sprintForm.endDate} 
+                        onChange={e => setSprintForm(f => ({ ...f, endDate: e.target.value }))} 
+                      />
                     </div>
                   </div>
                   <button className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg shadow-sm" type="submit">Save Sprint</button>

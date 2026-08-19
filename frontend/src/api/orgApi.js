@@ -10,7 +10,7 @@ export const orgApi = {
 
   // Teams
   listTeams: (orgId) => api.get(`/orgs/${orgId}/teams`),
-  listTeamsWithMembers: (orgId) => api.get(`/orgs/${orgId}/teams-with-members`),
+  listTeamsWithMembers: (orgId, params) => api.get(`/orgs/${orgId}/teams-with-members`, { params }),
   getTeam: (orgId, teamId) => api.get(`/orgs/${orgId}/teams/${teamId}`),
   createTeam: (orgId, payload) => api.post(`/orgs/${orgId}/teams`, payload),
   updateTeam: (orgId, teamId, payload) => api.put(`/orgs/${orgId}/teams/${teamId}`, payload),
@@ -18,7 +18,7 @@ export const orgApi = {
   removeTeamMember: (orgId, teamId, memberId) => api.delete(`/orgs/${orgId}/teams/${teamId}/members/${memberId}`),
 
   // Members
-  listMembers: (orgId) => api.get(`/orgs/${orgId}/members`),
+  listMembers: (orgId, params) => api.get(`/orgs/${orgId}/members`, { params }),
   updateMemberRole: (orgId, memberId, role) =>
     api.put(`/orgs/${orgId}/members/${memberId}/role`, { role }),
   removeMember: (orgId, memberId) => api.delete(`/orgs/${orgId}/members/${memberId}`),

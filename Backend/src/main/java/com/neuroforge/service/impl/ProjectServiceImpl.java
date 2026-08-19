@@ -15,7 +15,7 @@ import com.neuroforge.repository.ProjectMemberRepository;
 import com.neuroforge.repository.ProjectRepository;
 import com.neuroforge.repository.UserRepository;
 import com.neuroforge.service.ProjectService;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -48,10 +48,11 @@ public class ProjectServiceImpl implements ProjectService {
         response.setHealth(project.getHealth());
         response.setStartDate(project.getStartDate());
         response.setEndDate(project.getEndDate());
-        response.setTechStack(project.getTechStack());
+        response.setTechStack(project.getTechStack() != null ? new java.util.ArrayList<>(project.getTechStack()) : new java.util.ArrayList<>());
 
-        List<ProjectMemberResponse> members = project.getMembers()
+        List<ProjectMemberResponse> members = (project.getMembers() != null ? project.getMembers() : new java.util.ArrayList<ProjectMember>())
                 .stream()
+                .filter(m -> m != null && m.getUser() != null)
                 .map(member -> {
 
                     ProjectMemberResponse dto = new ProjectMemberResponse();
@@ -168,7 +169,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         // Tech Stack
         if (request.getTechStack() != null) {
-            project.setTechStack(request.getTechStack());
+            project.setTechStack(new java.util.HashSet<>(request.getTechStack()));
         }
         // Save Project
         // Add Team Members
@@ -178,6 +179,9 @@ public class ProjectServiceImpl implements ProjectService {
                         .orElseThrow(() -> new ResourceNotFoundException("User not found with id : " + userId));
                 if (user.getOrganization() == null || !user.getOrganization().getId().equals(request.getOrgId())) {
                     throw new com.neuroforge.exception.InvalidRequestException("User " + user.getEmail() + " does not belong to the organization.");
+                }
+                if (projectMemberRepository.existsByUserId(userId)) {
+                    throw new com.neuroforge.exception.InvalidRequestException("User " + (user.getFullName() != null ? user.getFullName() : user.getEmail()) + " is already assigned to another project.");
                 }
                 ProjectMember member = createProjectMember(project, user);
                 project.getMembers().add(member);
@@ -219,6 +223,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ProjectResponse> getProjectsByOrganization(Long organizationId, String loggedInEmail) {
 
         // Validate Organization
@@ -237,7 +242,8 @@ public class ProjectServiceImpl implements ProjectService {
                 || user.getRole() == com.neuroforge.enums.Role.DEVELOPER
                 || user.getRole() == com.neuroforge.enums.Role.QA_TESTER) {
             projects = projects.stream()
-                    .filter(p -> p.getMembers().stream().anyMatch(m -> m.getUser().getId().equals(user.getId())))
+                    .filter(p -> p != null && p.getMembers() != null && p.getMembers().stream()
+                            .anyMatch(m -> m != null && m.getUser() != null && user.getId().equals(m.getUser().getId())))
                     .toList();
         }
 
@@ -248,6 +254,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ProjectResponse getProject(Long projectId) {
         String loggedInEmail = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(loggedInEmail)
@@ -263,8 +270,8 @@ public class ProjectServiceImpl implements ProjectService {
                 || user.getRole() == com.neuroforge.enums.Role.DEVELOPER
                 || user.getRole() == com.neuroforge.enums.Role.QA_TESTER) {
             
-            boolean isMember = project.getMembers().stream()
-                    .anyMatch(m -> m.getUser().getId().equals(user.getId()));
+            boolean isMember = project.getMembers() != null && project.getMembers().stream()
+                    .anyMatch(m -> m != null && m.getUser() != null && user.getId().equals(m.getUser().getId()));
             
             if (!isMember) {
                 throw new org.springframework.security.access.AccessDeniedException("You do not have permission to view this project");
@@ -330,6 +337,9 @@ public class ProjectServiceImpl implements ProjectService {
                 if (user.getOrganization() == null || !user.getOrganization().getId().equals(project.getOrganization().getId())) {
                     throw new com.neuroforge.exception.InvalidRequestException("User " + user.getEmail() + " does not belong to the organization.");
                 }
+                if (projectMemberRepository.existsByUserIdAndProjectIdNot(userId, projectId)) {
+                    throw new com.neuroforge.exception.InvalidRequestException("User " + (user.getFullName() != null ? user.getFullName() : user.getEmail()) + " is already assigned to another project.");
+                }
                 ProjectMember member = createProjectMember(project, user);
                 project.getMembers().add(member);
             }
@@ -339,7 +349,7 @@ public class ProjectServiceImpl implements ProjectService {
         if (project.getAssignedTeams() != null) {
             project.getAssignedTeams().clear();
         } else {
-            project.setAssignedTeams(new java.util.ArrayList<>());
+            project.setAssignedTeams(new java.util.HashSet<>());
         }
         if (request.getAssignedTeamIds() != null && !request.getAssignedTeamIds().isEmpty()) {
             for (Long teamId : request.getAssignedTeamIds()) {

@@ -22,14 +22,19 @@ export default function MilestonesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [newModalOpen, setNewModalOpen] = useState(false)
+  const [projectData, setProjectData] = useState(null)
   const [newMilestone, setNewMilestone] = useState({ title: '', description: '', expectedDeliveryDate: '', status: 'PENDING' })
 
   const loadMilestones = useCallback(async () => {
     if (!projectId) return
     setLoading(true)
     try {
-      const res = await api.get(`/projects/${projectId}/milestones`)
-      setMilestones(res.data)
+      const [mRes, pRes] = await Promise.all([
+        api.get(`/projects/${projectId}/milestones`),
+        api.get(`/projects/${projectId}`).catch(() => ({ data: null }))
+      ])
+      setMilestones(mRes.data)
+      setProjectData(pRes.data)
     } catch (err) {
       setError(extractErrorMessage(err))
     } finally {
@@ -43,6 +48,15 @@ export default function MilestonesPage() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
+    if (projectData?.startDate && newMilestone.expectedDeliveryDate < projectData.startDate) {
+      alert(`Milestone expected delivery date cannot be before project start date (${projectData.startDate})`)
+      return
+    }
+    if (projectData?.endDate && newMilestone.expectedDeliveryDate > projectData.endDate) {
+      alert(`Milestone expected delivery date cannot be after project deadline (${projectData.endDate})`)
+      return
+    }
+
     try {
       await api.post(`/projects/${projectId}/milestones`, {
         ...newMilestone,
@@ -107,8 +121,18 @@ export default function MilestonesPage() {
               <textarea className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[100px]" placeholder="Description" value={newMilestone.description || ''} onChange={e => setNewMilestone({ ...newMilestone, description: e.target.value })} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Expected Delivery Date</label>
-              <input className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500" type="date" value={newMilestone.expectedDeliveryDate || ''} onChange={e => setNewMilestone({ ...newMilestone, expectedDeliveryDate: e.target.value })} required />
+              <label className="block text-xs font-medium text-slate-500 mb-1">
+                Expected Delivery Date {projectData?.startDate && projectData?.endDate ? `(Between ${projectData.startDate} and ${projectData.endDate})` : ''}
+              </label>
+              <input 
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white" 
+                type="date" 
+                min={projectData?.startDate || undefined}
+                max={projectData?.endDate || undefined}
+                value={newMilestone.expectedDeliveryDate || ''} 
+                onChange={e => setNewMilestone({ ...newMilestone, expectedDeliveryDate: e.target.value })} 
+                required 
+              />
             </div>
             <div className="flex gap-3 pt-2">
               <button type="submit" className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">Save</button>

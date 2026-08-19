@@ -38,6 +38,15 @@ public class MilestoneServiceImpl implements MilestoneService {
              throw new org.springframework.security.access.AccessDeniedException("User does not have access to this project");
         }
 
+        if (request.getExpectedDeliveryDate() != null) {
+            if (project.getStartDate() != null && request.getExpectedDeliveryDate().isBefore(project.getStartDate())) {
+                throw new com.neuroforge.exception.InvalidRequestException("Milestone expected delivery date cannot be before project start date (" + project.getStartDate() + ")");
+            }
+            if (project.getEndDate() != null && request.getExpectedDeliveryDate().isAfter(project.getEndDate())) {
+                throw new com.neuroforge.exception.InvalidRequestException("Milestone expected delivery date cannot be after project deadline (" + project.getEndDate() + ")");
+            }
+        }
+
         Milestone milestone = new Milestone();
         milestone.setTitle(request.getTitle());
         milestone.setDescription(request.getDescription());
@@ -58,6 +67,16 @@ public class MilestoneServiceImpl implements MilestoneService {
 
         Milestone milestone = milestoneRepository.findById(milestoneId)
                 .orElseThrow(() -> new ResourceNotFoundException("Milestone not found"));
+
+        Project project = milestone.getProject();
+        if (project != null && request.getExpectedDeliveryDate() != null) {
+            if (project.getStartDate() != null && request.getExpectedDeliveryDate().isBefore(project.getStartDate())) {
+                throw new com.neuroforge.exception.InvalidRequestException("Milestone expected delivery date cannot be before project start date (" + project.getStartDate() + ")");
+            }
+            if (project.getEndDate() != null && request.getExpectedDeliveryDate().isAfter(project.getEndDate())) {
+                throw new com.neuroforge.exception.InvalidRequestException("Milestone expected delivery date cannot be after project deadline (" + project.getEndDate() + ")");
+            }
+        }
 
         milestone.setTitle(request.getTitle());
         milestone.setDescription(request.getDescription());

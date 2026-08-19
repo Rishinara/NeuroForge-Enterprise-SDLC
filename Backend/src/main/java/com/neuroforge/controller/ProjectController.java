@@ -31,6 +31,7 @@ public class ProjectController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER','DEVELOPER','QA_TESTER','CLIENT')")
     @GetMapping("/orgs/{organizationId}/projects")
     public ResponseEntity<List<ProjectResponse>> getProjectsByOrganization(
             @PathVariable Long organizationId,

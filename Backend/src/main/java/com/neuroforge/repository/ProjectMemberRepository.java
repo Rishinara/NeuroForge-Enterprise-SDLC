@@ -18,6 +18,15 @@ public interface ProjectMemberRepository
             Long userId
     );
 
-    void deleteByProjectId(Long projectId);
+    boolean existsByUserId(Long userId);
 
+    boolean existsByUserIdAndProjectIdNot(Long userId, Long projectId);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"project"})
+    List<ProjectMember> findByUserId(Long userId);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"project", "user"})
+    List<ProjectMember> findByProjectOrganizationId(Long orgId);
+
+    void deleteByProjectId(Long projectId);
 }

@@ -63,13 +63,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
-        }
 
-        // Enforce organization-level access block for unapproved or unassigned users
-        if (email != null) {
-            UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
-            if (userDetails instanceof com.neuroforge.entity.User) {
-                com.neuroforge.entity.User user = (com.neuroforge.entity.User) userDetails;
+            // Enforce organization-level access block for unapproved or unassigned users
+            if (userDetails instanceof com.neuroforge.entity.User user) {
                 if (user.getRole() != com.neuroforge.enums.Role.SUPER_ADMIN) {
                     boolean isUnapproved = Boolean.FALSE.equals(user.getOrgApproved());
                     boolean isUnassigned = user.getOrganization() == null;

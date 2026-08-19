@@ -12,7 +12,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "projects")
@@ -49,8 +51,10 @@ public class Project {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
-@JoinColumn(name = "organization_id")    private Organization organization;
+    @JoinColumn(name = "organization_id")
+    private Organization organization;
 
+    @Builder.Default
     @OneToMany(
             mappedBy = "project",
             cascade = CascadeType.ALL,
@@ -59,21 +63,23 @@ public class Project {
     )
     private List<ProjectMember> members = new ArrayList<>();
 
+    @Builder.Default
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "project_teams",
         joinColumns = @JoinColumn(name = "project_id"),
         inverseJoinColumns = @JoinColumn(name = "team_id")
     )
-    private List<Team> assignedTeams = new ArrayList<>();
+    private Set<Team> assignedTeams = new HashSet<>();
 
-    @ElementCollection(fetch=FetchType.EAGER)
+    @Builder.Default
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(
             name = "project_technologies",
             joinColumns = @JoinColumn(name = "project_id")
     )
     @Column(name = "technology")
-    private List<String> techStack = new ArrayList<>();
+    private Set<String> techStack = new HashSet<>();
 
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -82,9 +88,11 @@ public class Project {
     private LocalDateTime updatedAt;
 
     @JsonIgnore
+    @Builder.Default
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Sprint> sprints = new ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL)
     private List<Task> tasks = new ArrayList<>();
 }
