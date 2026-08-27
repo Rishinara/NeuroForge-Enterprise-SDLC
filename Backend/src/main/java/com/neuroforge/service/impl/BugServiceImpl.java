@@ -102,7 +102,7 @@ public class BugServiceImpl implements BugService {
         BugStatus newStatus = request.getStatus() != null ? request.getStatus() : oldStatus;
 
         // Role-based status transition restrictions
-        if (user.getRole() == Role.DEVELOPER) {
+        if (user.getRole().isDeveloper()) {
             if (newStatus == BugStatus.CLOSED) {
                 throw new AccessDeniedException("Developers cannot close bugs. Please mark the bug as READY_FOR_QA for QA retesting.");
             }

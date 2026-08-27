@@ -108,11 +108,13 @@ public class OrgService {
 
     private boolean isUserInTeam(User u, String teamName, Long teamId) {
         if (u == null) return false;
-        if (u.getTeams() != null && u.getTeams().stream().anyMatch(tm -> tm.getId().equals(teamId) || tm.getName().equalsIgnoreCase(teamName))) {
+        if (u.getTeams() != null && u.getTeams().stream().anyMatch(tm -> 
+                (tm.getId() != null && tm.getId().equals(teamId)) || 
+                (tm.getName() != null && teamName != null && tm.getName().equalsIgnoreCase(teamName)))) {
             return true;
         }
         String defaultTeam = getDefaultTeamNameForRole(u.getRole());
-        return defaultTeam != null && defaultTeam.equalsIgnoreCase(teamName);
+        return defaultTeam != null && teamName != null && defaultTeam.equalsIgnoreCase(teamName);
     }
 
     @Transactional
@@ -356,7 +358,7 @@ public class OrgService {
         return getTeamDetails(orgId, team.getId(), loggedInEmail);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<TeamResponse> listTeams(Long orgId, String loggedInEmail) {
         Organization org = validateOrganizationAccess(orgId, loggedInEmail).getOrganization();
         if (org == null) {
@@ -376,12 +378,12 @@ public class OrgService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<TeamDetailResponse> listTeamsWithMembers(Long orgId, String loggedInEmail) {
         return listTeamsWithMembers(orgId, loggedInEmail, false, null);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<TeamDetailResponse> listTeamsWithMembers(Long orgId, String loggedInEmail, Boolean availableOnly, Long forProjectId) {
         Organization org = validateOrganizationAccess(orgId, loggedInEmail).getOrganization();
         if (org == null) {
@@ -538,12 +540,12 @@ public class OrgService {
 
     // ---- Members ----
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<MemberResponse> listMembers(Long orgId, String loggedInEmail) {
         return listMembers(orgId, loggedInEmail, false, null);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<MemberResponse> listMembers(Long orgId, String loggedInEmail, Boolean availableOnly, Long forProjectId) {
         Organization org = validateOrganizationAccess(orgId, loggedInEmail).getOrganization();
         if (org == null) {

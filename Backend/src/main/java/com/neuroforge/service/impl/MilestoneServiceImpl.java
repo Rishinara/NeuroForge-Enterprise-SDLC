@@ -102,7 +102,7 @@ public class MilestoneServiceImpl implements MilestoneService {
         }
 
         if (user.getRole() == com.neuroforge.enums.Role.CLIENT 
-                || user.getRole() == com.neuroforge.enums.Role.DEVELOPER
+                || user.getRole().isDeveloper()
                 || user.getRole() == com.neuroforge.enums.Role.QA_TESTER) {
             boolean isMember = project.getMembers().stream()
                     .anyMatch(m -> m.getUser().getId().equals(user.getId()));

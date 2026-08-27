@@ -202,7 +202,7 @@ export default function CreateProjectPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 md:p-8">
+    <div className="w-full px-6 lg:px-10 py-8 space-y-8">
       <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
         
         {/* Left Column: Context & Navigation */}

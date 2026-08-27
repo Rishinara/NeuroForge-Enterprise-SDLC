@@ -53,11 +53,11 @@ export default function Topbar({ title, subtitle }) {
   }
 
   return (
-    <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10 shadow-sm">
+    <header className="h-18 min-h-[72px] bg-white/95 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between px-8 sticky top-0 z-20 shadow-[0_1px_3px_0_rgba(0,0,0,0.03)]">
       {/* Left side: Titles */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{title}</h1>
-        {subtitle && <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>}
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">{title}</h1>
+        {subtitle && <p className="text-xs text-slate-500 mt-0.5 font-medium">{subtitle}</p>}
       </div>
 
       {/* Right side: Actions */}

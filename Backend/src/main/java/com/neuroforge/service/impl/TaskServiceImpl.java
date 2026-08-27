@@ -462,13 +462,13 @@ public class TaskServiceImpl implements TaskService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Task not found"));
 
-        if (user.getRole() == com.neuroforge.enums.Role.DEVELOPER) {
+        if (user.getRole().isDeveloper()) {
             if (task.getAssignee() == null || !task.getAssignee().getId().equals(user.getId())) {
                 throw new org.springframework.security.access.AccessDeniedException("You can only update your assigned tasks.");
             }
         }
         
-        if (user.getRole() == com.neuroforge.enums.Role.DEVELOPER) {
+        if (user.getRole().isDeveloper()) {
             boolean isToDoToInProgress = task.getStatus() == com.neuroforge.enums.TaskStatus.TODO && request.getStatus() == com.neuroforge.enums.TaskStatus.IN_PROGRESS;
             boolean isInProgressToCodeReview = task.getStatus() == com.neuroforge.enums.TaskStatus.IN_PROGRESS && request.getStatus() == com.neuroforge.enums.TaskStatus.CODE_REVIEW;
             if (!isToDoToInProgress && !isInProgressToCodeReview) {

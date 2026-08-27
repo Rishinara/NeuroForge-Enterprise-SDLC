@@ -334,7 +334,7 @@ export default function KanbanBoardPage() {
   }, {})
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <div className="w-full px-6 lg:px-10 py-8 space-y-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Sprint Board</h1>
@@ -426,16 +426,16 @@ export default function KanbanBoardPage() {
           <p className="text-sm font-medium text-slate-600">Loading board…</p>
         </div>
       ) : (
-        <div className="flex gap-6 overflow-x-auto pb-4 items-start h-[calc(100vh-400px)] min-h-[500px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 items-start min-h-[550px]">
           {COLUMNS.map((col) => (
             <div
               key={col}
-              className={`flex flex-col w-[320px] shrink-0 bg-slate-50/50 rounded-xl transition-colors ${dragOverCol === col ? 'bg-orange-50/50 ring-2 ring-orange-500/20' : ''}`}
+              className={`flex flex-col bg-slate-50 border border-slate-200 rounded-2xl transition-all duration-150 min-h-[480px] shadow-xs ${dragOverCol === col ? 'bg-orange-50/70 border-orange-400 ring-4 ring-orange-500/10' : 'hover:border-slate-300'}`}
               onDragOver={(e) => { e.preventDefault(); setDragOverCol(col) }}
               onDragLeave={() => setDragOverCol((c) => (c === col ? null : c))}
               onDrop={(e) => { e.preventDefault(); handleDrop(col) }}
             >
-              <div className="p-4 flex items-center justify-between border-b border-slate-200">
+              <div className="p-4 flex items-center justify-between border-b border-slate-200/80 bg-white/50 rounded-t-2xl">
                 <h4 className="text-base font-semibold text-slate-900">{formatEnum(col)}</h4>
                 <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-semibold text-slate-500 bg-slate-200 rounded-full">
                   {tasksByColumn[col].length}

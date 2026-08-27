@@ -186,7 +186,7 @@ public class ApprovalServiceImpl implements ApprovalService {
 
         if (user.getRole() == Role.CLIENT 
 
-                || user.getRole() == Role.DEVELOPER
+                || user.getRole().isDeveloper()
 
                 || user.getRole() == Role.QA_TESTER) {
 

@@ -339,7 +339,7 @@ export default function BugsPage() {
 
   if (loading) {
     return (
-      <div className="p-8 text-center bg-white rounded-xl border border-slate-200 max-w-6xl mx-auto my-6">
+      <div className="p-8 text-center bg-white rounded-xl border border-slate-200 w-full my-6">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-3"></div>
         <p className="text-sm font-medium text-slate-500">Loading project bug workflow...</p>
       </div>
@@ -347,7 +347,7 @@ export default function BugsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
+    <div className="w-full px-6 lg:px-10 py-8 space-y-8">
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

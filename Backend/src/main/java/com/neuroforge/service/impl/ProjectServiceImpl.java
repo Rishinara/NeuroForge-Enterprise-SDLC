@@ -61,7 +61,7 @@ public class ProjectServiceImpl implements ProjectService {
                     dto.setFullName(member.getUser().getFullName());
                     dto.setEmail(member.getUser().getEmail());
                     
-                    if (member.getRole() == ProjectRole.DEVELOPER) {
+                    if (member.getRole().isDeveloper()) {
                         if (member.getUser().getRole() == com.neuroforge.enums.Role.ORG_ADMIN) {
                             dto.setProjectRole(ProjectRole.ORG_ADMIN);
                         } else if (member.getUser().getRole() == com.neuroforge.enums.Role.SUPER_ADMIN) {
@@ -239,7 +239,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         if (user.getRole() == com.neuroforge.enums.Role.CLIENT 
                 || user.getRole() == com.neuroforge.enums.Role.PROJECT_MANAGER
-                || user.getRole() == com.neuroforge.enums.Role.DEVELOPER
+                || user.getRole().isDeveloper()
                 || user.getRole() == com.neuroforge.enums.Role.QA_TESTER) {
             projects = projects.stream()
                     .filter(p -> p != null && p.getMembers() != null && p.getMembers().stream()
@@ -267,7 +267,7 @@ public class ProjectServiceImpl implements ProjectService {
                         ));
 
         if (user.getRole() == com.neuroforge.enums.Role.CLIENT 
-                || user.getRole() == com.neuroforge.enums.Role.DEVELOPER
+                || user.getRole().isDeveloper()
                 || user.getRole() == com.neuroforge.enums.Role.QA_TESTER) {
             
             boolean isMember = project.getMembers() != null && project.getMembers().stream()

@@ -262,7 +262,7 @@ export default function BacklogPage() {
   const totalPoints = items.reduce((sum, i) => sum + (i.points || 0), 0)
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-8">
+    <div className="w-full px-6 lg:px-10 py-8 space-y-8 bg-slate-50 min-h-screen">
       {/* tabs */}
       <div className="flex space-x-6 border-b border-slate-200 mb-6 pb-2">
         <Link to={`/projects/${projectId}/backlog`} className="text-orange-600 border-b-2 border-orange-500 pb-2 text-base font-semibold">Backlog</Link>

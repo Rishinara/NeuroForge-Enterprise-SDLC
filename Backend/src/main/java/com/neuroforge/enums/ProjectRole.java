@@ -15,5 +15,9 @@ public enum ProjectRole {
     
     ORG_ADMIN,
     
-    SUPER_ADMIN
+    SUPER_ADMIN;
+
+    public boolean isDeveloper() {
+        return this == DEVELOPER || this == FRONTEND_DEVELOPER || this == BACKEND_DEVELOPER;
+    }
 }

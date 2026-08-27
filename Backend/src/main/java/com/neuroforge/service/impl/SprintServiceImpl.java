@@ -355,7 +355,7 @@ public class SprintServiceImpl implements SprintService {
         List<Task> tasks = taskRepository.findBySprintIdOrderByPriorityAscCreatedAtAsc(sprintId);
         User user = userRepository.findByEmail(loggedInEmail).get();
 
-        if (user.getRole() == com.neuroforge.enums.Role.DEVELOPER) {
+        if (user.getRole().isDeveloper()) {
             tasks = tasks.stream()
                     .filter(t -> t.getAssignee() != null && t.getAssignee().getId().equals(user.getId()))
                     .toList();

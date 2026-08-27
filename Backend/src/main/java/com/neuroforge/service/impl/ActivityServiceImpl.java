@@ -49,7 +49,7 @@ public class ActivityServiceImpl implements ActivityService {
             }
 
             // Notify Project Manager if actor is Developer or QA Tester
-            if (actor != null && (actor.getRole() == com.neuroforge.enums.Role.DEVELOPER || actor.getRole() == com.neuroforge.enums.Role.QA_TESTER)) {
+            if (actor != null && (actor.getRole().isDeveloper() || actor.getRole() == com.neuroforge.enums.Role.QA_TESTER)) {
                 List<com.neuroforge.entity.User> orgUsers = userRepository.findByOrganizationId(orgId);
                 for (com.neuroforge.entity.User u : orgUsers) {
                     if (u.getRole() == com.neuroforge.enums.Role.PROJECT_MANAGER) {

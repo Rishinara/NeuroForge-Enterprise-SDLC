@@ -1,207 +1,144 @@
-# NeuroForge – Module 6: AI Integration
+﻿# NeuroForge – Enterprise SDLC & Agile Management Platform
 
-## Overview
-
-This module integrates Artificial Intelligence into the NeuroForge application using the **Groq API**. The AI features assist Agile teams by providing intelligent recommendations for project planning and task management.
+NeuroForge is an enterprise-grade Software Development Life Cycle (SDLC) and Agile management platform inspired by Jira, Azure DevOps, and Linear. It unites project planning, backlog grooming, real-time Kanban boards, client deliverables, role-based workflows, and AI-powered automation into a single cohesive system.
 
 ---
 
-## Technology Stack
+## 🌟 Key Features & Modules
 
-- Java 17
-- Spring Boot 3.5.x
-- Groq API
-- REST API
-- Swagger / OpenAPI
-- Maven
+### 1. 🔐 Authentication & Role-Based Access Control (RBAC)
+- **Roles Supported:** `SUPER_ADMIN`, `ORG_ADMIN`, `PROJECT_MANAGER`, `DEVELOPER`, `QA_TESTER`, `CLIENT`
+- **Security:** Stateless JWT authentication (Access & Refresh tokens), BCrypt password hashing, Spring Security 6.
+- **Admin Management:** User status control (Enable/Disable), dynamic role elevation, audit logging.
 
----
+### 2. 🏢 Organization & Multi-Team Workspace
+- **Multi-Tenancy:** Organization workspaces with custom branding and domain scoping.
+- **Team Collaboration:** Create teams, assign project managers, invite members via email tokens.
+- **Membership Management:** Organization-level and project-level role assignment.
 
-## AI Features Implemented
+### 3. 📁 Project & Portfolio Management
+- **Project Governance:** Supports both **Agile** and **Waterfall** methodologies.
+- **Portfolio Health:** Automated project health index, tech stack management, milestone tracking.
+- **Deliverables & Client Portal:** Dedicated client portal for reviewing deliverables, requesting revisions, and approving milestones.
 
-### 1. AI Test
-**Endpoint**
-```
-POST /api/ai/test
-```
-Tests the Groq AI integration by sending a custom prompt.
+### 4. 📋 Agile Planning & Real-Time Boards
+- **Interactive Kanban Board:** Drag-and-drop workflow (`TODO`, `IN_PROGRESS`, `CODE_REVIEW`, `TESTING`, `DONE`).
+- **Live Collaboration:** Spring WebSocket with STOMP messaging for instant board synchronization across distributed teams.
+- **Sprint Management:** Start/complete sprints, sprint backlog grooming, velocity tracking, and automated burndown charts.
 
----
+### 5. 🤖 AI-Powered SDLC Assistant (Groq Cloud AI)
+- **AI Specification Generator:** Automatically turns raw requirements into structured User Stories, Functional & Non-Functional requirements.
+- **Story Point Estimation:** Suggests Fibonacci-scale story points with reasoning.
+- **Priority Recommendation:** Recommends task priority based on technical impact and risk.
+- **Task Breakdown & Acceptance Criteria:** Automatically decomposes complex tasks into subtasks and testable acceptance criteria.
+- **Sprint & Risk Analytics:** AI analysis of sprint workloads and project bottleneck forecasting.
 
-### 2. Story Point Estimation
-**Endpoint**
-```
-POST /api/ai/story-points
-```
-Estimates Agile Story Points based on the task title and description.
-
----
-
-### 3. Priority Recommendation
-**Endpoint**
-```
-POST /api/ai/priority
-```
-Recommends the task priority (LOW, MEDIUM, HIGH, or CRITICAL).
+### 6. 🐛 Quality Assurance & Test Tracking
+- **Bug Lifecycle:** Report, assign, prioritize, triage, and resolve defects with full audit trail.
+- **Test Management:** Test case creation, execution runs, pass/fail reporting, and requirement traceability.
 
 ---
 
-### 4. Task Breakdown
-**Endpoint**
-```
-POST /api/ai/breakdown
-```
-Generates smaller actionable subtasks from a larger task.
+## 🛠️ Technology Stack
+
+| Layer | Technologies |
+|---|---|
+| **Frontend** | React 19, Vite, Tailwind CSS, Lucide Icons, Axios, React Router 7 |
+| **Backend** | Java 17+, Spring Boot 3.5.x, Spring Security, Spring Data JPA, Spring WebSocket (STOMP) |
+| **Database** | PostgreSQL 15+ (HikariCP connection pool) |
+| **AI Engine** | Groq Cloud API (Llama 3.1 / OSS Models) |
+| **API Docs** | SpringDoc OpenAPI 3.0 / Swagger UI |
+| **Build Tools** | Maven, npm |
 
 ---
 
-### 5. Acceptance Criteria Generation
-**Endpoint**
-```
-POST /api/ai/acceptance-criteria
-```
-Automatically generates acceptance criteria for a task.
+## 🚀 Quick Start Guide
+
+### Prerequisites
+- **Java Development Kit (JDK):** 17 or higher
+- **Node.js:** v18 or higher (with npm)
+- **PostgreSQL:** Running on port 5432 (database: `neurofourge_db`)
+- **Groq API Key:** (Optional, for AI features) Get from [Groq Console](https://console.groq.com/keys)
 
 ---
 
-### 6. Task Description Enhancement
-**Endpoint**
-```
-POST /api/ai/enhance-description
-```
-Improves task descriptions by suggesting:
-- Enhanced description
-- Requirements
-- Acceptance criteria
-
----
-
-### 7. Sprint Planning Assistant
-**Endpoint**
-```
-POST /api/ai/sprint-planning
-```
-Analyzes sprint tasks and provides:
-- Sprint summary
-- Workload analysis
-- Potential risks
-- Recommendations
-- Sprint health
-
----
-
-### 8. Project Risk Analysis
-**Endpoint**
-```
-POST /api/ai/risk-analysis
-```
-Analyzes project risks and identifies:
-- High-risk tasks
-- Possible delays
-- Dependency issues
-- Testing risks
-- Risk mitigation suggestions
-
----
-
-## API Documentation
-
-Swagger UI:
-
-```
-http://localhost:8082/swagger-ui/index.html
+### 1. Database Setup
+Create the PostgreSQL database:
+```sql
+CREATE DATABASE neurofourge_db;
 ```
 
 ---
 
-## AI Provider
+### 2. Backend Configuration & Startup
 
-**Provider:** Groq
+1. Navigate to the backend directory:
+   ```bash
+   cd Backend
+   ```
+2. Configure environment variables (or copy `.env.example` to `.env`):
+   ```bash
+   # Linux / macOS
+   export GROQ_API_KEY="your_groq_api_key"
+   export JWT_SECRET="your_secure_256_bit_secret_key"
 
-**Model Used:**
-```
-llama-3.1-8b-instant
-```
-
----
-
-## Project Structure
-
-```
-src/main/java/com/neuroforge
-│
-├── ai
-│   ├── GroqService.java
-│   ├── GroqRequest.java
-│   ├── GroqResponse.java
-│   └── GroqMessage.java
-│
-├── controller
-│   └── AiController.java
-│
-└── dto
-    └── ai
-        ├── StoryPointRequest.java
-        ├── StoryPointResponse.java
-        ├── SprintPlanningRequest.java
-        ├── SprintPlanningResponse.java
-        ├── RiskAnalysisRequest.java
-        ├── RiskAnalysisResponse.java
-        └── TaskEnhancementResponse.java
-```
+   # Windows (PowerShell)
+   $env:GROQ_API_KEY="your_groq_api_key"
+   $env:JWT_SECRET="your_secure_256_bit_secret_key"
+   ```
+3. Build and run the Spring Boot application:
+   ```bash
+   mvn clean spring-boot:run
+   ```
+   *Backend runs on:* `http://localhost:8082`  
+   *Swagger API Docs:* `http://localhost:8082/swagger-ui.html`
 
 ---
 
-## Sample Request
+### 3. Frontend Configuration & Startup
 
-### Story Point Estimation
-
-**POST**
-```
-/api/ai/story-points
-```
-
-**Request Body**
-
-```json
-{
-  "title": "Implement Login API",
-  "description": "Develop JWT authentication with login validation."
-}
-```
-
-**Sample Response**
-
-```json
-{
-  "storyPoints": null,
-  "reason": "Story Points: 5\nReason: JWT authentication requires backend validation, token generation, and testing."
-}
-```
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the Vite development server:
+   ```bash
+   npm run dev
+   ```
+   *Frontend runs on:* `http://localhost:5173`
 
 ---
 
-## Testing
+## 🔒 Environment Variables
 
-The module was tested using:
-
-- Postman
-- Swagger UI
-
----
-
-## Notes
-
-- AI functionality is implemented as a separate service (`GroqService`) to keep it independent from the core business logic.
-- API errors are handled gracefully to avoid application crashes.
-- Swagger documentation is available for all AI endpoints.
+| Variable | Description | Default / Example |
+|---|---|---|
+| `PORT` | Backend Server Port | `8082` |
+| `SPRING_DATASOURCE_URL` | PostgreSQL Connection URL | `jdbc:postgresql://localhost:5432/neurofourge_db` |
+| `SPRING_DATASOURCE_USERNAME` | PostgreSQL User | `postgres` |
+| `SPRING_DATASOURCE_PASSWORD` | PostgreSQL Password | `Root` |
+| `JWT_SECRET` | Secret key for HS256 JWT tokens | *(auto-configured for dev)* |
+| `GROQ_API_KEY` | Groq Cloud AI API key | `gsk_...` |
+| `VITE_API_BASE_URL` | Frontend API Gateway URL | `http://localhost:8082/api` |
 
 ---
 
-## Author
+## 👥 System Roles & Default Permissions
 
-**Rishitha Mendem**
+| Role | Permissions Overview |
+|---|---|
+| `SUPER_ADMIN` | Global platform administration, user management, organization oversight |
+| `ORG_ADMIN` | Organization settings, team creation, inviting members, project allocation |
+| `PROJECT_MANAGER` | Project setup, sprint planning, task assignment, backlog prioritization |
+| `DEVELOPER` | Task execution, status updates, code review logging, bug resolution |
+| `QA_TESTER` | Bug reporting, test case management, test execution runs |
+| `CLIENT` | View project deliverables, submit feedback, approve/reject milestone deliverables |
 
-**Module:** AI Integration (Module 6)
+---
 
-**Project:** NeuroForge Enterprise SDLC
+## 📄 License
+This project is proprietary and confidential. All rights reserved.

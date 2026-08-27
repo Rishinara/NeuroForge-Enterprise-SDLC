@@ -10,7 +10,7 @@ import java.util.List;
 @Service
 public class GroqService {
 
-    @Value("${groq.api.key}")
+    @Value("${groq.api.key:}")
     private String apiKey;
 
     private static final String API_URL =
@@ -19,13 +19,16 @@ public class GroqService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     public String askGroq(String prompt) {
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            return "AI Service is not configured. Please configure GROQ_API_KEY environment variable.";
+        }
 
         GroqMessage message =
                 new GroqMessage("user", prompt);
 
         GroqRequest request =
                 new GroqRequest(
-                        "llama-3.1-8b-instant",
+                        "openai/gpt-oss-20b",
                         List.of(message)
                 );
 

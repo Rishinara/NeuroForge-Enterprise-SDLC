@@ -90,14 +90,14 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="p-8 text-center bg-white rounded-xl border border-slate-200 max-w-6xl mx-auto my-6">
+      <div className="p-8 text-center bg-white rounded-xl border border-slate-200 w-full my-6">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-3"></div>
         <p className="text-sm font-medium text-slate-500">Loading project velocity & analytics reports...</p>
       </div>
     )
   }
 
-  if (error) return <div className="p-6 text-sm text-red-600 max-w-6xl mx-auto">{error}</div>
+  if (error) return <div className="p-6 text-sm text-red-600 w-full">{error}</div>
   if (!projectData) return null
 
   const progress = projectData.progressPercent ?? 0;
@@ -114,7 +114,7 @@ export default function ReportsPage() {
   const maxVelocity = Math.max(...sprintMetrics.map((s) => s.velocity), 10);
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
+    <div className="w-full px-6 lg:px-10 py-8 space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">

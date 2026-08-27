@@ -1,4 +1,5 @@
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
+import { Clock, ShieldAlert, LogOut } from 'lucide-react'
 
 export default function UnassignedOrgNotice() {
   const { user, logout } = useAuth()
@@ -8,78 +9,46 @@ export default function UnassignedOrgNotice() {
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justify: 'center',
-        minHeight: '70vh',
-        padding: 24,
-      }}
-    >
-      <div
-        className="wk-card"
-        style={{
-          maxWidth: 520,
-          width: '100%',
-          textAlign: 'center',
-          padding: '40px 32px',
-          borderRadius: 16,
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)',
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-        }}
-      >
-        <div
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: '50%',
-            background: '#fef3c7',
-            color: '#d97706',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 28,
-            margin: '0 auto 20px auto',
-          }}
-        >
-          ⏳
+    <div className="flex items-center justify-center min-h-[70vh] p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-200/80 dark:border-slate-700 p-8 sm:p-10 max-w-lg w-full text-center">
+        <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-6 border border-amber-200/60 shadow-xs">
+          <Clock size={32} />
         </div>
 
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', marginBottom: 12 }}>
-          Account Created Successfully
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight mb-3">
+          Account Under Review
         </h2>
 
-        <p style={{ fontSize: 14.5, lineHeight: 1.6, color: '#475569', marginBottom: 24 }}>
-          Your account (<strong>{user?.email}</strong>) has been created successfully.
-          <br />
+        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
+          Your account (<span className="font-semibold text-slate-900 dark:text-white">{user?.email}</span>) has been created successfully.
+          <br className="mb-2" />
           {user?.orgId && user?.orgApproved === false ? (
             <>Your account has been assigned to an organization and is waiting for Organization Admin approval.</>
           ) : user?.role === ROLES.ORG_ADMIN ? (
-            <>Please wait until the <strong>Super Admin</strong> assigns you to an organization.</>
+            <>Please wait until the <strong className="text-slate-900 dark:text-white">Super Admin</strong> assigns you to an organization.</>
           ) : (
-            <>Please wait until your <strong>Organization Admin</strong> invites you to an organization.</>
+            <>Please wait until your <strong className="text-slate-900 dark:text-white">Organization Admin</strong> invites you to an organization.</>
           )}
         </p>
 
-        <div style={{ background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid #f1f5f9', marginBottom: 28 }}>
-          <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
+        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 mb-8 text-left flex items-start gap-3">
+          <ShieldAlert size={20} className="text-slate-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
             {user?.orgId && user?.orgApproved === false ? (
-              <>🔒 Organization features, projects, teams, specs, backlogs, and board items are restricted until your Organization Admin approves your account.</>
+              <>Organization features, projects, teams, specs, backlogs, and board items are restricted until your Organization Admin approves your account.</>
             ) : (
-              <>🔒 Organization features, projects, teams, specs, backlogs, and board items are restricted until an organization assignment is granted.</>
+              <>Organization features, projects, teams, specs, backlogs, and board items are restricted until an organization assignment is granted.</>
             )}
           </p>
         </div>
 
         <button
           type="button"
-          className="wk-btn wk-btn-secondary"
-          style={{ width: 'auto', padding: '10px 24px', fontSize: 14 }}
+          className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-600 shadow-xs transition-all active:scale-[0.98]"
           onClick={logout}
         >
-          Log out
+          <LogOut size={16} />
+          Sign out
         </button>
       </div>
     </div>

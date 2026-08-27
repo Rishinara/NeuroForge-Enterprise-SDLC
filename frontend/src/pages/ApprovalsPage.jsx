@@ -263,7 +263,7 @@ export default function ApprovalsPage() {
   const approvedCount = deliverables.filter(d => d.status === 'APPROVED').length + approvals.filter(a => a.status === 'APPROVED').length
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="w-full px-6 lg:px-10 py-8 space-y-8">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

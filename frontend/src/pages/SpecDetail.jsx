@@ -140,7 +140,7 @@ export default function SpecDetail() {
 
   if (loading && !spec) {
     return (
-      <div className="max-w-4xl mx-auto p-6 space-y-6 animate-pulse">
+      <div className="w-full px-6 lg:px-10 py-8 space-y-6 animate-pulse">
         <div className="h-4 w-24 bg-slate-200 rounded mb-8"></div>
         <div className="h-10 w-3/4 bg-slate-200 rounded"></div>
         <div className="h-6 w-1/3 bg-slate-200 rounded mt-4"></div>
@@ -152,7 +152,7 @@ export default function SpecDetail() {
 
   if (error && !spec) {
     return (
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="w-full px-6 lg:px-10 py-8 space-y-6">
         <Link to={`/projects/${projectId}/specs`} className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm w-fit">
           ← Back to specs
         </Link>
@@ -176,7 +176,7 @@ export default function SpecDetail() {
   const sortedVersions = [...spec.versions].sort((a,b) => b.version - a.version);
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-8 mb-24">
+    <div className="w-full px-6 lg:px-10 py-8 space-y-8 mb-24">
       {/* Header Band */}
       <div className="space-y-5 relative">
         <Link to={`/projects/${projectId}/specs`} className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm w-fit">

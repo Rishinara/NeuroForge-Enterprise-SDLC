@@ -79,7 +79,7 @@ export default function ProjectsPortfolioPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
+    <div className="w-full px-6 lg:px-10 py-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -192,7 +192,7 @@ export default function ProjectsPortfolioPage() {
           <p className="text-xs text-slate-400 mt-1">Try adjusting your filters or search query.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filtered.map((p) => {
             const progress = p.progressPercent ?? 0;
             const methodology = formatEnum(p.methodology);
