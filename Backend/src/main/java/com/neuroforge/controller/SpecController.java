@@ -33,7 +33,7 @@ public class SpecController {
     }
 
     @PostMapping("/projects/{projectId}/specs")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','USER','ROLE_USER')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','USER','ROLE_USER','DEVELOPER')")
     public ResponseEntity<SpecResponse> createSpec(
             @PathVariable Long projectId,
             @RequestBody SpecRequest request,
@@ -50,7 +50,7 @@ public class SpecController {
     }
 
     @PutMapping("/specs/{specId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','USER','ROLE_USER')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','USER','ROLE_USER','DEVELOPER')")
     public ResponseEntity<SpecResponse> updateSpec(
             @PathVariable Long specId,
             @RequestBody SpecRequest request,
@@ -76,7 +76,7 @@ public class SpecController {
     }
 
     @PostMapping("/specs/{specId}/submit")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','USER','ROLE_USER')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','ORG_ADMIN','SUPER_ADMIN','USER','ROLE_USER','DEVELOPER')")
     public ResponseEntity<SpecResponse> submitForReview(
             @PathVariable Long specId,
             @AuthenticationPrincipal UserDetails userDetails) {

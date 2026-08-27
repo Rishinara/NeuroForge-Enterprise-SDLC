@@ -21,4 +21,5 @@ export const taskApi = {
   updateStatus: (id, status) => api.patch(`/tasks/${id}/status`, { status: STATUS_MAP[status] || status }),
   assignSprint: (id, sprintId) => api.post(`/tasks/${id}/assign-sprint/${sprintId}`),
   removeSprint: (id) => api.post(`/tasks/${id}/remove-sprint`),
+  getMyTasks: () => api.get(`/tasks/my-tasks`),
 }

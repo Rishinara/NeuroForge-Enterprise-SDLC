@@ -34,4 +34,6 @@ public interface TaskService {
 
     List<TaskStatusHistoryResponse> getTaskStatusHistory(Long taskId,
                                                          String loggedInEmail);
+                                                         
+    List<TaskResponse> getMyTasks(String loggedInEmail);
 }

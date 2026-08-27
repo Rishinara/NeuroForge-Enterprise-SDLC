@@ -30,14 +30,56 @@ export default function CreateProjectPage() {
   const [expandedTeams, setExpandedTeams] = useState({})
 
   useEffect(() => {
-    orgApi
-      .listMembers(user?.orgId)
-      .then((res) => {
-        const allMembers = Array.isArray(res.data) ? res.data : []
-        setMembers(allMembers.filter(m => m.role !== 'ORG_ADMIN'))
-      })
-      .catch(() => setMembers([]))
-  }, [user?.orgId])
+    if (!user?.orgId) return;
+
+    Promise.all([
+      orgApi.listMembers(user.orgId, { availableOnly: true }),
+      orgApi.listTeamsWithMembers(user.orgId, { availableOnly: true })
+    ])
+    .then(([membersRes, teamsRes]) => {
+      const isPmCreator = user?.role === 'PROJECT_MANAGER';
+
+      let allMembers = Array.isArray(membersRes.data) 
+        ? membersRes.data.filter(m => m.role !== 'ORG_ADMIN' && m.role !== 'SUPER_ADMIN' && !m.assignedToProject) 
+        : [];
+      
+      if (isPmCreator) {
+        allMembers = allMembers.filter(m => m.role !== 'PROJECT_MANAGER');
+      }
+
+      let rawTeams = Array.isArray(teamsRes.data) ? teamsRes.data : [];
+
+      let filteredTeams = rawTeams
+        .filter(t => !(isPmCreator && t.name.toLowerCase() === 'project manager'))
+        .map(t => {
+          const validMembers = (t.members || []).filter(m => {
+            if (m.assignedToProject) return false;
+            if (isPmCreator && m.role === 'PROJECT_MANAGER') return false;
+            return true;
+          });
+          return {
+            ...t,
+            memberCount: validMembers.length,
+            members: validMembers
+          };
+        });
+
+      // Calculate unassigned members
+      const assignedToTeamMemberIds = new Set(filteredTeams.flatMap(t => t.members.map(m => m.id)));
+      const unassignedMembers = allMembers.filter(m => !assignedToTeamMemberIds.has(m.id));
+
+      if (unassignedMembers.length > 0) {
+        filteredTeams.push({
+          id: -1,
+          name: 'Unassigned Members',
+          memberCount: unassignedMembers.length,
+          members: unassignedMembers
+        });
+      }
+      setTeams(filteredTeams);
+    })
+    .catch(() => setTeams([]));
+  }, [user?.orgId, user?.role])
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }))
@@ -142,6 +184,7 @@ export default function CreateProjectPage() {
       const payload = {
         ...form,
         orgId: isNaN(numericOrgId) ? null : numericOrgId,
+        assignedTeamIds: form.assignedTeamIds.filter(id => id !== -1 && !isNaN(id)),
         teamMemberIds: form.teamMemberIds.map((id) => Number(id)).filter((id) => !isNaN(id)),
       }
       const res = await projectApi.createProject(payload)
@@ -159,7 +202,7 @@ export default function CreateProjectPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 md:p-8">
+    <div className="w-full px-6 lg:px-10 py-8 space-y-8">
       <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
         
         {/* Left Column: Context & Navigation */}
@@ -384,42 +427,115 @@ export default function CreateProjectPage() {
                 </div>
               )}
 
-              {/* Step 3: Team */}
+              {/* Step 3: Teams & Members */}
               {step === 3 && (
-                <div className="space-y-4">
-                  {members.length === 0 ? (
+                <div className="space-y-6">
+                  {/* Selected Members Summary */}
+                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex justify-between items-center">
+                    <div className="text-sm font-semibold text-slate-700">Selected Members:</div>
+                    <div className="text-lg font-bold text-slate-900">{form.teamMemberIds.length}</div>
+                  </div>
+
+                  {teams.length === 0 ? (
                     <div className="p-8 text-center bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                      <p className="text-sm text-slate-500">No eligible members found in this organization.</p>
+                      <p className="text-sm text-slate-500">No eligible teams or members found in this organization.</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-2">
-                      {members.map((m) => {
-                        const isChecked = form.teamMemberIds.includes(m.id);
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                      {teams.map((team) => {
+                        const isExpanded = expandedTeams[team.id] !== false;
+                        const teamMembersCount = team.members.length;
+                        const selectedTeamMembersCount = team.members.filter(m => form.teamMemberIds.includes(m.id)).length;
+                        
+                        let checkboxState = 'unchecked';
+                        if (selectedTeamMembersCount > 0 && selectedTeamMembersCount < teamMembersCount) {
+                          checkboxState = 'indeterminate';
+                        } else if (selectedTeamMembersCount === teamMembersCount && teamMembersCount > 0) {
+                          checkboxState = 'checked';
+                        }
+                        
                         return (
-                          <label
-                            key={m.id}
-                            className={`flex items-start p-4 rounded-lg border cursor-pointer transition-all ${
-                              isChecked
-                                ? 'bg-orange-50 border-orange-300 ring-1 ring-orange-500 shadow-sm'
-                                : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              className="mt-1 w-4 h-4 text-orange-600 rounded border-slate-300 focus:ring-orange-500"
-                              checked={isChecked}
-                              onChange={() => toggleMember(m.id)}
-                            />
-                            <div className="ml-3 flex-1 min-w-0">
-                              <div className="text-sm font-bold text-slate-900 truncate">{m.fullName}</div>
-                              <div className="text-xs text-slate-500 mt-0.5 truncate" title={m.email}>
-                                {m.email}
+                          <div key={team.id} className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                            <div 
+                              className="flex items-center px-4 py-3 bg-slate-50 border-b border-slate-200 cursor-pointer select-none"
+                              onClick={() => {
+                                setExpandedTeams(prev => ({ ...prev, [team.id]: !isExpanded }));
+                              }}
+                            >
+                              <button
+                                type="button"
+                                className="mr-2 text-slate-400 hover:text-slate-600 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedTeams(prev => ({ ...prev, [team.id]: !isExpanded }));
+                                }}
+                              >
+                                <svg 
+                                  className={`w-4 h-4 transform transition-transform ${isExpanded ? 'rotate-90' : ''}`} 
+                                  fill="none" 
+                                  viewBox="0 0 24 24" 
+                                  stroke="currentColor"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              </button>
+                              
+                              <div className="flex items-center flex-1">
+                                <input
+                                  type="checkbox"
+                                  className="w-4 h-4 text-orange-600 rounded border-slate-300 focus:ring-orange-500 cursor-pointer"
+                                  checked={checkboxState === 'checked'}
+                                  ref={el => {
+                                    if (el) el.indeterminate = checkboxState === 'indeterminate';
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={() => toggleTeam(team.id)} 
+                                />
+                                <span className="ml-3 font-bold text-slate-800 text-sm">{team.name}</span>
                               </div>
-                              <div className="inline-block mt-2 px-2 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded text-[10px] font-bold uppercase tracking-wider">
-                                {m.role.replaceAll('_', ' ')}
+                              <div className="text-xs font-semibold text-slate-500 bg-slate-200 px-2 py-1 rounded">
+                                {teamMembersCount} member{teamMembersCount !== 1 ? 's' : ''}
                               </div>
                             </div>
-                          </label>
+                            
+                            {isExpanded && team.members.length > 0 && (
+                              <div className="bg-white p-2 border-t border-slate-100">
+                                {team.members.map((m) => {
+                                  const isChecked = form.teamMemberIds.includes(m.id);
+                                  return (
+                                    <label
+                                      key={m.id}
+                                      className={`flex items-center px-4 py-2 rounded-md cursor-pointer transition-colors ${
+                                        isChecked ? 'bg-orange-50' : 'hover:bg-slate-50'
+                                      }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        className="w-4 h-4 text-orange-600 rounded border-slate-300 focus:ring-orange-500"
+                                        checked={isChecked}
+                                        onChange={() => toggleMember(m.id, team.id)}
+                                      />
+                                      <div className="ml-3 flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                          <div className="text-sm font-semibold text-slate-900">{m.fullName || m.name}</div>
+                                          <div className="text-xs text-slate-500">{m.email}</div>
+                                        </div>
+                                        <div className="mt-1 sm:mt-0 text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded self-start sm:self-auto">
+                                          {m.role ? m.role.toString().replaceAll('_', ' ') : ''}
+                                        </div>
+                                      </div>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            
+                            {isExpanded && team.members.length === 0 && (
+                              <div className="p-4 text-center text-sm text-slate-500">
+                                No members in this team.
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>

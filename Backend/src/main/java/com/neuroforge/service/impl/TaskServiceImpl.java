@@ -28,7 +28,9 @@ public class TaskServiceImpl implements TaskService {
     private final SprintRepository sprintRepository;
     private final UserRepository userRepository;
     private final TaskStatusHistoryRepository taskStatusHistoryRepository;
-    private final com.neuroforge.service.TriageService triageService;
+    private final TeamRepository teamRepository;
+    private final com.neuroforge.service.NotificationService notificationService;
+    private final com.neuroforge.service.ActivityService activityService;
 
     private TaskResponse mapToResponse(Task task) {
 
@@ -53,6 +55,11 @@ public class TaskServiceImpl implements TaskService {
         if (task.getSprint() != null) {
             response.setSprintId(task.getSprint().getId());
             response.setSprintName(task.getSprint().getName());
+        }
+
+        if (task.getTeam() != null) {
+            response.setTeamId(task.getTeam().getId());
+            response.setTeamName(task.getTeam().getName());
         }
 
         if (task.getAssignee() != null) {
@@ -117,10 +124,14 @@ public class TaskServiceImpl implements TaskService {
                         "Sprint does not belong to the selected project");
             }
 
-            if (sprint.getStatus() == SprintStatus.COMPLETED) {
-                throw new InvalidRequestException(
-                        "Cannot add task to completed sprint");
-            }
+// Allowed: sprint will auto-reactivate if non-done task added
+        }
+
+        Team team = null;
+        if (request.getTeamId() != null) {
+            team = teamRepository.findById(request.getTeamId())
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("Team not found"));
         }
 
         User assignee = null;
@@ -130,6 +141,10 @@ public class TaskServiceImpl implements TaskService {
             assignee = userRepository.findById(request.getAssigneeId())
                     .orElseThrow(() ->
                             new ResourceNotFoundException("Assignee not found"));
+                            
+            if (team != null && !team.getUsers().contains(assignee)) {
+                throw new InvalidRequestException("Assignee does not belong to the selected team");
+            }
         }
 
         Task task = new Task();
@@ -154,14 +169,13 @@ public class TaskServiceImpl implements TaskService {
         task.setSprint(sprint);
 
         task.setReporter(reporter);
+        task.setTeam(team);
         task.setAssignee(assignee);
 
         Task savedTask = taskRepository.save(task);
-
-        try {
-            triageService.autoTriageTaskAsync(savedTask.getId());
-        } catch (Exception e) {
-            // Ignore async triage dispatch failures
+        
+        if (assignee != null && sprint != null) {
+             notificationService.createNotification(assignee, "New task assigned", "You have been assigned '" + savedTask.getTitle() + "' in " + sprint.getName() + ".", "TASK_ASSIGNED", savedTask.getId());
         }
 
         Task loadedTask = taskRepository.findTaskById(savedTask.getId())
@@ -198,10 +212,14 @@ public class TaskServiceImpl implements TaskService {
                         "Sprint does not belong to the task project");
             }
 
-            if (sprint.getStatus() == SprintStatus.COMPLETED) {
-                throw new InvalidRequestException(
-                        "Cannot move task to completed sprint");
-            }
+// Allowed: sprint will auto-reactivate if non-done task added
+        }
+
+        Team team = null;
+        if (request.getTeamId() != null) {
+            team = teamRepository.findById(request.getTeamId())
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("Team not found"));
         }
 
         User assignee = null;
@@ -211,6 +229,17 @@ public class TaskServiceImpl implements TaskService {
             assignee = userRepository.findById(request.getAssigneeId())
                     .orElseThrow(() ->
                             new ResourceNotFoundException("Assignee not found"));
+                            
+            if (team != null && !team.getUsers().contains(assignee)) {
+                throw new InvalidRequestException("Assignee does not belong to the selected team");
+            }
+        }
+        
+        boolean notifyNewAssignee = false;
+        if (assignee != null && sprint != null) {
+            if (task.getAssignee() == null || !task.getAssignee().getId().equals(assignee.getId()) || task.getSprint() == null || !task.getSprint().getId().equals(sprint.getId())) {
+                notifyNewAssignee = true;
+            }
         }
 
         task.setTitle(request.getTitle());
@@ -226,10 +255,22 @@ public class TaskServiceImpl implements TaskService {
                         : request.getLabels()
         );
 
+        Sprint oldSprint = task.getSprint();
         task.setSprint(sprint);
+        task.setTeam(team);
         task.setAssignee(assignee);
 
         taskRepository.save(task);
+        if (oldSprint != null) {
+            checkAndUpdateSprintStatus(oldSprint);
+        }
+        if (sprint != null && (oldSprint == null || !oldSprint.getId().equals(sprint.getId()))) {
+            checkAndUpdateSprintStatus(sprint);
+        }
+        
+        if (notifyNewAssignee) {
+             notificationService.createNotification(assignee, "New task assigned", "You have been assigned '" + task.getTitle() + "' in " + sprint.getName() + ".", "TASK_ASSIGNED", task.getId());
+        }
 
         Task updatedTask = taskRepository.findTaskById(task.getId())
                 .orElseThrow(() ->
@@ -250,7 +291,11 @@ public class TaskServiceImpl implements TaskService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Task not found"));
 
+        Sprint sprint = task.getSprint();
         taskRepository.delete(task);
+        if (sprint != null) {
+            checkAndUpdateSprintStatus(sprint);
+        }
     }
 
     @Override
@@ -316,14 +361,23 @@ public class TaskServiceImpl implements TaskService {
                     "Task and Sprint belong to different projects");
         }
 
-        if (sprint.getStatus() == SprintStatus.COMPLETED) {
-            throw new InvalidRequestException(
-                    "Cannot assign task to completed sprint");
-        }
+// Allowed: sprint will auto-reactivate if non-done task added
 
+        boolean wasInSprint = task.getSprint() != null;
+        Sprint prevSprint = task.getSprint();
         task.setSprint(sprint);
 
         taskRepository.save(task);
+        if (prevSprint != null) {
+            checkAndUpdateSprintStatus(prevSprint);
+        }
+        if (sprint != null) {
+            checkAndUpdateSprintStatus(sprint);
+        }
+        
+        if (!wasInSprint && task.getAssignee() != null) {
+             notificationService.createNotification(task.getAssignee(), "New task assigned", "You have been assigned '" + task.getTitle() + "' in " + sprint.getName() + ".", "TASK_ASSIGNED", task.getId());
+        }
 
         Task updatedTask = taskRepository.findTaskById(task.getId())
                 .orElseThrow(() ->
@@ -350,9 +404,13 @@ public class TaskServiceImpl implements TaskService {
                     "Task is already in the backlog");
         }
 
+        Sprint prevSprint = task.getSprint();
         task.setSprint(null);
 
         taskRepository.save(task);
+        if (prevSprint != null) {
+            checkAndUpdateSprintStatus(prevSprint);
+        }
 
         Task updatedTask = taskRepository.findTaskById(task.getId())
                 .orElseThrow(() ->
@@ -404,15 +462,25 @@ public class TaskServiceImpl implements TaskService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Task not found"));
 
-        if (user.getRole() == com.neuroforge.enums.Role.DEVELOPER) {
+        if (user.getRole().isDeveloper()) {
             if (task.getAssignee() == null || !task.getAssignee().getId().equals(user.getId())) {
                 throw new org.springframework.security.access.AccessDeniedException("You can only update your assigned tasks.");
             }
         }
         
-        if (user.getRole() == com.neuroforge.enums.Role.DEVELOPER) {
-            if (request.getStatus() == com.neuroforge.enums.TaskStatus.TESTING || request.getStatus() == com.neuroforge.enums.TaskStatus.DONE) {
-                throw new org.springframework.security.access.AccessDeniedException("Developers cannot move tasks to Testing or Done.");
+        if (user.getRole().isDeveloper()) {
+            boolean isToDoToInProgress = task.getStatus() == com.neuroforge.enums.TaskStatus.TODO && request.getStatus() == com.neuroforge.enums.TaskStatus.IN_PROGRESS;
+            boolean isInProgressToCodeReview = task.getStatus() == com.neuroforge.enums.TaskStatus.IN_PROGRESS && request.getStatus() == com.neuroforge.enums.TaskStatus.CODE_REVIEW;
+            if (!isToDoToInProgress && !isInProgressToCodeReview) {
+                throw new org.springframework.security.access.AccessDeniedException("Developers can only move tasks from To Do to In Progress or Code Review.");
+            }
+        }
+
+        if (user.getRole() == com.neuroforge.enums.Role.QA_TESTER) {
+            boolean isCodeReviewToTesting = task.getStatus() == com.neuroforge.enums.TaskStatus.CODE_REVIEW && request.getStatus() == com.neuroforge.enums.TaskStatus.TESTING;
+            boolean isTestingToDone = task.getStatus() == com.neuroforge.enums.TaskStatus.TESTING && request.getStatus() == com.neuroforge.enums.TaskStatus.DONE;
+            if (!isCodeReviewToTesting && !isTestingToDone) {
+                throw new org.springframework.security.access.AccessDeniedException("QA Testers can only move tasks from Code Review to Testing or Testing to Done.");
             }
         }
 
@@ -432,6 +500,9 @@ public class TaskServiceImpl implements TaskService {
         task.setStatus(request.getStatus());
 
         taskRepository.save(task);
+        if (task.getSprint() != null) {
+            checkAndUpdateSprintStatus(task.getSprint());
+        }
 
         TaskStatusHistory history = new TaskStatusHistory();
 
@@ -441,6 +512,31 @@ public class TaskServiceImpl implements TaskService {
         history.setChangedBy(user);
 
         taskStatusHistoryRepository.save(history);
+
+        activityService.logActivity(task.getProject().getOrganization().getId(), 
+                                    "Task Status Updated", 
+                                    "Moved task '" + task.getTitle() + "' to " + request.getStatus(), 
+                                    loggedInEmail);
+
+        if (oldStatus == com.neuroforge.enums.TaskStatus.IN_PROGRESS && task.getStatus() == com.neuroforge.enums.TaskStatus.CODE_REVIEW) {
+            List<User> qaTesters = task.getProject().getMembers().stream()
+                    .filter(m -> m.getRole() == com.neuroforge.enums.ProjectRole.QA || m.getUser().getRole() == com.neuroforge.enums.Role.QA_TESTER)
+                    .map(com.neuroforge.entity.ProjectMember::getUser)
+                    .toList();
+            for (User qa : qaTesters) {
+                notificationService.createNotification(qa, "Ready for Code Review", "Task '" + task.getTitle() + "' has been moved to Code Review by " + user.getFullName() + ".", "TASK_READY_FOR_REVIEW", task.getId());
+            }
+        }
+
+        if (task.getStatus() == com.neuroforge.enums.TaskStatus.DONE && user.getRole() == com.neuroforge.enums.Role.QA_TESTER) {
+            List<User> pms = task.getProject().getMembers().stream()
+                    .filter(m -> m.getRole() == com.neuroforge.enums.ProjectRole.PROJECT_MANAGER || m.getUser().getRole() == com.neuroforge.enums.Role.PROJECT_MANAGER)
+                    .map(com.neuroforge.entity.ProjectMember::getUser)
+                    .toList();
+            for (User pm : pms) {
+                notificationService.createNotification(pm, "Task Completed", "Task '" + task.getTitle() + "' has been moved to Done by QA Tester " + user.getFullName() + ".", "TASK_DONE", task.getId());
+            }
+        }
 
         TaskStatusUpdateEvent event = new TaskStatusUpdateEvent();
 
@@ -489,6 +585,44 @@ public class TaskServiceImpl implements TaskService {
                 .stream()
                 .map(this::mapToHistoryResponse)
                 .toList();
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<TaskResponse> getMyTasks(String loggedInEmail) {
+        User user = userRepository.findByEmail(loggedInEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return taskRepository.findByAssigneeId(user.getId())
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+
+    private void checkAndUpdateSprintStatus(Sprint sprint) {
+        if (sprint == null || sprint.getId() == null) return;
+        List<Task> sprintTasks = taskRepository.findBySprintId(sprint.getId());
+        if (sprintTasks.isEmpty()) {
+            if (sprint.getStatus() == SprintStatus.COMPLETED) {
+                sprint.setStatus(SprintStatus.PLANNED);
+                sprintRepository.save(sprint);
+            }
+            return;
+        }
+
+        boolean allDone = sprintTasks.stream().allMatch(t -> t.getStatus() == TaskStatus.DONE);
+
+        if (allDone) {
+            if (sprint.getStatus() != SprintStatus.COMPLETED) {
+                sprint.setStatus(SprintStatus.COMPLETED);
+                sprintRepository.save(sprint);
+            }
+        } else {
+            if (sprint.getStatus() == SprintStatus.COMPLETED) {
+                sprint.setStatus(SprintStatus.ACTIVE);
+                sprintRepository.save(sprint);
+            }
+        }
     }
 
 }

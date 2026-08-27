@@ -53,6 +53,7 @@ export default function App() {
             <Route path="/org/teams/:teamId" element={<TeamDetailPage />} />
             <Route path="/org/invites" element={<PendingInvitesPage />} />
             <Route path="/org/settings" element={<OrgSettingsPage />} />
+            <Route path="/admin/settings" element={<SuperAdminSettingsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/projects" element={<ProjectsPortfolioPage />} />
             <Route

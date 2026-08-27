@@ -22,7 +22,7 @@ public class TaskController {
     private final SprintService sprintService;
 
     @PostMapping("/projects/{projectId}/backlog")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN')")
     public TaskResponse createTask(
             @PathVariable Long projectId,
             @Valid @RequestBody CreateTaskRequest request,
@@ -35,7 +35,7 @@ public class TaskController {
     }
 
     @PutMapping("/{taskId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN')")
     public TaskResponse updateTask(
             @PathVariable Long taskId,
             @Valid @RequestBody UpdateTaskRequest request,
@@ -48,7 +48,7 @@ public class TaskController {
     }
 
     @DeleteMapping("/{taskId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN')")
     public void deleteTask(
             @PathVariable Long taskId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -81,7 +81,7 @@ public class TaskController {
     }
 
     @PostMapping("/{taskId}/assign-sprint/{sprintId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN')")
     public TaskResponse assignTaskToSprint(
             @PathVariable Long taskId,
             @PathVariable Long sprintId,
@@ -94,7 +94,7 @@ public class TaskController {
     }
 
     @PostMapping("/{taskId}/remove-sprint")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','SUPER_ADMIN')")
     public TaskResponse removeTaskFromSprint(
             @PathVariable Long taskId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -137,5 +137,10 @@ public class TaskController {
         return sprintService.getSprintBoard(
                 sprintId,
                 userDetails.getUsername());
+    }
+    @GetMapping("/my-tasks")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'QA_TESTER', 'PROJECT_MANAGER', 'SUPER_ADMIN', 'ORG_ADMIN')")
+    public List<TaskResponse> getMyTasks(@AuthenticationPrincipal UserDetails userDetails) {
+        return taskService.getMyTasks(userDetails.getUsername());
     }
 }

@@ -3,6 +3,8 @@ package com.neuroforge.enums;
 public enum BugStatus {
     OPEN,
     IN_PROGRESS,
-    RESOLVED,
-    CLOSED
+    READY_FOR_QA,
+    RETESTING,
+    CLOSED,
+    REOPENED
 }

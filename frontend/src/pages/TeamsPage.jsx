@@ -57,7 +57,7 @@ export default function TeamsPage() {
 
         if (selectedOrgId !== 'ALL') {
           const [teamsRes, membersRes] = await Promise.all([
-            orgApi.listTeams(selectedOrgId).catch(() => ({ data: [] })),
+            orgApi.listTeamsWithMembers(selectedOrgId).catch(() => ({ data: [] })),
             orgApi.listMembers(selectedOrgId).catch(() => ({ data: [] }))
           ])
           setTeams(Array.isArray(teamsRes.data) ? teamsRes.data : [])
@@ -81,7 +81,7 @@ export default function TeamsPage() {
         }
       } else if (user?.orgId) {
         const [teamsRes, membersRes] = await Promise.all([
-          orgApi.listTeams(user.orgId),
+          orgApi.listTeamsWithMembers(user.orgId),
           orgApi.listMembers(user.orgId),
         ])
         setTeams(Array.isArray(teamsRes.data) ? teamsRes.data : [])
@@ -161,22 +161,6 @@ export default function TeamsPage() {
     }
     if (!confirm(`Are you sure you want to delete team "${team.name}"?`)) return
 
-    const activeOrgId = isSuperAdmin ? (selectedOrgId !== 'ALL' ? selectedOrgId : orgs[0]?.id) : user?.orgId
-    try {
-      await orgApi.deleteTeam(activeOrgId, team.id)
-      load()
-    } catch (err) {
-      setError(extractErrorMessage(err))
-    }
-  }
-
-  async function handleDeleteTeam(team) {
-    if (team.memberCount > 0) {
-      setError('Cannot delete a team that still has members.')
-      return
-    }
-    if (!confirm(`Are you sure you want to delete team "${team.name}"?`)) return
-    
     const activeOrgId = isSuperAdmin ? (selectedOrgId !== 'ALL' ? selectedOrgId : orgs[0]?.id) : user?.orgId
     try {
       await orgApi.deleteTeam(activeOrgId, team.id)
@@ -377,13 +361,25 @@ export default function TeamsPage() {
                     <div className="tm-team-count">{t.memberCount} member{t.memberCount === 1 ? '' : 's'}</div>
                   </div>
                   <Can roles={[ROLES.ORG_ADMIN]}>
-                    <button 
-                      className="tm-remove-btn" 
-                      onClick={() => handleDeleteTeam(t)}
-                      style={{ padding: '4px 8px', fontSize: 11 }}
-                    >
-                      Delete
-                    </button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        className="wk-btn"
+                        onClick={() => {
+                          setEditingTeam(t)
+                          setEditTeamName(t.name)
+                        }}
+                        style={{ padding: '4px 8px', fontSize: 11, width: 'auto', background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569' }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="tm-remove-btn"
+                        onClick={() => handleDeleteTeam(t)}
+                        style={{ padding: '4px 8px', fontSize: 11 }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </Can>
                 </div>
               ))}
@@ -470,6 +466,71 @@ export default function TeamsPage() {
         onInvited={load}
         targetOrgId={targetOrgId}
       />
+
+      {editingTeam && (
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md p-6 border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+              Edit Team Name
+            </h3>
+            <form onSubmit={handleUpdateTeam} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                  Team Name
+                </label>
+                <input
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  value={editTeamName}
+                  onChange={(e) => setEditTeamName(e.target.value)}
+                  placeholder="e.g. Platform Engineering"
+                  required
+                />
+              </div>
+
+              {/* Team Members List */}
+              <div className="mt-4">
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                  Team Members ({editingTeam.members?.length || 0})
+                </label>
+                {!editingTeam.members || editingTeam.members.length === 0 ? (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 italic">No members in this team.</p>
+                ) : (
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-lg divide-y divide-slate-100 dark:divide-slate-700 max-h-40 overflow-y-auto bg-slate-50 dark:bg-slate-900/50 p-2">
+                    {editingTeam.members.map((m) => (
+                      <div key={m.id} className="flex justify-between items-center py-2 text-sm text-slate-700 dark:text-slate-300">
+                        <span>{m.fullName || m.name} ({m.email})</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMemberFromTeam(m.id)}
+                          className="px-2 py-1 text-xs text-red-600 hover:text-red-700 font-semibold transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                  onClick={() => setEditingTeam(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-75"
+                  disabled={savingEditTeam}
+                >
+                  {savingEditTeam ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

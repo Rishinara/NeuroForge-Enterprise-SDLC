@@ -8,9 +8,12 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import lombok.NoArgsConstructor;
+
 @Getter
 @Setter
 @AllArgsConstructor
+@NoArgsConstructor
 public class MemberResponse {
 
     private Long id;
@@ -21,6 +24,19 @@ public class MemberResponse {
     private boolean enabled;
     private LocalDateTime joinedAt;
     private List<String> teams;
+    private Boolean assignedToProject;
+    private String assignedProjectName;
 
-
+    public MemberResponse(Long id, String fullName, String email, String phoneNumber, Role role, boolean enabled, LocalDateTime joinedAt, List<String> teams) {
+        this.id = id;
+        this.fullName = fullName;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.role = role;
+        this.enabled = enabled;
+        this.joinedAt = joinedAt;
+        this.teams = teams;
+        this.assignedToProject = false;
+        this.assignedProjectName = null;
+    }
 }

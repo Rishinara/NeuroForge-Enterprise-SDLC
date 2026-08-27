@@ -24,6 +24,7 @@ public class ActivityServiceImpl implements ActivityService {
     // but we can check org access directly using UserRepository or just let controllers handle it.
     // For now we'll do a simple check.
     private final com.neuroforge.repository.UserRepository userRepository;
+    private final com.neuroforge.service.NotificationService notificationService;
 
     @Override
     @Transactional
@@ -33,6 +34,31 @@ public class ActivityServiceImpl implements ActivityService {
         if (org != null) {
             ActivityLog log = new ActivityLog(org, action, details, actorEmail);
             activityLogRepository.save(log);
+
+            // Notify Org Admin if actor is Project Manager
+            com.neuroforge.entity.User actor = userRepository.findByEmail(actorEmail).orElse(null);
+            if (actor != null && actor.getRole() == com.neuroforge.enums.Role.PROJECT_MANAGER) {
+                List<com.neuroforge.entity.User> orgUsers = userRepository.findByOrganizationId(orgId);
+                for (com.neuroforge.entity.User u : orgUsers) {
+                    if (u.getRole() == com.neuroforge.enums.Role.ORG_ADMIN) {
+                        String title = "PM Update: " + action;
+                        String msg = actor.getFullName() + " - " + details;
+                        notificationService.createNotification(u, title, msg, "SYSTEM_UPDATE", orgId);
+                    }
+                }
+            }
+
+            // Notify Project Manager if actor is Developer or QA Tester
+            if (actor != null && (actor.getRole().isDeveloper() || actor.getRole() == com.neuroforge.enums.Role.QA_TESTER)) {
+                List<com.neuroforge.entity.User> orgUsers = userRepository.findByOrganizationId(orgId);
+                for (com.neuroforge.entity.User u : orgUsers) {
+                    if (u.getRole() == com.neuroforge.enums.Role.PROJECT_MANAGER) {
+                        String title = "Team Update: " + action;
+                        String msg = actor.getFullName() + " - " + details;
+                        notificationService.createNotification(u, title, msg, "SYSTEM_UPDATE", orgId);
+                    }
+                }
+            }
         }
     }
 

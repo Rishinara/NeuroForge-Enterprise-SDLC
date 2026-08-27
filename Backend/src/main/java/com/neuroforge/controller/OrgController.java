@@ -98,6 +98,16 @@ public class OrgController {
         return orgService.listTeams(orgId, userDetails.getUsername());
     }
 
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/api/orgs/{orgId}/teams-with-members")
+    public List<TeamDetailResponse> listTeamsWithMembers(
+            @PathVariable Long orgId,
+            @RequestParam(required = false) Boolean availableOnly,
+            @RequestParam(required = false) Long forProjectId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return orgService.listTeamsWithMembers(orgId, userDetails.getUsername(), availableOnly, forProjectId);
+    }
+
     @PreAuthorize("hasRole('ORG_ADMIN')")
     @DeleteMapping("/api/orgs/{orgId}/teams/{teamId}")
     public ResponseEntity<Void> deleteTeam(
@@ -125,8 +135,10 @@ public class OrgController {
     @GetMapping("/api/orgs/{orgId}/members")
     public List<MemberResponse> listMembers(
             @PathVariable Long orgId,
+            @RequestParam(required = false) Boolean availableOnly,
+            @RequestParam(required = false) Long forProjectId,
             @AuthenticationPrincipal UserDetails userDetails) {
-        return orgService.listMembers(orgId, userDetails.getUsername());
+        return orgService.listMembers(orgId, userDetails.getUsername(), availableOnly, forProjectId);
     }
 
     @PreAuthorize("hasRole('ORG_ADMIN')")
@@ -149,6 +161,26 @@ public class OrgController {
         return ResponseEntity.noContent().build();
     }
     
+    // ---- Pending Approvals ----
+
+    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @GetMapping("/api/orgs/{orgId}/pending-users")
+    public List<MemberResponse> getPendingUsers(
+            @PathVariable Long orgId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return orgService.getPendingUsers(orgId, userDetails.getUsername());
+    }
+
+    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PostMapping("/api/orgs/{orgId}/users/{userId}/approve")
+    public ResponseEntity<Void> approveUser(
+            @PathVariable Long orgId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        orgService.approveUser(orgId, userId, userDetails.getUsername());
+        return ResponseEntity.ok().build();
+    }
+
     // ---- Join Requests ----
     
     @PreAuthorize("hasRole('ORG_ADMIN')")

@@ -10,7 +10,7 @@ import java.util.List;
 @Service
 public class GroqService {
 
-    @Value("${groq.api.key}")
+    @Value("${groq.api.key:}")
     private String apiKey;
 
     private static final String API_URL =
@@ -19,13 +19,16 @@ public class GroqService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     public String askGroq(String prompt) {
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            return "AI Service is not configured. Please configure GROQ_API_KEY environment variable.";
+        }
 
         GroqMessage message =
                 new GroqMessage("user", prompt);
 
         GroqRequest request =
                 new GroqRequest(
-                        "llama-3.1-8b-instant",
+                        "openai/gpt-oss-20b",
                         List.of(message)
                 );
 
@@ -307,48 +310,6 @@ public class GroqService {
                 
                 Adjust the amount of detail and edge cases based on the Complexity, and the writing style based on the Tone.
                 """.formatted(title, description, tone != null ? tone : "TECHNICAL", complexity != null ? complexity : "MODERATE");
-
-        return askGroq(prompt);
-    }
-
-    // -------------------------------------------------
-    // AI Ticket Triage & Smart Assignment
-    // -------------------------------------------------
-
-    public String generateTriageSuggestionJson(String title, String description, String teamMembersSummary, String pastHistorySummary) {
-        String prompt = """
-                You are an AI Ticket Triage & Smart Assignment system for a software development team.
-                Analyze the following incoming ticket and team context to suggest triage parameters.
-
-                TICKET TO TRIAGE:
-                Title: %s
-                Description: %s
-
-                AVAILABLE TEAM MEMBERS:
-                %s
-
-                HISTORICAL TICKETS RESOLVED/ASSIGNED:
-                %s
-
-                INSTRUCTIONS:
-                Provide smart triage recommendations:
-                1. category: Must be one of ["Frontend", "Backend", "DB", "DevOps"]
-                2. priority: Must be one of ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
-                3. estimatedStoryPoints: Integer from [1, 2, 3, 5, 8, 13]
-                4. suggestedAssigneeId: The ID (Long integer) of the best matching team member based on past history or domain fit (or null if unknown).
-                5. suggestedAssigneeName: The full name of the suggested team member (or null if unknown).
-                6. reasoning: A concise, human-readable highlight explaining why this assignee, category, priority, and points were selected (e.g., "suggested Kumanan - resolved 8 similar payment bugs").
-
-                Return ONLY a valid JSON object with NO markdown formatting, NO code blocks (just raw JSON):
-                {
-                  "category": "Backend",
-                  "priority": "HIGH",
-                  "estimatedStoryPoints": 5,
-                  "suggestedAssigneeId": 1,
-                  "suggestedAssigneeName": "Kumanan",
-                  "reasoning": "suggested Kumanan - resolved 8 similar payment bugs"
-                }
-                """.formatted(title, description, teamMembersSummary, pastHistorySummary);
 
         return askGroq(prompt);
     }

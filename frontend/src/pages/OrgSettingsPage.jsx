@@ -7,9 +7,12 @@ import UnassignedOrgNotice from '../components/UnassignedOrgNotice.jsx'
 import './workspace.css'
 
 export default function OrgSettingsPage() {
-  const { user } = useAuth()
-  const isSuperAdmin = user?.role === ROLES.SUPER_ADMIN
+  const { user, role } = useAuth()
+  const navigate = useNavigate()
 
+  const [activeTab, setActiveTab] = useState('org_info')
+
+  // Organization Information form
   const [form, setForm] = useState({ name: '', description: '', supportEmail: '' })
   
   // Theme state
@@ -96,10 +99,7 @@ export default function OrgSettingsPage() {
     }
   }
 
-  if (!isSuperAdmin && !user?.orgId) {
-    return <UnassignedOrgNotice />
-  }
-
+  // Submit Handler
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
@@ -135,16 +135,16 @@ export default function OrgSettingsPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="w-full px-6 lg:px-10 py-8 space-y-8">
       {/* Header */}
       <div className="border-b border-slate-200 dark:border-slate-700 pb-5">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white" style={{ color: 'var(--wk-ink)' }}>Settings</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your organization's configuration, access, and preferences.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Navigation Sidebar */}
-        <div className="space-y-4">
+        <div className="lg:col-span-3 space-y-4">
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4">
             <nav className="space-y-1">
               {[
@@ -163,10 +163,10 @@ export default function OrgSettingsPage() {
                     setError('')
                     setSuccessMsg('')
                   }}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`w-full text-left px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2.5 ${
                     activeTab === tab.id
                       ? 'bg-orange-600 text-white shadow-sm'
-                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60'
                   }`}
                 >
                   {tab.label}
@@ -177,7 +177,7 @@ export default function OrgSettingsPage() {
         </div>
 
         {/* Tab Panels */}
-        <div className="md:col-span-3">
+        <div className="lg:col-span-9">
           <form onSubmit={handleSubmit} className="space-y-6" noValidate>
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
               

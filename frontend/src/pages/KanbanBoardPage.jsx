@@ -48,7 +48,7 @@ class SimpleStompClient {
   connect() {
     try {
       this.socket = new WebSocket(this.url)
-      
+
       this.socket.onopen = () => {
         this.socket.send("CONNECT\naccept-version:1.1,1.2\n\n\u0000")
       }
@@ -221,7 +221,7 @@ export default function KanbanBoardPage() {
 
     const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082/api'
     const wsUrl = apiUrl.replace('http', 'ws').replace('/api', '/ws/websocket')
-    
+
     const client = new SimpleStompClient(wsUrl, (event) => {
       if (event && event.taskId && event.newStatus) {
         setTasks((prev) =>
@@ -263,13 +263,29 @@ export default function KanbanBoardPage() {
     }
   }
 
-  function canMoveTo(targetStatus) {
-    if (role === ROLES.ORG_ADMIN || role === ROLES.CLIENT) return false
+  function canMoveTo(targetStatus, previousStatus) {
+    if (role === ROLES.CLIENT) return false
     if (role === ROLES.DEVELOPER) {
-      if (['Testing', 'Done'].includes(targetStatus)) return false
+      // Developer can move from "To Do" to "In Progress" and "In Progress" to "Code Review"
+      if (previousStatus === 'To Do' && targetStatus === 'In Progress') {
+        return true
+      }
+      if (previousStatus === 'In Progress' && targetStatus === 'Code Review') {
+        return true
+      }
+      return false
+    }
+    if (role === ROLES.QA_TESTER) {
+      if (previousStatus === 'Code Review' && targetStatus === 'Testing') {
+        return true
+      }
+      if (previousStatus === 'Testing' && targetStatus === 'Done') {
+        return true
+      }
+      return false
     }
     if (targetStatus === 'Done') {
-      return [ROLES.QA_TESTER, ROLES.SUPER_ADMIN].includes(role)
+      return [ROLES.QA_TESTER, ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER].includes(role)
     }
     return true
   }
@@ -278,17 +294,25 @@ export default function KanbanBoardPage() {
     setDragOverCol(null)
     if (!dragTaskId) return
 
-    if (!canMoveTo(targetStatus)) {
-      setBlockedNote('Only QA can move a task to Done.')
+    const taskId = dragTaskId
+    const taskToMove = tasks.find(t => t.id === taskId)
+    const previousStatus = taskToMove ? taskToMove.status : null
+
+    if (!canMoveTo(targetStatus, previousStatus)) {
+      if (role === ROLES.DEVELOPER) {
+        setBlockedNote('Developers can only move tasks from To Do to In Progress, or In Progress to Code Review.')
+      } else if (role === ROLES.QA_TESTER) {
+        setBlockedNote('QA Testers can only move tasks from Code Review to Testing, or Testing to Done.')
+      } else {
+        setBlockedNote('You do not have permission to move the task here.')
+      }
       setDragTaskId(null)
       setTimeout(() => setBlockedNote(''), 2500)
       return
     }
 
-    const taskId = dragTaskId
-    const taskToMove = tasks.find(t => t.id === taskId)
-    const previousStatus = taskToMove ? taskToMove.status : null
-    
+    // Previous consts were declared earlier in this function
+
     // Optimistic update
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: targetStatus } : t)))
     setDragTaskId(null)
@@ -310,7 +334,7 @@ export default function KanbanBoardPage() {
   }, {})
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <div className="w-full px-6 lg:px-10 py-8 space-y-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Sprint Board</h1>
@@ -345,7 +369,7 @@ export default function KanbanBoardPage() {
               <p className="text-xs text-slate-400 mt-1">{burndownError}</p>
             </div>
           ) : burndown.length === 0 ? (
-             <div className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
+            <div className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
               <div className="w-10 h-10 text-slate-300 mb-3 flex items-center justify-center">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
               </div>
@@ -358,16 +382,16 @@ export default function KanbanBoardPage() {
             </div>
           )}
         </div>
-        
+
         <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 lg:w-96 flex flex-col min-h-[300px]">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
               <span className="text-2xl">🤖</span> AI Sprint Coach
             </h3>
-            <button 
-              type="button" 
+            <button
+              type="button"
               className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${aiLoading ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'}`}
-              onClick={runSprintAnalysis} 
+              onClick={runSprintAnalysis}
               disabled={aiLoading}
             >
               {aiLoading ? 'Analyzing...' : 'Analyze'}
@@ -386,11 +410,11 @@ export default function KanbanBoardPage() {
                 <div className="h-2.5 bg-slate-200 rounded-full w-4/6" />
               </div>
             ) : aiResult ? (
-               aiResult
+              aiResult
             ) : (
-               <div className="h-full flex flex-col items-center justify-center text-center">
-                 <p className="text-slate-400">Click analyze to get Scrum Master feedback.</p>
-               </div>
+              <div className="h-full flex flex-col items-center justify-center text-center">
+                <p className="text-slate-400">Click analyze to get Scrum Master feedback.</p>
+              </div>
             )}
           </div>
         </div>
@@ -398,20 +422,20 @@ export default function KanbanBoardPage() {
 
       {loading ? (
         <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-slate-200">
-           <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full mb-4"></div>
-           <p className="text-sm font-medium text-slate-600">Loading board…</p>
+          <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full mb-4"></div>
+          <p className="text-sm font-medium text-slate-600">Loading board…</p>
         </div>
       ) : (
-        <div className="flex gap-6 overflow-x-auto pb-4 items-start h-[calc(100vh-400px)] min-h-[500px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 items-start min-h-[550px]">
           {COLUMNS.map((col) => (
             <div
               key={col}
-              className={`flex flex-col w-[320px] shrink-0 bg-slate-50/50 rounded-xl transition-colors ${dragOverCol === col ? 'bg-orange-50/50 ring-2 ring-orange-500/20' : ''}`}
+              className={`flex flex-col bg-slate-50 border border-slate-200 rounded-2xl transition-all duration-150 min-h-[480px] shadow-xs ${dragOverCol === col ? 'bg-orange-50/70 border-orange-400 ring-4 ring-orange-500/10' : 'hover:border-slate-300'}`}
               onDragOver={(e) => { e.preventDefault(); setDragOverCol(col) }}
               onDragLeave={() => setDragOverCol((c) => (c === col ? null : c))}
               onDrop={(e) => { e.preventDefault(); handleDrop(col) }}
             >
-              <div className="p-4 flex items-center justify-between border-b border-slate-200">
+              <div className="p-4 flex items-center justify-between border-b border-slate-200/80 bg-white/50 rounded-t-2xl">
                 <h4 className="text-base font-semibold text-slate-900">{formatEnum(col)}</h4>
                 <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-semibold text-slate-500 bg-slate-200 rounded-full">
                   {tasksByColumn[col].length}
@@ -423,7 +447,7 @@ export default function KanbanBoardPage() {
                   <div
                     key={task.id}
                     className="bg-white rounded-lg p-4 shadow-sm border border-slate-200 cursor-grab active:cursor-grabbing hover:border-orange-300 hover:shadow transition-all"
-                    draggable={role !== ROLES.ORG_ADMIN && role !== ROLES.CLIENT && ((role !== ROLES.DEVELOPER && role !== ROLES.QA_TESTER) || task.assigneeId === user?.id)}
+                    draggable={role !== ROLES.CLIENT && ((role !== ROLES.DEVELOPER && role !== ROLES.QA_TESTER) || task.assigneeId === user?.id)}
                     onDragStart={() => setDragTaskId(task.id)}
                     onDragEnd={() => setDragTaskId(null)}
                   >
@@ -433,9 +457,9 @@ export default function KanbanBoardPage() {
                         <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-md">
                           {task.points != null ? `${task.points} pts` : '- pts'}
                         </span>
-                        <div 
-                          className="w-2.5 h-2.5 rounded-full" 
-                          style={{ background: PRIORITY_DOT[task.priority] || '#9ca3af' }} 
+                        <div
+                          className="w-2.5 h-2.5 rounded-full"
+                          style={{ background: PRIORITY_DOT[task.priority] || '#9ca3af' }}
                           title={`Priority: ${formatEnum(task.priority)}`}
                         />
                       </div>

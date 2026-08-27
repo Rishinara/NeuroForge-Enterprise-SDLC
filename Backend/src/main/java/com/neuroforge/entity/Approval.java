@@ -22,10 +22,13 @@ public class Approval {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ApprovalEntityType entityType;
+    private ApprovalEntityType entityType = ApprovalEntityType.GENERAL;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Long entityId;
+
+    @Column
+    private String title;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -34,13 +37,21 @@ public class Approval {
     @Column(columnDefinition = "TEXT")
     private String comments;
 
+    @Column(length = 2000)
+    private String attachmentUrl;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "client_id", nullable = false)
+    @JoinColumn(name = "client_id", nullable = true)
     private User client;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "requested_by_id", nullable = true)
+    private User requestedBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
-@JoinColumn(name = "project_id", nullable = false)    private Project project;
+    @JoinColumn(name = "project_id", nullable = false)
+    private Project project;
 
     @CreationTimestamp
     @Column(updatable = false)

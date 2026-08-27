@@ -37,5 +37,7 @@ public class UpdateTaskRequest {
 
     private Long sprintId;
 
+    private Long teamId;
+
     private Long assigneeId;
 }

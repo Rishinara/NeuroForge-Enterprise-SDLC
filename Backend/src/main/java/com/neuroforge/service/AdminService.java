@@ -118,7 +118,8 @@ public class AdminService {
                 user.isEnabled(),
                 user.getPhoneNumber(),
                 orgId,
-                orgName
+                orgName,
+                user.getOrgApproved()
         );
     }
 }

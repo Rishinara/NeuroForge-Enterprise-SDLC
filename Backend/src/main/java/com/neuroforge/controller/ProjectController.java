@@ -31,6 +31,7 @@ public class ProjectController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER','DEVELOPER','QA_TESTER','CLIENT')")
     @GetMapping("/orgs/{organizationId}/projects")
     public ResponseEntity<List<ProjectResponse>> getProjectsByOrganization(
             @PathVariable Long organizationId,
@@ -77,5 +78,16 @@ public class ProjectController {
             @PathVariable Long projectId) {
         
         return ResponseEntity.ok(projectService.getProjectProgress(projectId));
+    }
+
+    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PutMapping("/projects/{projectId}/members/{userId}/role")
+    public ResponseEntity<Void> updateProjectMemberRole(
+            @PathVariable Long projectId,
+            @PathVariable Long userId,
+            @RequestBody com.neuroforge.dto.project.UpdateProjectRoleRequest request) {
+
+        projectService.updateProjectMemberRole(projectId, userId, request.getRole());
+        return ResponseEntity.ok().build();
     }
 }
