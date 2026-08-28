@@ -18,11 +18,22 @@ public class EmailService {
     @Value("${app.frontend.base-url}")
     private String frontendBaseUrl;
 
+    @Value("${app.mail.from-email:vmowneesh8@gmail.com}")
+    private String fromEmail;
+
+    @Value("${app.mail.from-name:NeuroForge}")
+    private String fromName;
+
     @Async
     public void sendPasswordResetEmail(String to, String token) {
         try {
             mailSender.send(mimeMessage -> {
                 MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
+                if (fromName != null && !fromName.isBlank()) {
+                    helper.setFrom(fromEmail, fromName);
+                } else {
+                    helper.setFrom(fromEmail);
+                }
                 helper.setTo(to);
                 helper.setSubject("Reset Your NeuroForge Password");
                 String resetUrl = frontendBaseUrl + "/reset-password?token=" + token;
@@ -42,6 +53,11 @@ public class EmailService {
         try {
             mailSender.send(mimeMessage -> {
                 MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
+                if (fromName != null && !fromName.isBlank()) {
+                    helper.setFrom(fromEmail, fromName);
+                } else {
+                    helper.setFrom(fromEmail);
+                }
                 helper.setTo(to);
                 helper.setSubject("NeuroForge Password Reset OTP");
                 String htmlContent = "<h3>Reset Your Password</h3>"
@@ -61,6 +77,11 @@ public class EmailService {
         try {
             mailSender.send(mimeMessage -> {
                 MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
+                if (fromName != null && !fromName.isBlank()) {
+                    helper.setFrom(fromEmail, fromName);
+                } else {
+                    helper.setFrom(fromEmail);
+                }
                 helper.setTo(to);
                 helper.setSubject("You've been invited to join " + orgName + " on NeuroForge");
                 String inviteUrl = frontendBaseUrl + "/invite/" + token;
