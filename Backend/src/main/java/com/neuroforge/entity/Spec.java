@@ -41,7 +41,8 @@ public class Spec {
 @JoinColumn(name = "project_id", nullable = false)    private Project project;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by_id", nullable = false)
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "created_by_id", nullable = true)
     private User createdBy;
 
     @ManyToOne(fetch = FetchType.LAZY)

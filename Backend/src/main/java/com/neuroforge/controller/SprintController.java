@@ -57,7 +57,7 @@ public class SprintController {
     }
 
     @GetMapping("/{sprintId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
     public SprintResponse getSprintById(
             @PathVariable Long sprintId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -68,7 +68,7 @@ public class SprintController {
     }
 
     @GetMapping("/project/{projectId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
     public List<SprintResponse> getProjectSprints(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -112,7 +112,7 @@ public class SprintController {
     }
 
     @GetMapping("/{sprintId}/burndown")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
     public BurndownResponse getBurndown(
             @PathVariable Long sprintId,
             @AuthenticationPrincipal UserDetails userDetails) {

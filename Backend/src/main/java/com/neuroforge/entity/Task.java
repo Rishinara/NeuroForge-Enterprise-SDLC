@@ -66,11 +66,13 @@ public class Task {
     private Team team;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.SET_NULL)
     @JoinColumn(name = "assignee_id")
     private User assignee;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reporter_id", nullable = false)
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "reporter_id", nullable = true)
     private User reporter;
 
     @CreationTimestamp

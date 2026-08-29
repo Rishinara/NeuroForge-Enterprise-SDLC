@@ -50,7 +50,7 @@ public class ProjectServiceImpl implements ProjectService {
         response.setEndDate(project.getEndDate());
         response.setTechStack(project.getTechStack() != null ? new java.util.ArrayList<>(project.getTechStack()) : new java.util.ArrayList<>());
 
-        List<ProjectMemberResponse> members = (project.getMembers() != null ? project.getMembers() : new java.util.ArrayList<ProjectMember>())
+        List<ProjectMemberResponse> members = (project.getMembers() != null ? project.getMembers() : new java.util.HashSet<ProjectMember>())
                 .stream()
                 .filter(m -> m != null && m.getUser() != null)
                 .map(member -> {
@@ -180,8 +180,8 @@ public class ProjectServiceImpl implements ProjectService {
                 if (user.getOrganization() == null || !user.getOrganization().getId().equals(request.getOrgId())) {
                     throw new com.neuroforge.exception.InvalidRequestException("User " + user.getEmail() + " does not belong to the organization.");
                 }
-                if (projectMemberRepository.existsByUserId(userId)) {
-                    throw new com.neuroforge.exception.InvalidRequestException("User " + (user.getFullName() != null ? user.getFullName() : user.getEmail()) + " is already assigned to another project.");
+                if (projectMemberRepository.countByUserId(userId) >= 2) {
+                    continue;
                 }
                 ProjectMember member = createProjectMember(project, user);
                 project.getMembers().add(member);

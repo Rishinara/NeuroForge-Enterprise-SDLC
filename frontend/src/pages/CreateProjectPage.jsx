@@ -33,14 +33,14 @@ export default function CreateProjectPage() {
     if (!user?.orgId) return;
 
     Promise.all([
-      orgApi.listMembers(user.orgId, { availableOnly: true }),
-      orgApi.listTeamsWithMembers(user.orgId, { availableOnly: true })
+      orgApi.listMembers(user.orgId),
+      orgApi.listTeamsWithMembers(user.orgId)
     ])
     .then(([membersRes, teamsRes]) => {
       const isPmCreator = user?.role === 'PROJECT_MANAGER';
 
       let allMembers = Array.isArray(membersRes.data) 
-        ? membersRes.data.filter(m => m.role !== 'ORG_ADMIN' && m.role !== 'SUPER_ADMIN' && !m.assignedToProject) 
+        ? membersRes.data.filter(m => m.role !== 'ORG_ADMIN' && m.role !== 'SUPER_ADMIN') 
         : [];
       
       if (isPmCreator) {
@@ -53,7 +53,6 @@ export default function CreateProjectPage() {
         .filter(t => !(isPmCreator && t.name.toLowerCase() === 'project manager'))
         .map(t => {
           const validMembers = (t.members || []).filter(m => {
-            if (m.assignedToProject) return false;
             if (isPmCreator && m.role === 'PROJECT_MANAGER') return false;
             return true;
           });
@@ -116,7 +115,11 @@ export default function CreateProjectPage() {
           t.members.forEach(m => newTeamMemberIds.add(m.id));
         });
       } else {
-        team.members.forEach(m => newTeamMemberIds.add(m.id));
+        team.members.forEach(m => {
+          if ((m.activeProjectCount || 0) < 2) {
+            newTeamMemberIds.add(m.id);
+          }
+        });
       }
 
       return {
@@ -142,8 +145,9 @@ export default function CreateProjectPage() {
       const team = teams.find(t => t.id === teamId);
       
       if (team) {
-        const allTeamMembersSelected = team.members.every(m => newTeamMemberIds.has(m.id));
-        if (allTeamMembersSelected && team.members.length > 0) {
+        const assignableMembers = team.members.filter(m => (m.activeProjectCount || 0) < 2);
+        const allTeamMembersSelected = assignableMembers.length > 0 && assignableMembers.every(m => newTeamMemberIds.has(m.id));
+        if (allTeamMembersSelected) {
           newAssignedTeamIds.add(teamId);
         } else {
           newAssignedTeamIds.delete(teamId);
@@ -444,13 +448,15 @@ export default function CreateProjectPage() {
                     <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                       {teams.map((team) => {
                         const isExpanded = expandedTeams[team.id] !== false;
+                        const assignableTeamMembers = team.members.filter(m => (m.activeProjectCount || 0) < 2);
                         const teamMembersCount = team.members.length;
-                        const selectedTeamMembersCount = team.members.filter(m => form.teamMemberIds.includes(m.id)).length;
+                        const assignableMembersCount = assignableTeamMembers.length;
+                        const selectedTeamMembersCount = assignableTeamMembers.filter(m => form.teamMemberIds.includes(m.id)).length;
                         
                         let checkboxState = 'unchecked';
-                        if (selectedTeamMembersCount > 0 && selectedTeamMembersCount < teamMembersCount) {
+                        if (selectedTeamMembersCount > 0 && selectedTeamMembersCount < assignableMembersCount) {
                           checkboxState = 'indeterminate';
-                        } else if (selectedTeamMembersCount === teamMembersCount && teamMembersCount > 0) {
+                        } else if (selectedTeamMembersCount === assignableMembersCount && assignableMembersCount > 0) {
                           checkboxState = 'checked';
                         }
                         
@@ -502,18 +508,20 @@ export default function CreateProjectPage() {
                               <div className="bg-white p-2 border-t border-slate-100">
                                 {team.members.map((m) => {
                                   const isChecked = form.teamMemberIds.includes(m.id);
+                                  const isDisabled = (m.activeProjectCount || 0) >= 2;
                                   return (
                                     <label
                                       key={m.id}
-                                      className={`flex items-center px-4 py-2 rounded-md cursor-pointer transition-colors ${
-                                        isChecked ? 'bg-orange-50' : 'hover:bg-slate-50'
+                                      className={`flex items-center px-4 py-2 rounded-md transition-colors ${
+                                        isChecked ? 'bg-orange-50' : (isDisabled ? 'bg-slate-50 cursor-not-allowed opacity-60' : 'hover:bg-slate-50 cursor-pointer')
                                       }`}
                                     >
                                       <input
                                         type="checkbox"
-                                        className="w-4 h-4 text-orange-600 rounded border-slate-300 focus:ring-orange-500"
+                                        className="w-4 h-4 text-orange-600 rounded border-slate-300 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                         checked={isChecked}
-                                        onChange={() => toggleMember(m.id, team.id)}
+                                        disabled={isDisabled}
+                                        onChange={() => !isDisabled && toggleMember(m.id, team.id)}
                                       />
                                       <div className="ml-3 flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between">
                                         <div>

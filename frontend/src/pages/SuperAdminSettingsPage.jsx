@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import { profileApi } from '../api/profileApi.js'
 import { extractErrorMessage } from '../api/client.js'
+import { getThemeMode, applyThemeMode } from '../utils/theme.js'
 
 export default function SuperAdminSettingsPage() {
   const { user, logout, role } = useAuth()
@@ -11,9 +12,7 @@ export default function SuperAdminSettingsPage() {
   const [activeTab, setActiveTab] = useState('appearance')
 
   // Theme state
-  const [themeMode, setThemeMode] = useState(
-    () => localStorage.getItem('neuroforge_theme_mode') || 'light'
-  )
+  const [themeMode, setThemeMode] = useState(() => getThemeMode())
 
   // Account preferences state
   const [accountForm, setAccountForm] = useState({
@@ -51,15 +50,20 @@ export default function SuperAdminSettingsPage() {
     )
   }
 
+  useEffect(() => {
+    const handleThemeEvent = (e) => {
+      if (e.detail?.mode) {
+        setThemeMode(e.detail.mode)
+      }
+    }
+    window.addEventListener('neuroforge_theme_changed', handleThemeEvent)
+    return () => window.removeEventListener('neuroforge_theme_changed', handleThemeEvent)
+  }, [])
+
   // Handle immediate theme switching
   const handleThemeChange = (mode) => {
     setThemeMode(mode)
-    localStorage.setItem('neuroforge_theme_mode', mode)
-    if (mode === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
+    applyThemeMode(mode)
   }
 
   // Handle saving of form-based tabs

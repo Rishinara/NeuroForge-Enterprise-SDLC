@@ -63,7 +63,7 @@ public class OrgController {
 
     // ---- Teams ----
 
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @PostMapping("/api/orgs/{orgId}/teams")
     public TeamResponse createTeam(
             @PathVariable Long orgId,
@@ -80,7 +80,7 @@ public class OrgController {
         return orgService.getTeamDetails(orgId, teamId, userDetails.getUsername());
     }
 
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @PutMapping("/api/orgs/{orgId}/teams/{teamId}")
     public TeamDetailResponse updateTeam(
             @PathVariable Long orgId,
@@ -108,7 +108,7 @@ public class OrgController {
         return orgService.listTeamsWithMembers(orgId, userDetails.getUsername(), availableOnly, forProjectId);
     }
 
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @DeleteMapping("/api/orgs/{orgId}/teams/{teamId}")
     public ResponseEntity<Void> deleteTeam(
             @PathVariable Long orgId,
@@ -118,7 +118,7 @@ public class OrgController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @DeleteMapping("/api/orgs/{orgId}/teams/{teamId}/members/{memberId}")
     public ResponseEntity<Void> removeTeamMember(
             @PathVariable Long orgId,
@@ -141,7 +141,7 @@ public class OrgController {
         return orgService.listMembers(orgId, userDetails.getUsername(), availableOnly, forProjectId);
     }
 
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @PutMapping("/api/orgs/{orgId}/members/{memberId}/role")
     public MemberResponse updateMemberRole(
             @PathVariable Long orgId,
@@ -151,7 +151,7 @@ public class OrgController {
         return orgService.updateMemberRole(orgId, memberId, request.getRole(), userDetails.getUsername());
     }
 
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @DeleteMapping("/api/orgs/{orgId}/members/{memberId}")
     public ResponseEntity<Void> removeMember(
             @PathVariable Long orgId,
@@ -163,7 +163,7 @@ public class OrgController {
     
     // ---- Pending Approvals ----
 
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @GetMapping("/api/orgs/{orgId}/pending-users")
     public List<MemberResponse> getPendingUsers(
             @PathVariable Long orgId,
@@ -171,7 +171,7 @@ public class OrgController {
         return orgService.getPendingUsers(orgId, userDetails.getUsername());
     }
 
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @PostMapping("/api/orgs/{orgId}/users/{userId}/approve")
     public ResponseEntity<Void> approveUser(
             @PathVariable Long orgId,
@@ -183,7 +183,7 @@ public class OrgController {
 
     // ---- Join Requests ----
     
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @GetMapping("/api/orgs/{orgId}/join-requests")
     public List<MemberResponse> getJoinRequests(
             @PathVariable Long orgId,
@@ -191,7 +191,7 @@ public class OrgController {
         return orgService.getJoinRequests(orgId, userDetails.getUsername());
     }
 
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @PostMapping("/api/orgs/{orgId}/join-requests/{userId}/approve")
     public ResponseEntity<Void> approveJoinRequest(
             @PathVariable Long orgId,
@@ -201,7 +201,7 @@ public class OrgController {
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @PostMapping("/api/orgs/{orgId}/join-requests/{userId}/reject")
     public ResponseEntity<Void> rejectJoinRequest(
             @PathVariable Long orgId,
@@ -213,7 +213,7 @@ public class OrgController {
 
     // ---- Invites ----
 
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @PostMapping("/api/orgs/{orgId}/invites")
     public ResponseEntity<Void> inviteMember(
             @PathVariable Long orgId,
@@ -223,7 +223,7 @@ public class OrgController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @GetMapping("/api/orgs/{orgId}/invites")
     public List<InviteResponse> listPendingInvites(
             @PathVariable Long orgId,
@@ -231,7 +231,7 @@ public class OrgController {
         return orgService.listPendingInvites(orgId, userDetails.getUsername());
     }
 
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @DeleteMapping("/api/orgs/{orgId}/invites/{inviteId}")
     public ResponseEntity<Void> cancelInvite(
             @PathVariable Long orgId,
@@ -241,7 +241,7 @@ public class OrgController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("hasRole('ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
     @GetMapping("/api/orgs/{orgId}/activities")
     public List<ActivityResponse> getRecentActivities(
             @PathVariable Long orgId,

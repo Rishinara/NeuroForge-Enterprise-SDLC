@@ -33,7 +33,7 @@ public class MilestoneController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'QA_TESTER', 'DEVELOPER', 'CLIENT', 'SUPER_ADMIN', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'QA_TESTER', 'DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER', 'CLIENT', 'SUPER_ADMIN', 'ORG_ADMIN')")
     public List<MilestoneResponse> getMilestones(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {

@@ -30,6 +30,16 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             "reporter",
             "labels"
     })
+    List<Task> findByReporterId(Long reporterId);
+
+    @EntityGraph(attributePaths = {
+            "project",
+            "sprint",
+            "team",
+            "assignee",
+            "reporter",
+            "labels"
+    })
     List<Task> findByProjectId(Long projectId);
 
     @EntityGraph(attributePaths = {

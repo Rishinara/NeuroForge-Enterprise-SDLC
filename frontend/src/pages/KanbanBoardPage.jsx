@@ -265,7 +265,8 @@ export default function KanbanBoardPage() {
 
   function canMoveTo(targetStatus, previousStatus) {
     if (role === ROLES.CLIENT) return false
-    if (role === ROLES.DEVELOPER) {
+    const isDev = [ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER].includes(role);
+    if (isDev) {
       // Developer can move from "To Do" to "In Progress" and "In Progress" to "Code Review"
       if (previousStatus === 'To Do' && targetStatus === 'In Progress') {
         return true
@@ -299,7 +300,8 @@ export default function KanbanBoardPage() {
     const previousStatus = taskToMove ? taskToMove.status : null
 
     if (!canMoveTo(targetStatus, previousStatus)) {
-      if (role === ROLES.DEVELOPER) {
+      const isDev = [ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER].includes(role);
+      if (isDev) {
         setBlockedNote('Developers can only move tasks from To Do to In Progress, or In Progress to Code Review.')
       } else if (role === ROLES.QA_TESTER) {
         setBlockedNote('QA Testers can only move tasks from Code Review to Testing, or Testing to Done.')
@@ -447,7 +449,7 @@ export default function KanbanBoardPage() {
                   <div
                     key={task.id}
                     className="bg-white rounded-lg p-4 shadow-sm border border-slate-200 cursor-grab active:cursor-grabbing hover:border-orange-300 hover:shadow transition-all"
-                    draggable={role !== ROLES.CLIENT && ((role !== ROLES.DEVELOPER && role !== ROLES.QA_TESTER) || task.assigneeId === user?.id)}
+                    draggable={role !== ROLES.CLIENT && ((![ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER].includes(role) && role !== ROLES.QA_TESTER) || task.assigneeId === user?.id)}
                     onDragStart={() => setDragTaskId(task.id)}
                     onDragEnd={() => setDragTaskId(null)}
                   >

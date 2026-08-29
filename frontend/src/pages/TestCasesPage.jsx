@@ -70,7 +70,7 @@ export default function TestCasesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-slate-900">Test Execution</h1>
         <div className="flex items-center justify-end gap-3">
-          {role !== ROLES.DEVELOPER && role !== ROLES.CLIENT && role !== ROLES.QA_TESTER && (
+          {!isDev && role !== ROLES.CLIENT && role !== ROLES.QA_TESTER && (
             <button 
               className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm" 
               onClick={() => setNewTcOpen(true)}
@@ -153,7 +153,7 @@ export default function TestCasesPage() {
                   <span className="text-sm text-slate-700">{tc.assignedTesterName || 'Unassigned'}</span>
                 </div>
                 
-                {role !== ROLES.DEVELOPER && role !== ROLES.CLIENT && (
+                {!isDev && role !== ROLES.CLIENT && (
                   <select 
                     className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm" 
                     value={tc.status || 'PENDING'} 

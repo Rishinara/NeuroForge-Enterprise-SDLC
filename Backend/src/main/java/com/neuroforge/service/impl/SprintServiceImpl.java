@@ -355,11 +355,7 @@ public class SprintServiceImpl implements SprintService {
         List<Task> tasks = taskRepository.findBySprintIdOrderByPriorityAscCreatedAtAsc(sprintId);
         User user = userRepository.findByEmail(loggedInEmail).get();
 
-        if (user.getRole().isDeveloper()) {
-            tasks = tasks.stream()
-                    .filter(t -> t.getAssignee() != null && t.getAssignee().getId().equals(user.getId()))
-                    .toList();
-        }
+        // Removed developer filter to ensure uniform visibility across the project board and reports
 
         BoardResponse response = new BoardResponse();
 

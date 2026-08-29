@@ -31,7 +31,7 @@ public class ProjectController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER','DEVELOPER','QA_TESTER','CLIENT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER','DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER','QA_TESTER','CLIENT')")
     @GetMapping("/orgs/{organizationId}/projects")
     public ResponseEntity<List<ProjectResponse>> getProjectsByOrganization(
             @PathVariable Long organizationId,
@@ -42,7 +42,7 @@ public class ProjectController {
         );
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER','DEVELOPER','QA_TESTER','CLIENT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER','DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER','QA_TESTER','CLIENT')")
     @GetMapping("/projects/{projectId}")
     public ResponseEntity<ProjectResponse> getProject(
             @PathVariable Long projectId) {
@@ -72,7 +72,7 @@ public class ProjectController {
     }
 
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER','CLIENT','DEVELOPER','QA_TESTER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER','CLIENT','DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER','QA_TESTER')")
     @GetMapping("/projects/{projectId}/progress")
     public ResponseEntity<com.neuroforge.dto.project.ProjectProgressResponse> getProjectProgress(
             @PathVariable Long projectId) {

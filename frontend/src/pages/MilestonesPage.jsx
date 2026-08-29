@@ -87,7 +87,7 @@ export default function MilestonesPage() {
   if (loading) return <div className="p-6 text-sm text-slate-700">Loading milestones...</div>
 
   const isClient = role === ROLES.CLIENT
-  const isDevQA = role === ROLES.DEVELOPER || role === ROLES.QA_TESTER
+  const isDevQA = [ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER, ROLES.QA_TESTER].includes(role)
   const canManage = !isClient && !isDevQA
 
   return (

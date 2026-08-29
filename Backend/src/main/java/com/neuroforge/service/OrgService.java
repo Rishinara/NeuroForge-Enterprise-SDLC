@@ -69,6 +69,7 @@ public class OrgService {
         List<String> defaultTeamNames = List.of(
                 "Frontend Developers",
                 "Backend Developers",
+                "Fullstack Developers",
                 "QA Testers",
                 "Client",
                 "Project Manager"
@@ -88,8 +89,11 @@ public class OrgService {
     private String getDefaultTeamNameForRole(Role role) {
         if (role == null) return null;
         String r = role.name();
-        if ("FRONTEND_DEVELOPER".equalsIgnoreCase(r) || "DEVELOPER".equalsIgnoreCase(r)) {
+        if ("FRONTEND_DEVELOPER".equalsIgnoreCase(r)) {
             return "Frontend Developers";
+        }
+        if ("DEVELOPER".equalsIgnoreCase(r)) {
+            return "Fullstack Developers";
         }
         if ("BACKEND_DEVELOPER".equalsIgnoreCase(r)) {
             return "Backend Developers";
@@ -141,14 +145,35 @@ public class OrgService {
 
     //---Organization---
 
+    @Transactional
     public Organization createOrganization(CreateOrgRequest request) {
+        if (request.getName() == null || request.getName().trim().isEmpty()) {
+            throw new InvalidRequestException("Organization name cannot be empty.");
+        }
+        String cleanName = request.getName().trim();
+        if (organizationRepository.existsByNameIgnoreCase(cleanName)) {
+            throw new DuplicateResourceException("An organization with the name '" + cleanName + "' already exists.");
+        }
         Organization organization = new Organization();
-        organization.setName(request.getName());
-        organization.setDescription(request.getDescription());
-        organization.setSupportEmail(request.getSupportEmail());
+        organization.setName(cleanName);
+        organization.setDescription(request.getDescription() != null ? request.getDescription().trim() : null);
+        organization.setSupportEmail(request.getSupportEmail() != null ? request.getSupportEmail().trim() : null);
         organization.setCreatedAt(LocalDateTime.now());
-        Organization saved = organizationRepository.save(organization);
-        ensureDefaultTeams(saved);
+
+        Organization saved;
+        try {
+            saved = organizationRepository.save(organization);
+            ensureDefaultTeams(saved);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            log.error("DataIntegrityViolationException creating organization {}: {}", cleanName, ex.getMessage(), ex);
+            String specificCause = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : "";
+            if (specificCause != null && (specificCause.toLowerCase().contains("organizations_name") || specificCause.toLowerCase().contains("name_key") || specificCause.toLowerCase().contains("duplicate key"))) {
+                if (organizationRepository.existsByNameIgnoreCase(cleanName)) {
+                    throw new DuplicateResourceException("An organization with the name '" + cleanName + "' already exists.");
+                }
+            }
+            throw new InvalidRequestException("Database error creating organization: " + (specificCause.isEmpty() ? ex.getMessage() : specificCause));
+        }
         return saved;
     }
 
@@ -398,9 +423,11 @@ public class OrgService {
         List<ProjectMember> pms = projectMemberRepository.findByProjectOrganizationId(orgId);
 
         java.util.Map<Long, String> userProjectMap = new java.util.HashMap<>();
+        java.util.Map<Long, Integer> userActiveProjectCount = new java.util.HashMap<>();
         for (ProjectMember pm : pms) {
             if (forProjectId == null || !pm.getProject().getId().equals(forProjectId)) {
                 userProjectMap.put(pm.getUser().getId(), pm.getProject().getName());
+                userActiveProjectCount.put(pm.getUser().getId(), userActiveProjectCount.getOrDefault(pm.getUser().getId(), 0) + 1);
             }
         }
 
@@ -433,6 +460,7 @@ public class OrgService {
                                 } else {
                                     dto.setAssignedToProject(false);
                                 }
+                                dto.setActiveProjectCount(userActiveProjectCount.getOrDefault(u.getId(), 0));
                                 return dto;
                             })
                             .filter(m -> availableOnly == null || !availableOnly || !Boolean.TRUE.equals(m.getAssignedToProject()))
@@ -511,7 +539,7 @@ public class OrgService {
         userRepository.save(user);
     }
 
-    private MemberResponse buildMemberResponse(User u, java.util.Map<Long, String> userProjectMap) {
+    private MemberResponse buildMemberResponse(User u, java.util.Map<Long, String> userProjectMap, java.util.Map<Long, Integer> activeProjectCountMap) {
         List<String> userTeamNames = new java.util.ArrayList<>(u.getTeams().stream().map(Team::getName).toList());
         String defaultTeam = getDefaultTeamNameForRole(u.getRole());
         if (defaultTeam != null && userTeamNames.stream().noneMatch(n -> n.equalsIgnoreCase(defaultTeam))) {
@@ -535,6 +563,8 @@ public class OrgService {
         } else {
             dto.setAssignedToProject(false);
         }
+        int activeCount = activeProjectCountMap != null ? activeProjectCountMap.getOrDefault(u.getId(), 0) : 0;
+        dto.setActiveProjectCount(activeCount);
         return dto;
     }
 
@@ -559,15 +589,17 @@ public class OrgService {
         List<ProjectMember> pms = projectMemberRepository.findByProjectOrganizationId(orgId);
 
         java.util.Map<Long, String> userProjectMap = new java.util.HashMap<>();
+        java.util.Map<Long, Integer> userActiveProjectCount = new java.util.HashMap<>();
         for (ProjectMember pm : pms) {
             if (forProjectId == null || !pm.getProject().getId().equals(forProjectId)) {
                 userProjectMap.put(pm.getUser().getId(), pm.getProject().getName());
+                userActiveProjectCount.put(pm.getUser().getId(), userActiveProjectCount.getOrDefault(pm.getUser().getId(), 0) + 1);
             }
         }
 
         return orgUsers.stream()
                 .filter(u -> u.getRole() != Role.SUPER_ADMIN)
-                .map(u -> buildMemberResponse(u, userProjectMap))
+                .map(u -> buildMemberResponse(u, userProjectMap, userActiveProjectCount))
                 .filter(m -> availableOnly == null || !availableOnly || !Boolean.TRUE.equals(m.getAssignedToProject()))
                 .toList();
     }
@@ -596,8 +628,10 @@ public class OrgService {
 
         List<ProjectMember> userPms = projectMemberRepository.findByUserId(user.getId());
         java.util.Map<Long, String> map = new java.util.HashMap<>();
-        if (!userPms.isEmpty()) map.put(user.getId(), userPms.get(0).getProject().getName());
-        return buildMemberResponse(user, map);
+        if (!userPms.isEmpty()) {
+            map.put(user.getId(), userPms.get(0).getProject().getName());
+        }
+        return buildMemberResponse(user, map, null);
     }
 
     @Transactional
@@ -721,15 +755,37 @@ public class OrgService {
     @Transactional
     public void inviteMember(Long orgId, InviteRequest request, String loggedInEmail) {
         validateOrganizationAccess(orgId, loggedInEmail);
-        inviteRepository.findByEmailAndOrganizationIdAndStatus(
-                request.getEmail(),
+
+        if (request.getEmail() == null || request.getEmail().isBlank()) {
+            throw new InvalidRequestException("Email address is required.");
+        }
+
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+
+        // 1. Check if user is already a member of this organization
+        userRepository.findByEmail(cleanEmail).ifPresent(user -> {
+            if (user.getOrganization() != null && user.getOrganization().getId().equals(orgId)) {
+                throw new DuplicateResourceException("This user is already a member of your organization.");
+            }
+        });
+
+        // 2. Check if a pending invitation already exists for this email
+        inviteRepository.findByEmailIgnoreCaseAndOrganizationIdAndStatus(
+                cleanEmail,
                 orgId,
                 InviteStatus.PENDING
         ).ifPresent(invite -> {
             throw new DuplicateResourceException(
-                    "A pending invitation already exists for this email."
+                    "A pending invitation already exists for " + cleanEmail + "."
             );
         });
+
+        // 3. Remove any previous non-pending (EXPIRED/ACCEPTED) invite records for this email and org to prevent constraint collisions
+        List<Invite> oldInvites = inviteRepository.findByEmailIgnoreCaseAndOrganizationId(cleanEmail, orgId);
+        if (!oldInvites.isEmpty()) {
+            inviteRepository.deleteAll(oldInvites);
+            inviteRepository.flush();
+        }
 
         Organization org = organizationRepository.findById(orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
@@ -744,20 +800,30 @@ public class OrgService {
         }
 
         String token = UUID.randomUUID().toString();
-        Invite invite = new Invite(request.getEmail(), token, org, team, request.getRole());
-        inviteRepository.save(invite);
+        Invite invite = new Invite(cleanEmail, token, org, team, request.getRole());
 
-        emailService.sendInviteEmail(request.getEmail(), token, org.getName(), request.getRole().name());
-        log.info("INVITE successfully dispatched to org={} email=[redacted]", orgId);
-        
+        try {
+            inviteRepository.saveAndFlush(invite);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            log.error("Database constraint violation creating invite for email={}: {}", cleanEmail, ex.getMessage());
+            throw new DuplicateResourceException("An invitation already exists or cannot be created for this email address.");
+        }
+
+        try {
+            emailService.sendInviteEmail(cleanEmail, token, org.getName(), request.getRole().name());
+            log.info("INVITE successfully dispatched to org={} email=[redacted]", orgId);
+        } catch (Exception e) {
+            log.warn("Failed to send invite email to {}, invite record was saved: {}", cleanEmail, e.getMessage());
+        }
+
         final Team finalTeam = team;
-        userRepository.findByEmail(request.getEmail()).ifPresent(invitedUser -> {
+        userRepository.findByEmail(cleanEmail).ifPresent(invitedUser -> {
             String teamName = finalTeam != null ? finalTeam.getName() : "the organization";
             String msg = String.format("You have been invited to join %s by %s.", teamName, loggedInEmail);
             notificationService.createNotification(invitedUser, "Team Invitation", msg, "TEAM_INVITE", invite.getId());
         });
-        
-        activityService.logActivity(orgId, "Member invited", "Invited " + request.getEmail() + " as " + request.getRole(), loggedInEmail);
+
+        activityService.logActivity(orgId, "Member invited", "Invited " + cleanEmail + " as " + request.getRole(), loggedInEmail);
     }
 
     @Transactional(readOnly = true)
@@ -875,14 +941,24 @@ public class OrgService {
     }
 
     @Transactional
-    public OrgSettingsRequest updateOrgSettings(Long orgId, OrgSettingsRequest request,String loggedInEmail) {
+    public OrgSettingsRequest updateOrgSettings(Long orgId, OrgSettingsRequest request, String loggedInEmail) {
         validateOrganizationAccess(orgId, loggedInEmail);
         Organization org = organizationRepository.findById(orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
-        if (request.getName() != null) org.setName(request.getName());
-        if (request.getDescription() != null) org.setDescription(request.getDescription());
-        if (request.getSupportEmail() != null) org.setSupportEmail(request.getSupportEmail());
-        organizationRepository.save(org);
+        if (request.getName() != null) {
+            String cleanName = request.getName().trim();
+            if (!cleanName.equalsIgnoreCase(org.getName()) && organizationRepository.existsByNameIgnoreCase(cleanName)) {
+                throw new DuplicateResourceException("An organization with the name '" + cleanName + "' already exists.");
+            }
+            org.setName(cleanName);
+        }
+        if (request.getDescription() != null) org.setDescription(request.getDescription().trim());
+        if (request.getSupportEmail() != null) org.setSupportEmail(request.getSupportEmail().trim());
+        try {
+            organizationRepository.save(org);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            throw new DuplicateResourceException("An organization with this name already exists.");
+        }
         return request;
     }
 }

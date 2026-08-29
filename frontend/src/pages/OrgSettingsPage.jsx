@@ -4,6 +4,7 @@ import { orgApi } from '../api/orgApi.js'
 import { extractErrorMessage } from '../api/client.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import UnassignedOrgNotice from '../components/UnassignedOrgNotice.jsx'
+import { getThemeMode, applyThemeMode } from '../utils/theme.js'
 import './workspace.css'
 
 export default function OrgSettingsPage() {
@@ -16,9 +17,7 @@ export default function OrgSettingsPage() {
   const [form, setForm] = useState({ name: '', description: '', supportEmail: '' })
   
   // Theme state
-  const [themeMode, setThemeMode] = useState(
-    () => localStorage.getItem('neuroforge_theme_mode') || 'light'
-  )
+  const [themeMode, setThemeMode] = useState(() => getThemeMode())
 
   // Preferences state
   const [prefForm, setPrefForm] = useState({
@@ -88,15 +87,20 @@ export default function OrgSettingsPage() {
     load()
   }, [load])
 
+  useEffect(() => {
+    const handleThemeEvent = (e) => {
+      if (e.detail?.mode) {
+        setThemeMode(e.detail.mode)
+      }
+    }
+    window.addEventListener('neuroforge_theme_changed', handleThemeEvent)
+    return () => window.removeEventListener('neuroforge_theme_changed', handleThemeEvent)
+  }, [])
+
   // Handle immediate theme switching
   const handleThemeChange = (mode) => {
     setThemeMode(mode)
-    localStorage.setItem('neuroforge_theme_mode', mode)
-    if (mode === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
+    applyThemeMode(mode)
   }
 
   // Submit Handler

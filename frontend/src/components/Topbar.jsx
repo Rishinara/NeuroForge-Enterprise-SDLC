@@ -1,17 +1,32 @@
-import { Bell, LogOut } from 'lucide-react'
+import { Bell, LogOut, Sun, Moon } from 'lucide-react'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { notificationApi } from '../api/notificationApi.js'
 import Avatar from './Avatar.jsx'
+import { isDarkActive, applyThemeMode } from '../utils/theme.js'
 
 export default function Topbar({ title, subtitle }) {
   const { user, role, logout } = useAuth()
   const [showNotifications, setShowNotifications] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifications, setNotifications] = useState([])
+  const [isDark, setIsDark] = useState(() => isDarkActive())
   const dropdownRef = useRef(null)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const handleThemeEvent = (e) => {
+      setIsDark(e.detail?.isDark ?? isDarkActive())
+    }
+    window.addEventListener('neuroforge_theme_changed', handleThemeEvent)
+    return () => window.removeEventListener('neuroforge_theme_changed', handleThemeEvent)
+  }, [])
+
+  const handleToggleTheme = () => {
+    const nextMode = isDark ? 'light' : 'dark'
+    applyThemeMode(nextMode)
+  }
 
   useEffect(() => {
     if (user && user.orgApproved !== false) {
@@ -62,6 +77,16 @@ export default function Topbar({ title, subtitle }) {
 
       {/* Right side: Actions */}
       <div className="flex items-center gap-6">
+
+        {/* Theme Toggle Button */}
+        <button
+          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+          aria-label="Toggle theme"
+          title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          onClick={handleToggleTheme}
+        >
+          {isDark ? <Sun size={20} className="text-amber-400" /> : <Moon size={20} className="text-slate-600 dark:text-slate-300" />}
+        </button>
 
         {/* Notifications */}
         <div className="relative" ref={dropdownRef}>

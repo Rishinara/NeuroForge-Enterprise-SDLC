@@ -18,5 +18,8 @@ public interface ApprovalRepository extends JpaRepository<Approval, Long> {
 
     @EntityGraph(attributePaths = {"client", "requestedBy", "project"})
     List<Approval> findByProjectInOrderByCreatedAtDesc(List<Project> projects);
+
+    @EntityGraph(attributePaths = {"client", "requestedBy", "project"})
+    List<Approval> findByClientIdOrRequestedById(Long clientId, Long requestedById);
 }
 

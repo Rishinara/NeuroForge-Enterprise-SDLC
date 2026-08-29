@@ -10,4 +10,5 @@ import java.util.List;
 public interface TeamRepository extends JpaRepository<Team, Long> {
     List<Team> findByOrganizationId(Long orgId);
     boolean existsByOrganizationIdAndNameIgnoreCase(Long organizationId, String name);
+    List<Team> findByLeadId(Long leadId);
 }

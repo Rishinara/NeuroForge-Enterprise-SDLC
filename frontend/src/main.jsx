@@ -2,14 +2,13 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
-import './styles/workspace-theme.css'
+import { initTheme } from './utils/theme.js'
+
+initTheme()
+
 const savedTheme = localStorage.getItem('neuroforge_theme') || 'classic'
 if (savedTheme !== 'classic') {
   document.documentElement.classList.add(`theme-${savedTheme}`)
-}
-const savedMode = localStorage.getItem('neuroforge_theme_mode') || 'light'
-if (savedMode === 'dark') {
-  document.documentElement.classList.add('dark')
 }
 const savedDensity = localStorage.getItem('neuroforge_density') || 'comfortable'
 if (savedDensity === 'compact') {

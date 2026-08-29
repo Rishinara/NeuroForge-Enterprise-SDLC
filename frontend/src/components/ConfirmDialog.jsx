@@ -11,7 +11,7 @@ export default function ConfirmDialog({ open, title, message, onClose, onConfirm
         <div className="flex justify-end gap-3 w-full">
           <button
             type="button"
-            className="px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-all shadow-xs active:scale-[0.98]"
+            className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl transition-all shadow-xs active:scale-[0.98]"
             onClick={onClose}
           >
             Cancel

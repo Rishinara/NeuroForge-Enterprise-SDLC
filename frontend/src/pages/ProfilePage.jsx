@@ -30,6 +30,7 @@ import { profileApi } from '../api/profileApi.js'
 import { extractErrorMessage } from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import Avatar from '../components/Avatar.jsx'
+import { getThemeMode, applyThemeMode } from '../utils/theme.js'
 
 // Initial template metadata
 const INITIAL_ACCOUNT_DATA = {
@@ -108,9 +109,20 @@ export default function ProfilePage() {
   const [copiedKey, setCopiedKey] = useState('')
 
   // Theme & Preferences State
-  const [theme, setTheme] = useState('system')
+  const [theme, setTheme] = useState(() => getThemeMode())
   const [notificationState, setNotificationState] = useState(INITIAL_ACCOUNT_DATA.notifications)
   const [twoFactorActive, setTwoFactorActive] = useState(INITIAL_ACCOUNT_DATA.twoFactorEnabled)
+
+  // Listen to theme mode changes across application
+  useEffect(() => {
+    const handleThemeChange = (e) => {
+      if (e.detail?.mode) {
+        setTheme(e.detail.mode)
+      }
+    }
+    window.addEventListener('neuroforge_theme_changed', handleThemeChange)
+    return () => window.removeEventListener('neuroforge_theme_changed', handleThemeChange)
+  }, [])
 
   // Sync with API or backend user data on mount
   useEffect(() => {
@@ -119,14 +131,20 @@ export default function ProfilePage() {
       .then((res) => {
         if (res.data) {
           const org = res.data.orgName || res.data.organization || user?.orgName || user?.organization || INITIAL_ACCOUNT_DATA.organization
-          setAccount((prev) => ({
-            ...prev,
-            fullName: res.data.fullName || user?.fullName || prev.fullName,
-            email: res.data.email || user?.email || prev.email,
-            phoneNumber: res.data.phoneNumber || prev.phoneNumber,
-            role: res.data.role || user?.role || prev.role,
-            organization: org,
-          }))
+          const rawDate = res.data.createdAt || user?.createdAt
+          
+          setAccount((prev) => {
+            const formattedDate = rawDate ? new Date(rawDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : prev.accountCreatedAt
+            return {
+              ...prev,
+              fullName: res.data.fullName || user?.fullName || prev.fullName,
+              email: res.data.email || user?.email || prev.email,
+              phoneNumber: res.data.phoneNumber || prev.phoneNumber,
+              role: res.data.role || user?.role || prev.role,
+              organization: org,
+              accountCreatedAt: formattedDate,
+            }
+          })
           setProfileForm((prev) => ({
             ...prev,
             fullName: res.data.fullName || user?.fullName || prev.fullName,
@@ -138,13 +156,19 @@ export default function ProfilePage() {
       .catch(() => {
         if (user) {
           const org = user.orgName || user.organization || INITIAL_ACCOUNT_DATA.organization
-          setAccount((prev) => ({
-            ...prev,
-            fullName: user.fullName || prev.fullName,
-            email: user.email || prev.email,
-            role: user.role || prev.role,
-            organization: org,
-          }))
+          const rawDate = user.createdAt
+
+          setAccount((prev) => {
+            const formattedDate = rawDate ? new Date(rawDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : prev.accountCreatedAt
+            return {
+              ...prev,
+              fullName: user.fullName || prev.fullName,
+              email: user.email || prev.email,
+              role: user.role || prev.role,
+              organization: org,
+              accountCreatedAt: formattedDate,
+            }
+          })
           setProfileForm((prev) => ({
             ...prev,
             fullName: user.fullName || prev.fullName,
@@ -814,8 +838,10 @@ export default function ProfilePage() {
                   return (
                     <button
                       key={item.id}
+                      type="button"
                       onClick={() => {
                         setTheme(item.id)
+                        applyThemeMode(item.id)
                         setFeedbackMessage({ type: 'info', text: `Theme mode switched to ${item.label}.` })
                         setTimeout(() => setFeedbackMessage({ type: '', text: '' }), 2500)
                       }}

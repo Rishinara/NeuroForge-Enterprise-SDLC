@@ -61,7 +61,7 @@ public class Project {
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
-    private List<ProjectMember> members = new ArrayList<>();
+    private Set<ProjectMember> members = new HashSet<>();
 
     @Builder.Default
     @ManyToMany(fetch = FetchType.LAZY)

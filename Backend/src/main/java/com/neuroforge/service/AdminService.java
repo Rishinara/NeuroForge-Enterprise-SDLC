@@ -10,8 +10,8 @@ import com.neuroforge.exception.DuplicateResourceException;
 import com.neuroforge.exception.InvalidRequestException;
 import com.neuroforge.exception.ResourceNotFoundException;
 import com.neuroforge.entity.Organization;
-import com.neuroforge.repository.OrganizationRepository;
-import com.neuroforge.repository.UserRepository;
+import com.neuroforge.entity.*;
+import com.neuroforge.repository.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,11 +25,38 @@ public class AdminService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final OrganizationRepository organizationRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final OtpTokenRepository otpTokenRepository;
+    private final NotificationRepository notificationRepository;
+    private final ProjectMemberRepository projectMemberRepository;
+    private final TeamRepository teamRepository;
+    private final TaskRepository taskRepository;
+    private final BugRepository bugRepository;
+    private final TestCaseRepository testCaseRepository;
+    private final ApprovalRepository approvalRepository;
+    private final InviteRepository inviteRepository;
 
-    public AdminService(UserRepository userRepository, PasswordEncoder passwordEncoder, OrganizationRepository organizationRepository) {
+    public AdminService(UserRepository userRepository, PasswordEncoder passwordEncoder, OrganizationRepository organizationRepository,
+                        RefreshTokenRepository refreshTokenRepository, PasswordResetTokenRepository passwordResetTokenRepository,
+                        OtpTokenRepository otpTokenRepository, NotificationRepository notificationRepository,
+                        ProjectMemberRepository projectMemberRepository, TeamRepository teamRepository,
+                        TaskRepository taskRepository, BugRepository bugRepository, TestCaseRepository testCaseRepository,
+                        ApprovalRepository approvalRepository, InviteRepository inviteRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.organizationRepository = organizationRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.otpTokenRepository = otpTokenRepository;
+        this.notificationRepository = notificationRepository;
+        this.projectMemberRepository = projectMemberRepository;
+        this.teamRepository = teamRepository;
+        this.taskRepository = taskRepository;
+        this.bugRepository = bugRepository;
+        this.testCaseRepository = testCaseRepository;
+        this.approvalRepository = approvalRepository;
+        this.inviteRepository = inviteRepository;
     }
 
     @Transactional
@@ -96,6 +123,79 @@ public class AdminService {
         if (user.getRole() == Role.SUPER_ADMIN) {
             throw new InvalidRequestException("Super Admin cannot be deleted.");
         }
+
+        // Clean up tokens
+        refreshTokenRepository.deleteByUserId(id);
+        passwordResetTokenRepository.deleteByUserId(id);
+        otpTokenRepository.deleteByEmail(user.getEmail());
+
+        // Clean up notifications
+        notificationRepository.deleteByUserId(id);
+
+        // Remove from projects
+        projectMemberRepository.deleteByUserId(id);
+
+        // Clear team memberships & team lead
+        user.getTeams().clear();
+        List<Team> ledTeams = teamRepository.findByLeadId(id);
+        for (Team team : ledTeams) {
+            team.setLead(null);
+            teamRepository.save(team);
+        }
+
+        // Unassign tasks & remove as reporter
+        List<Task> assignedTasks = taskRepository.findByAssigneeId(id);
+        for (Task task : assignedTasks) {
+            task.setAssignee(null);
+            taskRepository.save(task);
+        }
+        List<Task> reportedTasks = taskRepository.findByReporterId(id);
+        for (Task task : reportedTasks) {
+            task.setReporter(null);
+            taskRepository.save(task);
+        }
+
+        // Unassign bugs & remove as reporter
+        List<Bug> assignedBugs = bugRepository.findByAssigneeId(id);
+        for (Bug bug : assignedBugs) {
+            bug.setAssignee(null);
+            bugRepository.save(bug);
+        }
+        List<Bug> reportedBugs = bugRepository.findByReporterId(id);
+        for (Bug bug : reportedBugs) {
+            bug.setReporter(null);
+            bugRepository.save(bug);
+        }
+
+        // Unassign test cases
+        List<TestCase> assignedTestCases = testCaseRepository.findByAssignedTesterId(id);
+        for (TestCase testCase : assignedTestCases) {
+            testCase.setAssignedTester(null);
+            testCaseRepository.save(testCase);
+        }
+
+        // Unassign approvals
+        List<Approval> approvals = approvalRepository.findByClientIdOrRequestedById(id, id);
+        for (Approval approval : approvals) {
+            if (approval.getClient() != null && approval.getClient().getId().equals(id)) {
+                approval.setClient(null);
+            }
+            if (approval.getRequestedBy() != null && approval.getRequestedBy().getId().equals(id)) {
+                approval.setRequestedBy(null);
+            }
+            approvalRepository.save(approval);
+        }
+
+        // Clear invites for email
+        List<com.neuroforge.entity.Invite> invites = inviteRepository.findByEmailIgnoreCaseAndOrganizationId(user.getEmail(), 
+                user.getOrganization() != null ? user.getOrganization().getId() : null);
+        if (invites != null && !invites.isEmpty()) {
+            inviteRepository.deleteAll(invites);
+        }
+
+        user.setOrganization(null);
+        user.setRequestedOrganization(null);
+
         userRepository.delete(user);
     }
 

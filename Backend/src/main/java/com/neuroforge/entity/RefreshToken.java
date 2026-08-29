@@ -19,6 +19,7 @@ import java.time.Instant;
 public class RefreshToken extends BaseEntity {
 
     @OneToOne
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
     private User user;
 

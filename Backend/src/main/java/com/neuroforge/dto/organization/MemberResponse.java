@@ -26,6 +26,7 @@ public class MemberResponse {
     private List<String> teams;
     private Boolean assignedToProject;
     private String assignedProjectName;
+    private int activeProjectCount;
 
     public MemberResponse(Long id, String fullName, String email, String phoneNumber, Role role, boolean enabled, LocalDateTime joinedAt, List<String> teams) {
         this.id = id;
@@ -38,5 +39,6 @@ public class MemberResponse {
         this.teams = teams;
         this.assignedToProject = false;
         this.assignedProjectName = null;
+        this.activeProjectCount = 0;
     }
 }

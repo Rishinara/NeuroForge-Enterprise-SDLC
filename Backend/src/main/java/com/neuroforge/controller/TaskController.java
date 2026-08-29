@@ -59,7 +59,7 @@ public class TaskController {
     }
 
     @GetMapping("/{taskId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
     public TaskResponse getTaskById(
             @PathVariable Long taskId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -70,7 +70,7 @@ public class TaskController {
     }
 
     @GetMapping("/project/{projectId}/backlog")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
     public List<TaskResponse> getProjectBacklog(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -105,7 +105,7 @@ public class TaskController {
     }
 
     @PatchMapping("/{taskId}/status")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER', 'QA_TESTER', 'ORG_ADMIN')")
     public TaskResponse updateTaskStatus(
             @PathVariable Long taskId,
             @Valid @RequestBody UpdateTaskStatusRequest request,
@@ -118,7 +118,7 @@ public class TaskController {
     }
 
     @GetMapping("/{taskId}/history")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
     public List<TaskStatusHistoryResponse> getTaskStatusHistory(
             @PathVariable Long taskId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -129,7 +129,7 @@ public class TaskController {
     }
 
     @GetMapping("/{sprintId}/board")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER', 'QA_TESTER', 'CLIENT', 'ORG_ADMIN')")
     public BoardResponse getSprintBoard(
             @PathVariable Long sprintId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -139,7 +139,7 @@ public class TaskController {
                 userDetails.getUsername());
     }
     @GetMapping("/my-tasks")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'QA_TESTER', 'PROJECT_MANAGER', 'SUPER_ADMIN', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER', 'QA_TESTER', 'PROJECT_MANAGER', 'SUPER_ADMIN', 'ORG_ADMIN')")
     public List<TaskResponse> getMyTasks(@AuthenticationPrincipal UserDetails userDetails) {
         return taskService.getMyTasks(userDetails.getUsername());
     }

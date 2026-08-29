@@ -14,7 +14,9 @@ import './teams.css'
 
 const ROLE_LABELS = {
   PROJECT_MANAGER: 'Project Manager',
-  DEVELOPER: 'Developer',
+  DEVELOPER: 'Fullstack Developer',
+  FRONTEND_DEVELOPER: 'Frontend Developer',
+  BACKEND_DEVELOPER: 'Backend Developer',
   QA_TESTER: 'QA / Tester',
   CLIENT: 'Client / Stakeholder',
 }
@@ -23,6 +25,8 @@ const ROLE_DOT = {
   ORG_ADMIN: '#4f46e5',
   PROJECT_MANAGER: '#4b5563',
   DEVELOPER: '#4b5563',
+  FRONTEND_DEVELOPER: '#4b5563',
+  BACKEND_DEVELOPER: '#4b5563',
   QA_TESTER: '#4b5563',
   CLIENT: '#9ca3af',
 }
@@ -351,31 +355,31 @@ export default function TeamsPage() {
             <div className="tm-team-grid">
               {teams.map((t) => (
                 <div key={t.id} className="tm-team-card">
-                  <div className="tm-team-icon">{t.name.charAt(0).toUpperCase()}</div>
-                  <div style={{ flex: 1 }}>
-                    <div className="tm-team-name">
-                      <Link to={`/org/teams/${t.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                        {t.name}
-                      </Link>
+                  <div className="tm-team-info-group">
+                    <div className="tm-team-icon">{t.name.charAt(0).toUpperCase()}</div>
+                    <div className="tm-team-details">
+                      <div className="tm-team-name">
+                        <Link to={`/org/teams/${t.id}`} style={{ textDecoration: 'none', color: 'inherit' }} title={t.name}>
+                          {t.name}
+                        </Link>
+                      </div>
+                      <div className="tm-team-count">{t.memberCount} member{t.memberCount === 1 ? '' : 's'}</div>
                     </div>
-                    <div className="tm-team-count">{t.memberCount} member{t.memberCount === 1 ? '' : 's'}</div>
                   </div>
                   <Can roles={[ROLES.ORG_ADMIN]}>
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div className="tm-team-actions">
                       <button
-                        className="wk-btn"
+                        className="tm-team-btn tm-team-btn-edit"
                         onClick={() => {
                           setEditingTeam(t)
                           setEditTeamName(t.name)
                         }}
-                        style={{ padding: '4px 8px', fontSize: 11, width: 'auto', background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569' }}
                       >
                         Edit
                       </button>
                       <button
-                        className="tm-remove-btn"
+                        className="tm-team-btn tm-team-btn-delete"
                         onClick={() => handleDeleteTeam(t)}
-                        style={{ padding: '4px 8px', fontSize: 11 }}
                       >
                         Delete
                       </button>

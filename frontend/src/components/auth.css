@@ -378,6 +378,11 @@
   padding-right: 40px;
 }
 
+.nf-password-wrapper .nf-input::-ms-reveal,
+.nf-password-wrapper .nf-input::-ms-clear {
+  display: none;
+}
+
 .nf-password-toggle {
   position: absolute;
   right: 12px;

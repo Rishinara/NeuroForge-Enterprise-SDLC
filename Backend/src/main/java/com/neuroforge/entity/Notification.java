@@ -18,6 +18,7 @@ public class Notification {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 

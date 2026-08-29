@@ -114,14 +114,16 @@ export default function BacklogPage() {
   // When team selection changes, update assignee list
   useEffect(() => {
     if (!form.teamId) {
-      const projDevs = (projectData?.team || []).filter(m => m.projectRole === 'DEVELOPER' || m.role === 'DEVELOPER' || m.user?.role === 'DEVELOPER')
+      const devRoles = ['DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER'];
+      const projDevs = (projectData?.team || []).filter(m => devRoles.includes(m.projectRole) || devRoles.includes(m.role) || devRoles.includes(m.user?.role))
       setTeamMembers(projDevs)
       setForm((f) => ({ ...f, assigneeId: '' }))
       return
     }
     const selectedTeam = teams.find((t) => String(t.id) === String(form.teamId))
     const rawMembers = selectedTeam?.members || selectedTeam?.users || []
-    const members = rawMembers.filter(m => m.role === 'DEVELOPER' || m.user?.role === 'DEVELOPER')
+    const devRoles = ['DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER'];
+    const members = rawMembers.filter(m => devRoles.includes(m.role) || devRoles.includes(m.user?.role))
     setTeamMembers(members)
     setForm((f) => ({ ...f, assigneeId: '' }))
   }, [form.teamId, teams, projectData])

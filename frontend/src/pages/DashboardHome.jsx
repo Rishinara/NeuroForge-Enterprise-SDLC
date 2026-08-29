@@ -186,7 +186,8 @@ export default function DashboardHome() {
   }, [loadData]);
 
   useEffect(() => {
-    if (role !== ROLES.DEVELOPER && role !== ROLES.QA_TESTER) return;
+    const isDev = [ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER].includes(role);
+    if (!isDev && role !== ROLES.QA_TESTER) return;
     setMyTasksLoading(true);
     taskApi.getMyTasks()
       .then((res) => setMyTasks(Array.isArray(res.data) ? res.data : []))
@@ -940,7 +941,7 @@ export default function DashboardHome() {
           </div>
 
           {/* My Tasks - Developer & QA Tester only */}
-          {(role === ROLES.DEVELOPER || role === ROLES.QA_TESTER) && (
+          {([ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER].includes(role) || role === ROLES.QA_TESTER) && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">

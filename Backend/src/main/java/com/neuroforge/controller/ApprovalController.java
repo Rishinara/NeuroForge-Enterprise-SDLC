@@ -33,7 +33,7 @@ public class ApprovalController {
     }
 
     @GetMapping("/api/projects/{projectId}/approvals")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'QA_TESTER', 'DEVELOPER', 'CLIENT', 'SUPER_ADMIN', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'QA_TESTER', 'DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER', 'CLIENT', 'SUPER_ADMIN', 'ORG_ADMIN')")
     public List<ApprovalResponse> getApprovals(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -53,7 +53,7 @@ public class ApprovalController {
     }
 
     @GetMapping("/api/approvals/my")
-    @PreAuthorize("hasAnyRole('CLIENT', 'PROJECT_MANAGER', 'SUPER_ADMIN', 'ORG_ADMIN', 'DEVELOPER', 'QA_TESTER')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'PROJECT_MANAGER', 'SUPER_ADMIN', 'ORG_ADMIN', 'DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER', 'QA_TESTER')")
     public List<ApprovalResponse> getMyApprovals(@AuthenticationPrincipal UserDetails userDetails) {
         return approvalService.getMyApprovals(userDetails.getUsername());
     }

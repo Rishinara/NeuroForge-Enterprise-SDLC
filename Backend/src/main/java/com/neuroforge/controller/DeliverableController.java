@@ -34,7 +34,7 @@ public class DeliverableController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'CLIENT', 'SUPER_ADMIN', 'ORG_ADMIN', 'QA_TESTER', 'DEVELOPER')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'CLIENT', 'SUPER_ADMIN', 'ORG_ADMIN', 'QA_TESTER', 'DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER')")
     public List<DeliverableResponse> getDeliverables(@PathVariable Long projectId) {
         return deliverableService.getDeliverablesByProject(projectId);
     }

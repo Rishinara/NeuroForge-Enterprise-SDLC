@@ -22,6 +22,8 @@ public interface ProjectMemberRepository
 
     boolean existsByUserIdAndProjectIdNot(Long userId, Long projectId);
 
+    long countByUserId(Long userId);
+
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"project"})
     List<ProjectMember> findByUserId(Long userId);
 
@@ -29,4 +31,5 @@ public interface ProjectMemberRepository
     List<ProjectMember> findByProjectOrganizationId(Long orgId);
 
     void deleteByProjectId(Long projectId);
+    void deleteByUserId(Long userId);
 }

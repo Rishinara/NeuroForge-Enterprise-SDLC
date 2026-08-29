@@ -5,6 +5,7 @@ import com.neuroforge.enums.InviteStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -15,5 +16,15 @@ public interface InviteRepository extends JpaRepository<Invite, Long> {
             Long organizationId,
             InviteStatus status
     );
-    java.util.List<Invite> findByOrganizationId(Long organizationId);
+    Optional<Invite> findByEmailIgnoreCaseAndOrganizationIdAndStatus(
+            String email,
+            Long organizationId,
+            InviteStatus status
+    );
+    List<Invite> findByEmailIgnoreCaseAndOrganizationId(
+            String email,
+            Long organizationId
+    );
+    List<Invite> findByOrganizationId(Long organizationId);
 }
+

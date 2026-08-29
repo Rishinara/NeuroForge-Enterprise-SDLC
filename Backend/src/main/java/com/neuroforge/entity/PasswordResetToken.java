@@ -20,6 +20,7 @@ public class PasswordResetToken extends BaseEntity {
     private String token;
 
     @OneToOne(targetEntity = User.class, fetch = FetchType.EAGER)
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
     @JoinColumn(nullable = false, name = "user_id")
     private User user;
 

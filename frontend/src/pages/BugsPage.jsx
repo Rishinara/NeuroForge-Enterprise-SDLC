@@ -72,7 +72,7 @@ export default function BugsPage() {
   const [retestError, setRetestError] = useState('')
 
   const isQa = role === ROLES.QA_TESTER || role === ROLES.SUPER_ADMIN
-  const isDev = role === ROLES.DEVELOPER
+  const isDev = [ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER].includes(role)
 
   // Delete Bug (QA Only)
   const handleDeleteBug = async (bugId) => {

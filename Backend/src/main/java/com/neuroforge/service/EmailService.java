@@ -73,6 +73,7 @@ public class EmailService {
         }
     }
 
+    @Async
     public void sendInviteEmail(String to, String token, String orgName, String role) {
         try {
             mailSender.send(mimeMessage -> {

@@ -10,4 +10,5 @@ import java.util.List;
 public interface TestCaseRepository extends JpaRepository<TestCase, Long> {
     List<TestCase> findByProjectId(Long projectId);
     List<TestCase> findBySprintId(Long sprintId);
+    List<TestCase> findByAssignedTesterId(Long assignedTesterId);
 }

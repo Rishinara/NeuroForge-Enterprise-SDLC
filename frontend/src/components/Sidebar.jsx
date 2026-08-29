@@ -15,7 +15,6 @@ function getNavSections(currentProjectId, role, hasProjects) {
           { to: '/projects', label: 'Projects Portfolio', icon: Folder, roles: null },
           { to: '/org/teams', label: 'Users & Admins', icon: Users, roles: null },
           { to: '/organizations', label: 'Organizations', icon: Folder, roles: null },
-          { to: '/admin/settings', label: 'Settings', icon: Settings, roles: null },
         ],
       },
     ]
@@ -29,10 +28,10 @@ function getNavSections(currentProjectId, role, hasProjects) {
   if (hasProjects) {
     workspaceItems.push(
       { to: `/projects/${currentProjectId}/approvals`, label: 'Request Approvals', icon: CheckSquare, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.CLIENT] },
-      { to: `/projects/${currentProjectId}/specs`, label: 'AI Spec Studio', icon: Sparkles, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.QA_TESTER, ROLES.CLIENT] },
-      { to: `/projects/${currentProjectId}/backlog`, label: 'Backlog & Board', icon: Layers, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.QA_TESTER] },
-      { to: `/projects/${currentProjectId}/bugs`, label: 'Bugs', icon: Folder, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.QA_TESTER] },
-      { to: `/projects/${currentProjectId}/milestones`, label: 'Milestones', icon: Flag, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.QA_TESTER, ROLES.CLIENT] },
+      { to: `/projects/${currentProjectId}/specs`, label: 'AI Spec Studio', icon: Sparkles, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER, ROLES.QA_TESTER, ROLES.CLIENT] },
+      { to: `/projects/${currentProjectId}/backlog`, label: 'Backlog & Board', icon: Layers, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER, ROLES.QA_TESTER] },
+      { to: `/projects/${currentProjectId}/bugs`, label: 'Bugs', icon: Folder, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER, ROLES.QA_TESTER] },
+      { to: `/projects/${currentProjectId}/milestones`, label: 'Milestones', icon: Flag, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER, ROLES.QA_TESTER, ROLES.CLIENT] },
       { to: `/projects/${currentProjectId}/reports`, label: 'Reports', icon: BarChart3, roles: null }
     )
   }
@@ -47,7 +46,6 @@ function getNavSections(currentProjectId, role, hasProjects) {
       items: [
         { to: '/org/teams', label: 'Teams & Members', icon: Users, roles: [ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER] },
         { to: '/org/invites', label: 'Pending Invites', icon: Users, roles: [ROLES.ORG_ADMIN] },
-        { to: '/org/settings', label: 'Org Settings', icon: Settings, roles: [ROLES.ORG_ADMIN] },
       ],
     },
   ]
