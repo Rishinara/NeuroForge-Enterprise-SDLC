@@ -368,4 +368,32 @@ public class SpecServiceImpl implements SpecService {
         activityService.logActivity(spec.getProject().getOrganization().getId(), "Spec Changes Requested", "Requested changes on spec: " + spec.getTitle() + " - " + excerpt, username);
         return mapToSpecResponse(specRepository.save(spec));
     }
+
+    @Override
+    public void deleteSpec(Long specId, String username) {
+        Spec spec = specRepository.findById(specId)
+                .orElseThrow(() -> new ResourceNotFoundException("Spec not found with id: " + specId));
+
+        Long orgId = spec.getProject().getOrganization().getId();
+        String title = spec.getTitle();
+
+        // Delete all versions related to this spec
+        Long originalId = spec.getParentSpec() != null ? spec.getParentSpec().getId() : spec.getId();
+        List<Spec> allVersions = specRepository.findAllByParentSpecIdOrId(originalId, originalId);
+
+        // Delete child versions first to prevent foreign key constraint issues
+        List<Spec> childVersions = allVersions.stream()
+                .filter(s -> !s.getId().equals(originalId))
+                .collect(Collectors.toList());
+        if (!childVersions.isEmpty()) {
+            specRepository.deleteAll(childVersions);
+        }
+
+        // Delete parent / root spec
+        if (specRepository.existsById(originalId)) {
+            specRepository.deleteById(originalId);
+        }
+
+        activityService.logActivity(orgId, "Spec Deleted", "Deleted spec: " + title, username);
+    }
 }

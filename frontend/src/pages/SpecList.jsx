@@ -5,18 +5,22 @@ import { projectApi } from '../api/projectApi.js';
 import { useAuth, ROLES } from '../context/AuthContext.jsx';
 import Can from '../components/Can.jsx';
 import StatusPill from '../components/StatusPill.jsx';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import SpecGenerateModal from '../components/SpecGenerateModal.jsx';
 
 export default function SpecList() {
   const { projectId } = useParams();
   const { role } = useAuth();
   const navigate = useNavigate();
-  const { listSpecs, loading, error } = useSpecs();
+  const { listSpecs, deleteSpec, loading, error } = useSpecs();
 
   const [specs, setSpecs] = useState([]);
   const [project, setProject] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
+  const [specToDelete, setSpecToDelete] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     if (!projectId) return;
@@ -39,6 +43,18 @@ export default function SpecList() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleDeleteSpec = async () => {
+    if (!specToDelete) return;
+    setDeleting(true);
+    const res = await deleteSpec(specToDelete.id);
+    setDeleting(false);
+    setShowDeleteConfirm(false);
+    setSpecToDelete(null);
+    if (!res.error) {
+      load();
+    }
+  };
 
   // Derived state
   const counts = useMemo(() => {
@@ -144,10 +160,13 @@ export default function SpecList() {
           <table className="w-full table-fixed divide-y divide-slate-200">
             <thead className="bg-slate-50/50">
               <tr>
-                <th className="w-2/5 px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title</th>
-                <th className="w-1/5 px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                <th className="w-1/5 px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Version</th>
-                <th className="w-1/5 px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Created</th>
+                <th className={role === ROLES.PROJECT_MANAGER ? "w-4/12 px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" : "w-2/5 px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"}>Title</th>
+                <th className={role === ROLES.PROJECT_MANAGER ? "w-2/12 px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" : "w-1/5 px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"}>Status</th>
+                <th className={role === ROLES.PROJECT_MANAGER ? "w-2/12 px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" : "w-1/5 px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"}>Version</th>
+                <th className={role === ROLES.PROJECT_MANAGER ? "w-2/12 px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" : "w-1/5 px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"}>Created</th>
+                {role === ROLES.PROJECT_MANAGER && (
+                  <th className="w-2/12 px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                )}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-100">
@@ -171,6 +190,23 @@ export default function SpecList() {
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
                     {s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '—'}
                   </td>
+                  {role === ROLES.PROJECT_MANAGER && (
+                    <td className="px-4 py-4 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSpecToDelete(s);
+                          setShowDeleteConfirm(true);
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                        title="Delete Specification"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -189,6 +225,15 @@ export default function SpecList() {
           project={project}
         />
       )}
+
+      <ConfirmDialog 
+        open={showDeleteConfirm}
+        title="Delete Specification"
+        message={`Are you sure you want to delete "${specToDelete?.title || 'this spec'}"? This will permanently remove this specification from the database.`}
+        onClose={() => { setShowDeleteConfirm(false); setSpecToDelete(null); }}
+        onConfirm={handleDeleteSpec}
+        confirmText={deleting ? "Deleting..." : "Delete Specification"}
+      />
     </div>
   );
 }

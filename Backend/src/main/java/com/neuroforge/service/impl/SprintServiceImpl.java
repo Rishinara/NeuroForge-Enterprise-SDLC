@@ -13,7 +13,6 @@ import com.neuroforge.enums.TaskStatus;
 import com.neuroforge.exception.DuplicateResourceException;
 import com.neuroforge.exception.InvalidRequestException;
 import com.neuroforge.exception.ResourceNotFoundException;
-import com.neuroforge.mapper.TaskMapper;
 import com.neuroforge.repository.*;
 import com.neuroforge.service.SprintService;
 

@@ -100,4 +100,13 @@ public class SpecController {
         String note = body != null ? body.get("note") : "";
         return ResponseEntity.ok(specService.requestChanges(specId, note, userDetails.getUsername()));
     }
+
+    @DeleteMapping("/specs/{specId}")
+    @PreAuthorize("hasRole('PROJECT_MANAGER')")
+    public ResponseEntity<Void> deleteSpec(
+            @PathVariable Long specId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        specService.deleteSpec(specId, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
 }

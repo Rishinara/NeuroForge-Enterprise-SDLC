@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
         fullName: 'Test User',
         orgId: 'mock-org-1',
         orgName: 'Test Org',
-        role: ROLES.ORG_ADMIN, 
+        role: ROLES.ORG_ADMIN,
       })
       setToken('mock-token')
       setLoading(false)
@@ -75,7 +75,7 @@ export function AuthProvider({ children }) {
   const login = useCallback(
     async (email, password) => {
       const res = await api.post('/auth/login', { email, password })
-      
+
       setToken(res.data.token)
       setUser(res.data.user)
       return res.data.user
@@ -92,7 +92,7 @@ export function AuthProvider({ children }) {
     },
     [setToken]
   )
-const forgotPassword = useCallback(async (email) => {
+  const forgotPassword = useCallback(async (email) => {
     await api.post('/auth/forgot-password', { email })
   }, [])
 

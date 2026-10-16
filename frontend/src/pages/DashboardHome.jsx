@@ -204,6 +204,16 @@ export default function DashboardHome() {
   }, [projects, teamsCount, membersCount]);
 
   // OrgAdmin Action Methods
+  const [copiedOrgId, setCopiedOrgId] = useState(false);
+  const handleCopyOrgId = (id) => {
+    const val = id || (user?.orgId ? `ORG-${user.orgId}` : "");
+    if (!val) return;
+    navigator.clipboard.writeText(val).then(() => {
+      setCopiedOrgId(true);
+      setTimeout(() => setCopiedOrgId(false), 2000);
+    });
+  };
+
   const [actionError, setActionError] = useState("");
   async function handleApproveJoinRequest(userId) {
     setActionError("");
@@ -545,8 +555,7 @@ export default function DashboardHome() {
               </div>
             </div>
             <div
-              className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between cursor-pointer hover:shadow-md hover:border-orange-200 transition-all"
-              onClick={() => document.getElementById("users-section")?.scrollIntoView({ behavior: "smooth" })}
+              className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between"
             >
               <div className="text-sm font-medium text-slate-600 mb-2 flex items-center justify-between">
                 <span>Total Users</span>
@@ -604,6 +613,31 @@ export default function DashboardHome() {
                 {stats.totalTeams}
               </div>
             </div>
+            {role === ROLES.ORG_ADMIN && (
+              <div className="bg-white rounded-xl shadow-sm border border-orange-200 p-6 flex flex-col justify-between bg-gradient-to-br from-white to-orange-50/50">
+                <div className="text-sm font-medium text-slate-600 mb-2 flex items-center justify-between">
+                  <span>Org Specific ID</span>
+                  <span className="text-[11px] font-semibold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full">
+                    Share to Join
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between mt-1">
+                  <div className="text-2xl font-mono font-bold text-orange-600">
+                    {user?.orgId ? `ORG-${user.orgId}` : "—"}
+                  </div>
+                  {user?.orgId && (
+                    <button
+                      type="button"
+                      onClick={() => handleCopyOrgId()}
+                      className="px-2.5 py-1 text-xs font-semibold rounded-md border border-orange-300 bg-white hover:bg-orange-50 text-orange-700 transition-colors shadow-xs cursor-pointer"
+                      title="Copy Organization Specific ID"
+                    >
+                      {copiedOrgId ? "✓ Copied" : "Copy ID"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -707,151 +741,6 @@ export default function DashboardHome() {
                             >
                               Delete
                             </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* Users Section */}
-          <div id="users-section" style={{ scrollMarginTop: '100px' }} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold text-slate-800">
-                Platform Users & Admins
-              </h3>
-              <div className="flex items-center gap-4">
-                <span className="text-xs font-medium text-slate-500">
-                  {allUsers.length} total
-                </span>
-                <button
-                  onClick={() => setShowCreateUserModal(true)}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors"
-                >
-                  + Create User
-                </button>
-              </div>
-            </div>
-
-            {userActionError && (
-              <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-lg border border-red-200 text-sm">
-                {userActionError}
-              </div>
-            )}
-
-            {loading ? (
-              <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
-                <IconUsers className="w-10 h-10 text-slate-300 mb-3" />
-                <p className="text-sm font-medium text-slate-600">Loading...</p>
-              </div>
-            ) : allUsers.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
-                <IconUsers className="w-10 h-10 text-slate-300 mb-3" />
-                <p className="text-sm font-medium text-slate-600">
-                  No users found
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-700">
-                  <thead className="text-xs font-medium text-slate-500 uppercase border-b border-slate-200">
-                    <tr>
-                      <th className="pb-3 px-2">ID</th>
-                      <th className="pb-3 px-2">Full Name</th>
-                      <th className="pb-3 px-2">Email</th>
-                      <th className="pb-3 px-2">Role</th>
-                      <th className="pb-3 px-2">Status</th>
-                      <th className="pb-3 px-2 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {allUsers.map((u) => {
-                      const isEnabled =
-                        u.enabled !== false && u.status !== "INACTIVE";
-                      const isSuperAdminAccount =
-                        u.role === ROLES.SUPER_ADMIN ||
-                        u.role === "SUPER_ADMIN";
-                      const isUpdatingThisUser = updatingUserId === u.id;
-                      return (
-                        <tr key={u.id} className="hover:bg-slate-50">
-                          <td className="py-3 px-2 font-mono text-xs text-slate-500">
-                            {u.id}
-                          </td>
-                          <td className="py-3 px-2">
-                            <button
-                              type="button"
-                              className="font-semibold text-orange-600 hover:text-orange-700 hover:underline text-left"
-                              onClick={() => handleViewUser(u.id)}
-                            >
-                              {u.fullName || u.name || "User"}
-                            </button>
-                          </td>
-                          <td className="py-3 px-2">{u.email}</td>
-                          <td className="py-3 px-2">
-                            <select
-                              className="text-xs border-slate-200 rounded px-2 py-1 bg-slate-50 focus:ring-orange-500 focus:border-orange-500"
-                              value={u.role || "DEVELOPER"}
-                              disabled={
-                                isSuperAdminAccount ||
-                                ((u.role === "ORG_ADMIN" ||
-                                  u.role === ROLES.ORG_ADMIN) &&
-                                  !!u.organizationId)
-                              }
-                              onChange={(e) =>
-                                handleUpdateUserRole(u.id, e.target.value)
-                              }
-                            >
-                              <option value="SUPER_ADMIN" disabled>
-                                Super Admin
-                              </option>
-                              <option value="ORG_ADMIN" disabled>
-                                Org Admin
-                              </option>
-                              <option value="PROJECT_MANAGER">
-                                Project Manager
-                              </option>
-                              <option value="DEVELOPER">Developer</option>
-                              <option value="QA_TESTER">QA Tester</option>
-                              <option value="CLIENT">Client</option>
-                            </select>
-                          </td>
-                          <td className="py-3 px-2">
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${isEnabled ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
-                            >
-                              {isEnabled ? "Active" : "Inactive"}
-                            </span>
-                          </td>
-                          <td className="py-3 px-2 text-right">
-                            <div className="flex justify-end gap-2">
-                              <button
-                                type="button"
-                                className="px-3 py-1 text-xs font-medium rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={
-                                  isSuperAdminAccount || isUpdatingThisUser
-                                }
-                                onClick={() =>
-                                  handleToggleUserStatus(u, isEnabled)
-                                }
-                              >
-                                {isUpdatingThisUser
-                                  ? "Updating..."
-                                  : isEnabled
-                                    ? "Disable"
-                                    : "Enable"}
-                              </button>
-                              <button
-                                type="button"
-                                className="px-3 py-1 text-xs font-medium rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={isSuperAdminAccount}
-                                onClick={() => handleDeleteUser(u)}
-                              >
-                                Delete
-                              </button>
-                            </div>
                           </td>
                         </tr>
                       );
@@ -1006,6 +895,59 @@ export default function DashboardHome() {
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Organization Registration Key Info Banner for ORG_ADMIN */}
+          {role === ROLES.ORG_ADMIN && user?.orgId && (
+            <div className="bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50/50 border border-orange-200 rounded-xl p-5 mt-6 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-orange-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+                    #
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                        Organization Specific ID
+                      </h4>
+                      <span className="text-xs bg-orange-200/80 text-orange-800 font-semibold px-2 py-0.5 rounded-full">
+                        For Team Member Registration
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="text-2xl font-mono font-extrabold text-orange-700 tracking-wider">
+                        {`ORG-${user.orgId}`}
+                      </span>
+                      <span className="text-xs font-mono text-slate-500">
+                        (or numeric: {user.orgId})
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
+                      Share this ID with new team members. When they register on the sign-up page, they enter this ID in the registration text box to join <strong>{user?.orgName || 'your organization'}</strong>. You will receive their join request below for approval.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopyOrgId()}
+                  className="px-4 py-2 bg-white hover:bg-orange-50 text-orange-700 text-xs font-bold border border-orange-300 rounded-lg shadow-xs transition-all flex items-center gap-2 shrink-0 self-start sm:self-center cursor-pointer"
+                >
+                  {copiedOrgId ? (
+                    <>
+                      <IconCheckCircle className="w-4 h-4 text-emerald-600" />
+                      <span>Copied to Clipboard!</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      <span>Copy Org ID</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           )}
 

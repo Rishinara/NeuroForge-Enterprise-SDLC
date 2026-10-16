@@ -15,7 +15,6 @@ public class NeuroforgeBackendApplication {
 
 		SpringApplication.run(NeuroforgeBackendApplication.class, args);
 
-
 	}
 
 }

@@ -135,7 +135,20 @@ export function useSpecs() {
     }
   }, []);
 
-
+  const deleteSpec = useCallback(async (specId) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.delete(`/specs/${specId}`);
+      return { data: res.data, error: null };
+    } catch (err) {
+      const msg = handleError(err, 'Failed to delete spec');
+      setError(msg);
+      return { data: null, error: msg };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   return {
     loading,
@@ -147,6 +160,7 @@ export function useSpecs() {
     editSpecVersion,
     submitForReview,
     approveSpec,
-    requestChanges
+    requestChanges,
+    deleteSpec
   };
 }

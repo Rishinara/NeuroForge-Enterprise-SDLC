@@ -195,8 +195,37 @@ export default function OrgSettingsPage() {
                   <div className="p-6 space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Organization ID</label>
-                        <input className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900/50 text-slate-500 cursor-not-allowed" value={`ORG-${user?.orgId || '001'}`} readOnly />
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                            Organization Specific ID
+                          </label>
+                          <span className="text-[11px] text-orange-600 dark:text-orange-400 font-medium">
+                            Share for Member Registration
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <input 
+                            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-200 font-mono font-bold cursor-text" 
+                            value={user?.orgId ? `ORG-${user.orgId}` : 'ORG-001'} 
+                            readOnly 
+                          />
+                          {user?.orgId && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(`ORG-${user.orgId}`);
+                                setSuccessMsg("Organization Specific ID copied to clipboard!");
+                                setTimeout(() => setSuccessMsg(""), 3000);
+                              }}
+                              className="px-3 py-2 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold rounded-lg text-slate-700 dark:text-slate-200 transition-colors whitespace-nowrap cursor-pointer"
+                            >
+                              Copy ID
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-1">
+                          New team members enter this ID on the sign-up page to request to join your organization.
+                        </p>
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Status</label>

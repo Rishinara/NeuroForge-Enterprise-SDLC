@@ -13,7 +13,7 @@ export default function SpecDetail() {
   const { projectId, specId } = useParams();
   const { role } = useAuth();
   const navigate = useNavigate();
-  const { getSpec, editSpecVersion, submitForReview, approveSpec, requestChanges, getSpecVersion, loading, error } = useSpecs();
+  const { getSpec, editSpecVersion, submitForReview, approveSpec, requestChanges, getSpecVersion, deleteSpec, loading, error } = useSpecs();
 
   const [spec, setSpec] = useState(null);
   const [selectedVersion, setSelectedVersion] = useState(null);
@@ -21,6 +21,7 @@ export default function SpecDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState('');
   const [showRequestChanges, setShowRequestChanges] = useState(false);
@@ -104,6 +105,19 @@ export default function SpecDetail() {
       setActionError(res.error);
     } else {
       load();
+    }
+  };
+
+  const handleDeleteSpec = async () => {
+    setActionError('');
+    setActionLoading(true);
+    const res = await deleteSpec(specId);
+    setActionLoading(false);
+    setShowDeleteConfirm(false);
+    if (res.error) {
+      setActionError(res.error);
+    } else {
+      navigate(`/projects/${projectId}/specs`, { replace: true });
     }
   };
 
@@ -336,11 +350,12 @@ export default function SpecDetail() {
 
       <div className="h-px bg-slate-200 w-full my-8"></div>
 
-      {/* Document Content - Single Column */}
-      <div className="space-y-16">
-        
-        {/* User Stories & Acceptance Criteria */}
-        <section className="space-y-6">
+      {/* Main Layout: Document Content + AI Spec Studio Sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Column: Document Content */}
+        <div className="lg:col-span-8 space-y-12">
+          {/* User Stories & Acceptance Criteria */}
+          <section className="space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
             <div className="p-1.5 bg-blue-50 text-blue-600 rounded-md">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -522,7 +537,130 @@ export default function SpecDetail() {
             )}
           </div>
         </section>
+        </div>
+
+        {/* Right Column: AI Spec Studio Sidebar */}
+        <aside className="lg:col-span-4 space-y-6 lg:sticky lg:top-6">
+          {/* Spec Information Card */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-3">
+              <svg className="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Spec Information
+            </h3>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between items-center py-1 border-b border-slate-50">
+                <span className="text-slate-500 font-medium">Status</span>
+                <StatusPill status={formatStatus(activeVersionData.status)} />
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-50">
+                <span className="text-slate-500 font-medium">Active Version</span>
+                <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-xs">v{activeVersionData.version}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-50">
+                <span className="text-slate-500 font-medium">Total Versions</span>
+                <span className="font-semibold text-slate-800">{spec.versions?.length || 1}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-50">
+                <span className="text-slate-500 font-medium">User Stories</span>
+                <span className="font-semibold text-slate-800">{activeVersionData.userStories?.length || 0}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-50">
+                <span className="text-slate-500 font-medium">Functional Req.</span>
+                <span className="font-semibold text-slate-800">{activeVersionData.functionalRequirements?.length || 0}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-50">
+                <span className="text-slate-500 font-medium">Non-Functional Req.</span>
+                <span className="font-semibold text-slate-800">{activeVersionData.nonFunctionalRequirements?.length || 0}</span>
+              </div>
+              {spec.createdAt && (
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-slate-500 font-medium">Created</span>
+                  <span className="text-slate-700 text-xs">{new Date(spec.createdAt).toLocaleDateString()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Version History Card */}
+          {spec.versions && spec.versions.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between border-b border-slate-100 pb-3">
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Version History
+                </span>
+                <span className="text-xs text-slate-400 font-normal">v{spec.version} latest</span>
+              </h3>
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {sortedVersions.map(v => {
+                  const isActive = selectedVersion === v.version;
+                  return (
+                    <button
+                      key={v.version}
+                      type="button"
+                      onClick={() => !isEditing && loadVersion(v.version)}
+                      disabled={isEditing}
+                      className={`w-full text-left p-2.5 rounded-lg border transition-all flex items-center justify-between ${
+                        isActive
+                          ? 'border-orange-500 bg-orange-50/60 shadow-sm'
+                          : 'border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${isActive ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                          v{v.version}
+                        </span>
+                        <span className="text-xs text-slate-500">{v.updatedAt || '—'}</span>
+                      </div>
+                      <StatusPill status={formatStatus(v.status)} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Project Manager Actions / Danger Zone Card */}
+          {role === ROLES.PROJECT_MANAGER && (
+            <div className="bg-white border border-red-200 rounded-xl p-5 shadow-sm space-y-3">
+              <div className="flex items-center gap-2 text-red-600 border-b border-red-100 pb-3">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <h3 className="text-sm font-bold uppercase tracking-wider">Project Manager Actions</h3>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Permanently delete this selected specification and all its versions from the database.
+              </p>
+              <button
+                type="button"
+                id="btn-delete-spec-sidebar"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={actionLoading}
+                className="w-full mt-2 px-4 py-2.5 bg-red-50 hover:bg-red-600 text-red-700 hover:text-white border border-red-300 hover:border-red-600 text-xs font-semibold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete Specification
+              </button>
+            </div>
+          )}
+        </aside>
       </div>
+
+      <ConfirmDialog 
+        open={showDeleteConfirm}
+        title="Delete Specification"
+        message={`Are you sure you want to delete "${spec.title}"? This will permanently remove this specification and all its versions from the database. This action cannot be undone.`}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteSpec}
+        confirmText={actionLoading ? "Deleting..." : "Delete Specification"}
+      />
 
       <ConfirmDialog 
         open={showApproveConfirm}

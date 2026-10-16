@@ -10,4 +10,5 @@ export const specApi = {
   submitForReview: (specId) => api.post(`/specs/${specId}/submit`),
   approveSpec: (specId) => api.post(`/specs/${specId}/approve`),
   requestChanges: (specId, note) => api.post(`/specs/${specId}/request-changes`, { note }),
+  deleteSpec: (specId) => api.delete(`/specs/${specId}`),
 }

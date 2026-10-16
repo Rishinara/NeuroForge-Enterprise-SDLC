@@ -17,4 +17,5 @@ public interface SpecService {
     SpecResponse submitForReview(Long specId, String username);
     SpecResponse approveSpec(Long specId, String username);
     SpecResponse requestChanges(Long specId, String note, String username);
+    void deleteSpec(Long specId, String username);
 }

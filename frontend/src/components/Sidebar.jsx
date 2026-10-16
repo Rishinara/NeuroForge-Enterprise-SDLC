@@ -12,8 +12,6 @@ function getNavSections(currentProjectId, role, hasProjects) {
         label: 'Platform Administration',
         items: [
           { to: '/dashboard', label: 'Overview', icon: LayoutDashboard, roles: null },
-          { to: '/projects', label: 'Projects Portfolio', icon: Folder, roles: null },
-          { to: '/org/teams', label: 'Users & Admins', icon: Users, roles: null },
           { to: '/organizations', label: 'Organizations', icon: Folder, roles: null },
         ],
       },

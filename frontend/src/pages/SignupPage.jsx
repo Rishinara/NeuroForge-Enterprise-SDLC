@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
-import { extractErrorMessage, api } from '../api/client.js'
+import { extractErrorMessage } from '../api/client.js'
 import AuthLayout from '../components/AuthLayout.jsx'
-import { useEffect } from 'react'
 
 const EyeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -63,22 +62,19 @@ const ROLE_OPTIONS = [
 const PHONE_PATTERN = /^[6-9]\d{9}$/
 const PASSWORD_PATTERN = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).*$/
 
+function parseOrgId(input) {
+  if (!input) return null
+  const cleaned = input.toString().trim().replace(/^org-?/i, '')
+  const num = parseInt(cleaned, 10)
+  return isNaN(num) || num <= 0 ? null : num
+}
+
 export default function SignupPage() {
   const { signup } = useAuth()
   const navigate = useNavigate()
 
   const location = useLocation()
   const [searchParams] = useSearchParams()
-
-  const [organizations, setOrganizations] = useState([])
-  const [loadingOrgs, setLoadingOrgs] = useState(true)
-
-  useEffect(() => {
-    api.get('/auth/organizations')
-      .then(res => setOrganizations(res.data))
-      .catch(err => console.error('Failed to load organizations', err))
-      .finally(() => setLoadingOrgs(false))
-  }, [])
 
   const [form, setForm] = useState({
     fullName: '',
@@ -108,8 +104,18 @@ export default function SignupPage() {
     if (form.password.length < 8) return 'Password must be at least 8 characters.'
     if (!PASSWORD_PATTERN.test(form.password)) return 'Password must contain uppercase, lowercase, digit, and special character (@$!%*?&).'
     if (form.password !== form.confirmPassword) return 'Passwords do not match.'
-    if (form.role && form.role !== ROLES.SUPER_ADMIN && form.role !== ROLES.ORG_ADMIN && !form.orgId) {
-      return 'Please select an organization to join.'
+    
+    if (form.role && form.role !== ROLES.SUPER_ADMIN && form.role !== ROLES.ORG_ADMIN) {
+      if (!form.orgId.trim()) {
+        return 'Please enter your Organization Specific ID (e.g., ORG-1 or 1).'
+      }
+      if (!parseOrgId(form.orgId)) {
+        return 'Invalid Organization ID format. Please enter an ID like ORG-1 or 1.'
+      }
+    } else if (form.role === ROLES.ORG_ADMIN && form.orgId.trim()) {
+      if (!parseOrgId(form.orgId)) {
+        return 'Invalid Organization ID format. Please enter an ID like ORG-1 or 1.'
+      }
     }
     return ''
   }
@@ -124,6 +130,7 @@ export default function SignupPage() {
 
     setError('')
     setSubmitting(true)
+    const parsedId = parseOrgId(form.orgId)
     try {
       await signup({
         fullName: form.fullName.trim(),
@@ -131,7 +138,7 @@ export default function SignupPage() {
         phone: form.phone.trim(),
         role: form.role,
         password: form.password,
-        orgId: form.orgId ? Number(form.orgId) : null,
+        ...(parsedId ? { orgId: parsedId } : {}),
       })
       navigate(redirectTo, { replace: true })
     } catch (err) {
@@ -219,20 +226,25 @@ export default function SignupPage() {
           {selectedRole && <p className="nf-role-hint">{selectedRole.hint}</p>}
         </div>
 
-        {form.role && form.role !== ROLES.SUPER_ADMIN && form.role !== ROLES.ORG_ADMIN && (
+        {form.role && form.role !== ROLES.SUPER_ADMIN && (
           <div className="nf-field">
             <label className="nf-label" htmlFor="orgId">
-              Organization *
+              Organization Specific ID {form.role !== ROLES.ORG_ADMIN ? '*' : '(Optional)'}
             </label>
-            <select id="orgId" className="nf-select" value={form.orgId} onChange={update('orgId')} disabled={loadingOrgs}>
-              <option value="">
-                {loadingOrgs ? 'Loading organizations...' : 'Select an organization to request to join'}
-              </option>
-              {organizations.map(org => (
-                <option key={org.id} value={org.id}>{org.name}</option>
-              ))}
-            </select>
-            <p className="nf-role-hint">An approval request will be sent to the Org Admin.</p>
+            <input
+              id="orgId"
+              type="text"
+              className="nf-input"
+              autoComplete="off"
+              placeholder="e.g. ORG-1 or 1"
+              value={form.orgId}
+              onChange={update('orgId')}
+            />
+            <p className="nf-role-hint">
+              {form.role === ROLES.ORG_ADMIN
+                ? 'Enter your Organization ID if already assigned by Super Admin, or leave blank.'
+                : 'Enter the Organization Specific ID given by your Org Admin to join that organization.'}
+            </p>
           </div>
         )}
 

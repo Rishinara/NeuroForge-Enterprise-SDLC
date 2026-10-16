@@ -6,6 +6,7 @@ import { extractErrorMessage } from '../api/client.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import Can from '../components/Can.jsx'
 import StatusPill from '../components/StatusPill.jsx'
+import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import './specs.css'
 
 let idCounter = 0
@@ -41,6 +42,7 @@ export default function SpecEditorPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [savedNote, setSavedNote] = useState('')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const canEdit = CAN_EDIT_ROLES.includes(role) && spec?.status !== 'Approved'
   const editingLocked = spec?.status === 'Approved'
@@ -196,6 +198,20 @@ export default function SpecEditorPage() {
       setSpec((s) => ({ ...s, status: 'Approved' }))
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleDeleteSpec() {
+    setError('')
+    setSaving(true)
+    try {
+      await specApi.deleteSpec(specId)
+      navigate(`/projects/${projectId}/specs`, { replace: true })
+    } catch (err) {
+      setError(extractErrorMessage(err))
+    } finally {
+      setSaving(false)
+      setShowDeleteConfirm(false)
     }
   }
 
@@ -405,9 +421,50 @@ export default function SpecEditorPage() {
             <p className="sp-sidebar-note">
               Approved versions are immutable. Editing an approved spec creates a new draft version.
             </p>
+            {role === ROLES.PROJECT_MANAGER && (
+              <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #fee2e2' }}>
+                <p style={{ fontSize: 11, color: '#dc2626', fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Project Manager Action
+                </p>
+                <button
+                  type="button"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    background: '#fef2f2',
+                    color: '#b91c1c',
+                    border: '1px solid #fecaca',
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={saving}
+                >
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Delete Specification
+                </button>
+              </div>
+            )}
           </aside>
         )}
       </div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Delete Specification"
+        message={`Are you sure you want to delete "${spec.title || 'this spec'}"? This will permanently remove this specification from the database.`}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteSpec}
+        confirmText={saving ? "Deleting..." : "Delete Specification"}
+      />
     </div>
   )
 }
