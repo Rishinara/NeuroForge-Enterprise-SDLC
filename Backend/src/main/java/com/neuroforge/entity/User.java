@@ -44,6 +44,9 @@ public class User implements UserDetails {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
+
     @Column(nullable = false)
     private boolean enabled = true;
 
@@ -90,6 +93,8 @@ public class User implements UserDetails {
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getLastLoginAt() { return lastLoginAt; }
+    public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public Boolean getOrgApproved() { return orgApproved; }
     public void setOrgApproved(Boolean orgApproved) { this.orgApproved = orgApproved; }

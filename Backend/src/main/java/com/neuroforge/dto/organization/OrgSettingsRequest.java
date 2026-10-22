@@ -4,6 +4,7 @@ public class OrgSettingsRequest {
     private String name;
     private String description;
     private String supportEmail;
+    private String orgSpecificId;
 
     public OrgSettingsRequest() {}
 
@@ -13,4 +14,6 @@ public class OrgSettingsRequest {
     public void setDescription(String description) { this.description = description; }
     public String getSupportEmail() { return supportEmail; }
     public void setSupportEmail(String supportEmail) { this.supportEmail = supportEmail; }
+    public String getOrgSpecificId() { return orgSpecificId; }
+    public void setOrgSpecificId(String orgSpecificId) { this.orgSpecificId = orgSpecificId; }
 }

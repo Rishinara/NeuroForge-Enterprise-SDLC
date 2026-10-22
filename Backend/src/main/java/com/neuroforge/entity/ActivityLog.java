@@ -32,14 +32,30 @@ public class ActivityLog {
     @Column(name = "actor_email", nullable = false)
     private String actorEmail;
 
+    @Column(name = "project_id")
+    private Long projectId;
+
+    @Column(name = "project_name")
+    private String projectName;
+
+    @Column(name = "actor_role")
+    private String actorRole;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    public ActivityLog(Organization organization, String action, String details, String actorEmail) {
+    public ActivityLog(Organization organization, Long projectId, String projectName, String action, String details, String actorEmail, String actorRole) {
         this.organization = organization;
+        this.projectId = projectId;
+        this.projectName = projectName;
         this.action = action;
         this.details = details;
         this.actorEmail = actorEmail;
+        this.actorRole = actorRole;
+    }
+
+    public ActivityLog(Organization organization, String action, String details, String actorEmail) {
+        this(organization, null, null, action, details, actorEmail, null);
     }
 }

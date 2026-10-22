@@ -328,26 +328,18 @@ export default function CreateProjectPage() {
                     <label className="block text-sm font-semibold text-slate-700 mb-3">
                       Methodology
                     </label>
-                    <div className="grid grid-cols-2 gap-4">
-                      {['AGILE', 'WATERFALL'].map((m) => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => update('methodology', m)}
-                          className={`p-4 rounded-xl border text-left transition-all ${
-                            form.methodology === m
-                              ? 'bg-orange-50 border-orange-500 ring-1 ring-orange-500'
-                              : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className={`text-sm font-bold mb-1 ${form.methodology === m ? 'text-orange-700' : 'text-slate-800'}`}>
-                            {m === 'AGILE' ? 'Agile' : 'Waterfall'}
-                          </div>
-                          <div className={`text-xs ${form.methodology === m ? 'text-orange-600' : 'text-slate-500'}`}>
-                            {m === 'AGILE' ? 'Iterative sprints, backlog, flexible.' : 'Sequential, structured, milestones.'}
-                          </div>
-                        </button>
-                      ))}
+                    <div className="max-w-md">
+                      <div className="p-4 rounded-xl border bg-orange-50 border-orange-500 ring-1 ring-orange-500 text-left">
+                        <div className="text-sm font-bold mb-1 text-orange-700 flex items-center justify-between">
+                          <span>Agile (Scrum / Kanban)</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full">
+                            Selected
+                          </span>
+                        </div>
+                        <div className="text-xs text-orange-600">
+                          Iterative sprints, product backlog, automated burndown velocity, and continuous delivery.
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

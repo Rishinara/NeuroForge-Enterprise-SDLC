@@ -23,4 +23,6 @@ public class UpdateSprintRequest {
 
     @NotNull(message = "End date is required")
     private LocalDate endDate;
+
+    private Long milestoneId;
 }

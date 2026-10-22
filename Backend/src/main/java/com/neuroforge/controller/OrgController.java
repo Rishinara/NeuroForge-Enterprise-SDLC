@@ -241,12 +241,32 @@ public class OrgController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN','PROJECT_MANAGER')")
     @GetMapping("/api/orgs/{orgId}/activities")
     public List<ActivityResponse> getRecentActivities(
             @PathVariable Long orgId,
+            @RequestParam(required = false) Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
-        return activityService.getRecentActivities(orgId, userDetails.getUsername());
+        return activityService.getRecentActivities(orgId, projectId, userDetails.getUsername());
+    }
+
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
+    @DeleteMapping("/api/orgs/{orgId}/activities/{activityId}")
+    public ResponseEntity<Void> deleteActivity(
+            @PathVariable Long orgId,
+            @PathVariable Long activityId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        activityService.deleteActivity(orgId, activityId, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ORG_ADMIN')")
+    @DeleteMapping("/api/orgs/{orgId}/activities")
+    public ResponseEntity<Void> clearAllActivities(
+            @PathVariable Long orgId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        activityService.clearActivities(orgId, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/api/invites/{token}")

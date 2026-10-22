@@ -29,4 +29,8 @@ public class SprintResponse {
     private Long createdById;
 
     private String createdByName;
+
+    private Long milestoneId;
+
+    private String milestoneTitle;
 }

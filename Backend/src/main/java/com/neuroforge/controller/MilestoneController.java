@@ -22,7 +22,7 @@ public class MilestoneController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN')")
     public MilestoneResponse createMilestone(
             @PathVariable Long projectId,
             @Valid @RequestBody MilestoneRequest request,
@@ -42,7 +42,7 @@ public class MilestoneController {
     }
 
     @PutMapping("/{milestoneId}")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN')")
     public MilestoneResponse updateMilestone(
             @PathVariable Long projectId,
             @PathVariable Long milestoneId,
@@ -55,7 +55,7 @@ public class MilestoneController {
 
     @DeleteMapping("/{milestoneId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN', 'ORG_ADMIN')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SUPER_ADMIN')")
     public void deleteMilestone(
             @PathVariable Long projectId,
             @PathVariable Long milestoneId,

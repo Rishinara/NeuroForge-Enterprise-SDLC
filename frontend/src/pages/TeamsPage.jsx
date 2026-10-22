@@ -2,42 +2,61 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { orgApi } from '../api/orgApi.js'
 import { adminApi } from '../api/adminApi.js'
+import { projectApi } from '../api/projectApi.js'
 import { extractErrorMessage } from '../api/client.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import Tabs from '../components/Tabs.jsx'
 import InviteMemberModal from '../components/InviteMemberModal.jsx'
 import Can from '../components/Can.jsx'
-import Avatar from '../components/Avatar.jsx'
+import { User } from 'lucide-react'
 import UnassignedOrgNotice from '../components/UnassignedOrgNotice.jsx'
 import './workspace.css'
 import './teams.css'
 
 const ROLE_LABELS = {
+  ORG_ADMIN: 'Org Admin',
   PROJECT_MANAGER: 'Project Manager',
   DEVELOPER: 'Fullstack Developer',
   FRONTEND_DEVELOPER: 'Frontend Developer',
   BACKEND_DEVELOPER: 'Backend Developer',
   QA_TESTER: 'QA / Tester',
+  QA: 'QA / Tester',
   CLIENT: 'Client / Stakeholder',
 }
 
 const ROLE_DOT = {
-  ORG_ADMIN: '#4f46e5',
-  PROJECT_MANAGER: '#4b5563',
-  DEVELOPER: '#4b5563',
-  FRONTEND_DEVELOPER: '#4b5563',
-  BACKEND_DEVELOPER: '#4b5563',
-  QA_TESTER: '#4b5563',
-  CLIENT: '#9ca3af',
+  ORG_ADMIN: '#f97316',
+  PROJECT_MANAGER: '#3b82f6',
+  DEVELOPER: '#0284c7',
+  FRONTEND_DEVELOPER: '#6366f1',
+  BACKEND_DEVELOPER: '#06b6d4',
+  QA_TESTER: '#10b981',
+  QA: '#10b981',
+  CLIENT: '#a855f7',
 }
 
-export default function TeamsPage() {
-  const { user } = useAuth()
-  const isSuperAdmin = user?.role === ROLES.SUPER_ADMIN
+const EDITABLE_ROLE_OPTIONS = [
+  { value: 'PROJECT_MANAGER', label: 'Project Manager' },
+  { value: 'FRONTEND_DEVELOPER', label: 'Frontend Developer' },
+  { value: 'BACKEND_DEVELOPER', label: 'Backend Developer' },
+  { value: 'DEVELOPER', label: 'Fullstack Developer' },
+  { value: 'QA_TESTER', label: 'QA / Tester' },
+  { value: 'CLIENT', label: 'Client / Stakeholder' },
+]
 
-  const [tab, setTab] = useState(() => (isSuperAdmin ? 'members' : 'teams'))
+export default function TeamsPage() {
+  const { user, role } = useAuth()
+  const isSuperAdmin = user?.role === ROLES.SUPER_ADMIN || role === ROLES.SUPER_ADMIN
+  const isPM = user?.role === ROLES.PROJECT_MANAGER || role === ROLES.PROJECT_MANAGER
+
+  const [tab, setTab] = useState(() => (isSuperAdmin || isPM ? 'members' : 'teams'))
   const [orgs, setOrgs] = useState([])
   const [selectedOrgId, setSelectedOrgId] = useState('ALL')
+  const [pmProjects, setPmProjects] = useState([])
+  const [selectedProjectId, setSelectedProjectId] = useState(() => {
+    const cached = localStorage.getItem('neuroforge_current_project_id')
+    return cached && !isNaN(Number(cached)) ? Number(cached) : null
+  })
   const [teams, setTeams] = useState([])
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -83,6 +102,64 @@ export default function TeamsPage() {
           )
           setTeams([])
         }
+      } else if (isPM) {
+        // Project Manager: only load team members and assigned teams of the selected project
+        const projsRes = await projectApi.listProjects(user?.orgId).catch(() => ({ data: [] }))
+        const loadedProjects = Array.isArray(projsRes.data) ? projsRes.data : []
+        setPmProjects(loadedProjects)
+
+        let targetProjectId = selectedProjectId
+        if (!targetProjectId || !loadedProjects.some(p => p.id === targetProjectId)) {
+          const cached = localStorage.getItem('neuroforge_current_project_id')
+          if (cached && loadedProjects.some(p => String(p.id) === String(cached))) {
+            targetProjectId = Number(cached)
+          } else if (loadedProjects.length > 0) {
+            targetProjectId = loadedProjects[0].id
+          }
+          if (targetProjectId && targetProjectId !== selectedProjectId) {
+            setSelectedProjectId(targetProjectId)
+            localStorage.setItem('neuroforge_current_project_id', targetProjectId)
+          }
+        }
+
+        if (targetProjectId) {
+          const [projRes, orgTeamsRes, orgMembersRes] = await Promise.all([
+            projectApi.getProject(targetProjectId).catch(() => ({ data: null })),
+            orgApi.listTeamsWithMembers(user?.orgId).catch(() => ({ data: [] })),
+            orgApi.listMembers(user?.orgId).catch(() => ({ data: [] })),
+          ])
+          const projData = projRes?.data || {}
+          const orgMembersList = Array.isArray(orgMembersRes?.data) ? orgMembersRes.data : []
+          const orgMemberMap = new Map(orgMembersList.map((u) => [u.id, u]))
+          
+          // Only team members of the selected project with correct roles matching Org Admin dashboard
+          const projMembers = (projData.team || []).map((m) => {
+            const orgUser = orgMemberMap.get(m.id)
+            const resolvedRole = orgUser?.role || m.role || (m.projectRole === 'QA' ? 'QA_TESTER' : m.projectRole) || 'DEVELOPER'
+            return {
+              id: m.id,
+              name: orgUser?.fullName || m.fullName || m.name || m.email,
+              email: orgUser?.email || m.email,
+              role: resolvedRole,
+              status: orgUser?.enabled !== false && orgUser?.status !== 'INACTIVE' ? 'ACTIVE' : 'INACTIVE',
+              teams: (projData.assignedTeams || []).map((t) => t.name),
+            }
+          })
+          setMembers(projMembers)
+
+          // Only teams assigned to the selected project
+          const assignedTeamIds = new Set((projData.assignedTeams || []).map((t) => t.id))
+          const allOrgTeams = Array.isArray(orgTeamsRes.data) ? orgTeamsRes.data : []
+          const projTeams = allOrgTeams.filter((t) => assignedTeamIds.has(t.id))
+          if (projTeams.length === 0 && projData.assignedTeams && projData.assignedTeams.length > 0) {
+            setTeams(projData.assignedTeams.map(t => ({ id: t.id, name: t.name, memberCount: projMembers.length })))
+          } else {
+            setTeams(projTeams)
+          }
+        } else {
+          setMembers([])
+          setTeams([])
+        }
       } else if (user?.orgId) {
         const [teamsRes, membersRes] = await Promise.all([
           orgApi.listTeamsWithMembers(user.orgId),
@@ -101,13 +178,14 @@ export default function TeamsPage() {
     } finally {
       setLoading(false)
     }
-  }, [isSuperAdmin, selectedOrgId, user?.orgId])
+  }, [isSuperAdmin, isPM, selectedOrgId, user?.orgId, selectedProjectId])
 
   useEffect(() => {
     load()
   }, [load])
 
   const targetOrgId = isSuperAdmin ? (selectedOrgId !== 'ALL' ? selectedOrgId : orgs[0]?.id) : user?.orgId
+  const currentPmProject = pmProjects.find((p) => p.id === selectedProjectId)
 
   async function handleCreateTeam(e) {
     e.preventDefault()
@@ -128,6 +206,7 @@ export default function TeamsPage() {
       setCreatingTeam(false)
     }
   }
+
   async function handleUpdateTeam(e) {
     e.preventDefault()
     if (!editTeamName.trim() || !editingTeam) return
@@ -158,6 +237,7 @@ export default function TeamsPage() {
       setError(extractErrorMessage(err))
     }
   }
+
   async function handleDeleteTeam(team) {
     if (team.memberCount > 0) {
       setError('Cannot delete a team that still has members.')
@@ -178,6 +258,8 @@ export default function TeamsPage() {
     try {
       if (isSuperAdmin) {
         await adminApi.updateUserRole(memberId, newRole)
+      } else if (isPM && selectedProjectId) {
+        await projectApi.updateProjectMemberRole(selectedProjectId, memberId, newRole)
       } else {
         await orgApi.updateMemberRole(user.orgId, memberId, newRole)
       }
@@ -225,10 +307,18 @@ export default function TeamsPage() {
     <div className="wk-page">
       <div className="wk-page-header" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 className="wk-page-title">{isSuperAdmin ? 'Platform Users & Admins' : 'Users, Teams & Members'}</h1>
+          <h1 className="wk-page-title">
+            {isSuperAdmin
+              ? 'Platform Users & Admins'
+              : isPM
+              ? 'Teams & Members'
+              : 'Users, Teams & Members'}
+          </h1>
           <p className="wk-page-subtitle">
             {isSuperAdmin
               ? 'Select an organization to manage its platform users and admins.'
+              : isPM
+              ? `Displaying team members of project: ${currentPmProject?.name || 'Selected Project'}`
               : `${user?.orgName || 'Organization'} team management`}
           </p>
         </div>
@@ -247,6 +337,59 @@ export default function TeamsPage() {
         <p className="wk-alert wk-alert-error">
           {error}
         </p>
+      )}
+
+      {/* Project Selector for Project Manager */}
+      {isPM && pmProjects.length > 0 && (
+        <div
+          className="wk-card"
+          style={{
+            marginBottom: 20,
+            padding: '12px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 12,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Project Scope:
+            </span>
+            <select
+              value={selectedProjectId || ''}
+              onChange={(e) => {
+                const val = Number(e.target.value)
+                setSelectedProjectId(val)
+                localStorage.setItem('neuroforge_current_project_id', val)
+              }}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#f8fafc',
+                color: '#0f172a',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              {pmProjects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+            Showing only members and teams belonging to <strong>{currentPmProject?.name || 'this project'}</strong>
+          </span>
+        </div>
       )}
 
       {/* Organization Selection Filter for Super Admin */}
@@ -305,27 +448,29 @@ export default function TeamsPage() {
       <div className="tm-stats">
         <div className="tm-stat-card">
           <span className="tm-stat-value">{members.length}</span>
-          <span className="tm-stat-label">Total members</span>
+          <span className="tm-stat-label">{isPM ? 'Project Members' : 'Total members'}</span>
         </div>
         {!isSuperAdmin && (
           <div className="tm-stat-card">
             <span className="tm-stat-value">{teams.length}</span>
-            <span className="tm-stat-label">Teams</span>
+            <span className="tm-stat-label">{isPM ? 'Assigned Teams' : 'Teams'}</span>
           </div>
         )}
         <div className="tm-stat-card">
-          <span className="tm-stat-value">{roleCounts.DEVELOPER || 0}</span>
+          <span className="tm-stat-value">
+            {(roleCounts.DEVELOPER || 0) + (roleCounts.FRONTEND_DEVELOPER || 0) + (roleCounts.BACKEND_DEVELOPER || 0)}
+          </span>
           <span className="tm-stat-label">Developers</span>
         </div>
         <div className="tm-stat-card">
-          <span className="tm-stat-value">{roleCounts.QA_TESTER || 0}</span>
+          <span className="tm-stat-value">{(roleCounts.QA_TESTER || 0) + (roleCounts.QA || 0)}</span>
           <span className="tm-stat-label">QA / Testers</span>
         </div>
       </div>
 
       {!isSuperAdmin && (
         <Tabs
-          tabs={[{ key: 'teams', label: 'Teams' }, { key: 'members', label: 'Members' }]}
+          tabs={[{ key: 'members', label: isPM ? 'Project Members' : 'Members' }, { key: 'teams', label: isPM ? 'Assigned Teams' : 'Teams' }]}
           active={tab}
           onChange={setTab}
         />
@@ -350,7 +495,7 @@ export default function TeamsPage() {
           </Can>
 
           {teams.length === 0 ? (
-            <p className="wk-empty">No teams yet.</p>
+            <p className="wk-empty">{isPM ? 'No teams assigned to this project yet.' : 'No teams yet.'}</p>
           ) : (
             <div className="tm-team-grid">
               {teams.map((t) => (
@@ -403,13 +548,17 @@ export default function TeamsPage() {
           </div>
 
           {filteredMembers.length === 0 ? (
-            <p className="wk-empty">No members match your search.</p>
+            <p className="wk-empty">
+              {isPM ? 'No members assigned to this project match your search.' : 'No members match your search.'}
+            </p>
           ) : (
             <div className="tm-member-list">
               {filteredMembers.map((m) => (
                 <div key={m.id} className="tm-member-row">
                   <div className="tm-member-identity">
-                    <Avatar name={m.name} />
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 border border-slate-200/90 bg-slate-100 text-slate-600 shadow-2xs">
+                      <User size={15} />
+                    </div>
                     <div>
                       <div className="tm-member-name">{m.name}</div>
                       <div className="tm-member-email">{m.email}</div>
@@ -423,18 +572,23 @@ export default function TeamsPage() {
 
                   <div className="tm-member-role">
                     <Can
-                      roles={[ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]}
+                      roles={[ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER]}
                       fallback={
-                        <span className="tm-role-pill" style={{ '--dot': ROLE_DOT[m.role] }}>
+                        <span className="tm-role-pill" style={{ '--dot': ROLE_DOT[m.role] || '#4b5563' }}>
                           <span className="tm-role-dot" />
-                          {ROLE_LABELS[m.role]}
+                          {ROLE_LABELS[m.role] || m.role}
                         </span>
                       }
                     >
                       {m.id === user?.id || m.role === 'ORG_ADMIN' ? (
-                        <span className="tm-role-pill" style={{ '--dot': ROLE_DOT[m.role] }}>
+                        <span className="tm-role-pill" style={{ '--dot': ROLE_DOT[m.role] || '#4b5563' }}>
                           <span className="tm-role-dot" />
-                          {m.role === 'ORG_ADMIN' ? 'Org Admin' : ROLE_LABELS[m.role]}
+                          {m.role === 'ORG_ADMIN' ? 'Org Admin' : ROLE_LABELS[m.role] || m.role}
+                        </span>
+                      ) : isPM ? (
+                        <span className="tm-role-pill" style={{ '--dot': ROLE_DOT[m.role] || '#4b5563' }}>
+                          <span className="tm-role-dot" />
+                          {ROLE_LABELS[m.role] || m.role}
                         </span>
                       ) : (
                         <select
@@ -442,21 +596,25 @@ export default function TeamsPage() {
                           value={m.role}
                           onChange={(e) => handleRoleChange(m.id, e.target.value)}
                         >
-                          {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                          {EDITABLE_ROLE_OPTIONS.map(({ value, label }) => (
                             <option key={value} value={value}>{label}</option>
                           ))}
                         </select>
                       )}
                     </Can>
-                  </div>
 
-                  <Can roles={[ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]}>
-                    {m.id !== user?.id && m.role !== 'ORG_ADMIN' && (
-                      <button className="tm-remove-btn" onClick={() => handleRemove(m.id)}>
-                        Remove
-                      </button>
-                    )}
-                  </Can>
+                    <Can roles={[ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN]}>
+                      {m.id !== user?.id && m.role !== 'ORG_ADMIN' && (
+                        <button
+                          className="wk-btn tm-btn-danger"
+                          onClick={() => handleRemove(m.id)}
+                          title="Remove user"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </Can>
+                  </div>
                 </div>
               ))}
             </div>
@@ -464,76 +622,75 @@ export default function TeamsPage() {
         </div>
       )}
 
-      <InviteMemberModal
-        open={inviteOpen}
-        onClose={() => setInviteOpen(false)}
-        onInvited={load}
-        targetOrgId={targetOrgId}
-      />
-
+      {/* Edit Team Modal */}
       {editingTeam && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md p-6 border border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
-              Edit Team Name
-            </h3>
-            <form onSubmit={handleUpdateTeam} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                  Team Name
-                </label>
+        <div className="wk-modal-overlay">
+          <div className="wk-modal" style={{ maxWidth: 440 }}>
+            <h2 className="wk-modal-title">Edit Team</h2>
+            <form onSubmit={handleUpdateTeam}>
+              <div className="wk-form-group">
+                <label className="wk-label">Team Name</label>
                 <input
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  className="wk-input"
                   value={editTeamName}
                   onChange={(e) => setEditTeamName(e.target.value)}
-                  placeholder="e.g. Platform Engineering"
+                  placeholder="e.g. Frontend Engineers"
                   required
                 />
               </div>
 
-              {/* Team Members List */}
-              <div className="mt-4">
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                  Team Members ({editingTeam.members?.length || 0})
-                </label>
-                {!editingTeam.members || editingTeam.members.length === 0 ? (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 italic">No members in this team.</p>
-                ) : (
-                  <div className="border border-slate-200 dark:border-slate-700 rounded-lg divide-y divide-slate-100 dark:divide-slate-700 max-h-40 overflow-y-auto bg-slate-50 dark:bg-slate-900/50 p-2">
-                    {editingTeam.members.map((m) => (
-                      <div key={m.id} className="flex justify-between items-center py-2 text-sm text-slate-700 dark:text-slate-300">
-                        <span>{m.fullName || m.name} ({m.email})</span>
+              {editingTeam.members && editingTeam.members.length > 0 && (
+                <div style={{ marginTop: 15, marginBottom: 15 }}>
+                  <label className="wk-label" style={{ marginBottom: 6, display: 'block' }}>Current Members</label>
+                  <div style={{ maxHeight: 150, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 6, padding: '4px 8px' }}>
+                    {editingTeam.members.map((tm) => (
+                      <div key={tm.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid #f1f5f9' }}>
+                        <span style={{ fontSize: 13, color: '#334155' }}>{tm.fullName || tm.name || tm.email}</span>
                         <button
                           type="button"
-                          onClick={() => handleRemoveMemberFromTeam(m.id)}
-                          className="px-2 py-1 text-xs text-red-600 hover:text-red-700 font-semibold transition-colors"
+                          onClick={() => handleRemoveMemberFromTeam(tm.id)}
+                          style={{ border: 'none', background: 'transparent', color: '#ef4444', fontSize: 12, cursor: 'pointer' }}
                         >
                           Remove
                         </button>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
+                </div>
+              )}
+
+              <div className="wk-modal-actions">
                 <button
                   type="button"
-                  className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                  className="wk-btn"
                   onClick={() => setEditingTeam(null)}
+                  disabled={savingEditTeam}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-75"
+                  className="wk-btn wk-btn-primary"
                   disabled={savingEditTeam}
                 >
-                  {savingEditTeam ? 'Saving…' : 'Save'}
+                  {savingEditTeam ? 'Saving…' : 'Save Changes'}
                 </button>
               </div>
             </form>
           </div>
         </div>
+      )}
+
+      {/* Invite Member Modal */}
+      {inviteOpen && (
+        <InviteMemberModal
+          orgId={targetOrgId}
+          onClose={() => setInviteOpen(false)}
+          onSuccess={() => {
+            setInviteOpen(false)
+            load()
+          }}
+        />
       )}
     </div>
   )

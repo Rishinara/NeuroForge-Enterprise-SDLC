@@ -36,6 +36,7 @@ public class SignupRequest {
     private String password;
 
     private Long orgId;
+    private String orgSpecificId;
 
     public SignupRequest() {}
 
@@ -56,4 +57,7 @@ public class SignupRequest {
     
     public Long getOrgId() { return orgId; }
     public void setOrgId(Long orgId) { this.orgId = orgId; }
+
+    public String getOrgSpecificId() { return orgSpecificId; }
+    public void setOrgSpecificId(String orgSpecificId) { this.orgSpecificId = orgSpecificId; }
 }

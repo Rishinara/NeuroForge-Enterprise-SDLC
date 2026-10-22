@@ -35,6 +35,12 @@ public class Milestone {
 
     private LocalDate actualDeliveryDate;
 
+    @Column(name = "total_sprints")
+    private Integer totalSprints = 1;
+
+    @Column(name = "completed_sprints")
+    private Integer completedSprints = 0;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 @JoinColumn(name = "project_id", nullable = false)    private Project project;

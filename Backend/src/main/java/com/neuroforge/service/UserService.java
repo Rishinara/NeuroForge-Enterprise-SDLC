@@ -73,7 +73,23 @@ public class UserService {
         user.setCreatedAt(LocalDateTime.now());
         user.setOrganization(null);
         
-        if (request.getOrgId() != null) {
+        String specificId = request.getOrgSpecificId() != null ? request.getOrgSpecificId().trim() : null;
+        if (specificId != null && !specificId.isEmpty()) {
+            Organization org = organizationRepository.findByOrgSpecificIdIgnoreCase(specificId)
+                    .orElseGet(() -> {
+                        try {
+                            String numericPart = specificId.replaceFirst("(?i)^org-?", "");
+                            Long num = Long.parseLong(numericPart);
+                            return organizationRepository.findById(num).orElse(null);
+                        } catch (Exception ignored) {
+                            return null;
+                        }
+                    });
+            if (org == null) {
+                throw new ResourceNotFoundException("Organization with specific ID '" + specificId + "' not found.");
+            }
+            user.setRequestedOrganization(org);
+        } else if (request.getOrgId() != null) {
             Organization org = organizationRepository.findById(request.getOrgId())
                     .orElseThrow(() -> new ResourceNotFoundException("Organization not found"));
             user.setRequestedOrganization(org);
@@ -95,6 +111,9 @@ public class UserService {
         if (!user.isEnabled()) {
             throw new InvalidRequestException("Your account has been disabled.");
         }
+
+        user.setLastLoginAt(LocalDateTime.now());
+        user = userRepository.save(user);
 
         String token = jwtService.generateToken(user);
         return buildAuthResponse(token, user);
@@ -149,6 +168,7 @@ public class UserService {
         response.setPhoneNumber(user.getPhoneNumber());
         response.setRole(user.getRole());
         response.setCreatedAt(user.getCreatedAt());
+        response.setLastLoginAt(user.getLastLoginAt());
 
         if (user.getOrganization() != null) {
             response.setOrganizationName(user.getOrganization().getName());
@@ -191,7 +211,10 @@ public class UserService {
         user = userRepository.findUserById(user.getId());
         Long orgId = user.getOrganization() != null ? user.getOrganization().getId() : null;
         String orgName = user.getOrganization() != null ? user.getOrganization().getName() : null;
+        String orgSpecificId = user.getOrganization() != null
+                ? (user.getOrganization().getOrgSpecificId() != null ? user.getOrganization().getOrgSpecificId() : "ORG-" + orgId)
+                : null;
         return new AuthResponse.UserPayload(
-                user.getId(), user.getEmail(), user.getFullName(), orgId, orgName, user.getRole(), user.getOrgApproved());
+                user.getId(), user.getEmail(), user.getFullName(), orgId, orgName, orgSpecificId, user.getRole(), user.getOrgApproved(), user.getLastLoginAt());
     }
 }

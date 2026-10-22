@@ -21,17 +21,29 @@ public class AuthResponse {
         private String fullName;
         private Long orgId;
         private String orgName;
+        private String orgSpecificId;
         private Role role;
         private Boolean orgApproved;
+        private java.time.LocalDateTime lastLoginAt;
 
         public UserPayload(Long userId, String email, String fullName, Long orgId, String orgName, Role role, Boolean orgApproved) {
+            this(userId, email, fullName, orgId, orgName, orgId != null ? "ORG-" + orgId : null, role, orgApproved, null);
+        }
+
+        public UserPayload(Long userId, String email, String fullName, Long orgId, String orgName, String orgSpecificId, Role role, Boolean orgApproved) {
+            this(userId, email, fullName, orgId, orgName, orgSpecificId, role, orgApproved, null);
+        }
+
+        public UserPayload(Long userId, String email, String fullName, Long orgId, String orgName, String orgSpecificId, Role role, Boolean orgApproved, java.time.LocalDateTime lastLoginAt) {
             this.userId = userId;
             this.email = email;
             this.fullName = fullName;
             this.orgId = orgId;
             this.orgName = orgName;
+            this.orgSpecificId = orgSpecificId;
             this.role = role;
             this.orgApproved = orgApproved;
+            this.lastLoginAt = lastLoginAt;
         }
 
         public Long getUserId() { return userId; }
@@ -39,7 +51,9 @@ public class AuthResponse {
         public String getFullName() { return fullName; }
         public Long getOrgId() { return orgId; }
         public String getOrgName() { return orgName; }
+        public String getOrgSpecificId() { return orgSpecificId; }
         public Role getRole() { return role; }
         public Boolean getOrgApproved() { return orgApproved; }
+        public java.time.LocalDateTime getLastLoginAt() { return lastLoginAt; }
     }
 }

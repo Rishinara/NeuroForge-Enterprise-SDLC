@@ -31,7 +31,12 @@ export const orgApi = {
   acceptInvite: (token) => api.post(`/invites/${token}/accept`),
 
   // Activities
-  listActivities: (orgId) => api.get(`/orgs/${orgId}/activities`),
+  listActivities: (orgId, projectId) =>
+    api.get(`/orgs/${orgId}/activities`, {
+      params: projectId && !isNaN(Number(projectId)) ? { projectId } : {},
+    }),
+  deleteActivity: (orgId, activityId) => api.delete(`/orgs/${orgId}/activities/${activityId}`),
+  clearAllActivities: (orgId) => api.delete(`/orgs/${orgId}/activities`),
 
   // Join Requests
   getJoinRequests: (orgId) => api.get(`/orgs/${orgId}/join-requests`),

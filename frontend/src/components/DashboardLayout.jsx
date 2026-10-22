@@ -8,6 +8,7 @@ const TITLES = [
   { match: /^\/projects\/new/, title: 'New project', subtitle: 'Set up a project in a few steps' },
   { match: /^\/projects\/[^/]+$/, title: 'Project details', subtitle: null },
   { match: /^\/projects/, title: 'Projects', subtitle: 'Portfolio health across your organization' },
+  { match: /^\/(org\/members|members)/, title: 'Organization Members', subtitle: 'View and manage members belonging to your organization' },
   { match: /^\/org\/teams/, title: 'Teams & Members', subtitle: 'Manage who has access and what they can do' },
   { match: /^\/org\/settings/, title: 'Organization Settings', subtitle: 'Configure how your org appears' },
 ]

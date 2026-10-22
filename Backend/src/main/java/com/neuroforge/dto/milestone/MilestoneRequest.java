@@ -25,6 +25,8 @@ public class MilestoneRequest {
 
     private LocalDate actualDeliveryDate;
 
+    private Integer totalSprints;
+
     @NotNull(message = "Project ID is required")
     private Long projectId;
 }

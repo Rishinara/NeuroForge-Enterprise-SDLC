@@ -19,24 +19,40 @@ import HealthBadge from "../components/HealthBadge.jsx";
 import UnassignedOrgNotice from "../components/UnassignedOrgNotice.jsx";
 import RecentActivities from "../components/RecentActivities.jsx";
 import PortalDropdown from "../components/PortalDropdown.jsx";
-const OrgAdminCell = ({ org, orgAdminUser, selectedOrgForAdmin, setSelectedOrgForAdmin, setShowAssignAdminModal, handleRemoveOrgAdmin }) => {
+import { Activity } from "lucide-react";
+const OrgAdminCell = ({
+  org,
+  orgAdminUser,
+  openOrgDropdownId,
+  setOpenOrgDropdownId,
+  onStartAssignAdmin,
+  handleRemoveOrgAdmin,
+}) => {
   const triggerRef = useRef(null);
-  const isOpen = selectedOrgForAdmin?.id === org.id;
+  const isOpen = openOrgDropdownId === org.id;
 
   return (
     <div className="relative inline-block">
       <button
         ref={triggerRef}
         type="button"
-        className="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700 flex items-center gap-1 hover:bg-green-200 transition-colors"
-        onClick={() => setSelectedOrgForAdmin((prev) => (prev?.id === org.id ? null : org))}
+        className="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700 flex items-center gap-1 hover:bg-green-200 transition-colors cursor-pointer"
+        onClick={() =>
+          setOpenOrgDropdownId((prev) => (prev === org.id ? null : org.id))
+        }
       >
         <span>✅ Assigned</span>
-        <span className="text-[10px]">▼</span>
+        <span
+          className={`text-[10px] transition-transform ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        >
+          ▼
+        </span>
       </button>
       <PortalDropdown
         isOpen={isOpen}
-        onClose={() => setSelectedOrgForAdmin(null)}
+        onClose={() => setOpenOrgDropdownId(null)}
         triggerRef={triggerRef}
       >
         <div className="px-3 py-2 border-b border-slate-100">
@@ -49,19 +65,19 @@ const OrgAdminCell = ({ org, orgAdminUser, selectedOrgForAdmin, setSelectedOrgFo
         </div>
         <button
           type="button"
-          className="w-full text-left px-3 py-2 text-xs font-medium text-blue-600 hover:bg-slate-50 flex items-center gap-2"
+          className="w-full text-left px-3 py-2 text-xs font-medium text-blue-600 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
           onClick={() => {
-            setSelectedOrgForAdmin(org);
-            setShowAssignAdminModal(true);
+            setOpenOrgDropdownId(null);
+            onStartAssignAdmin(org, orgAdminUser);
           }}
         >
           ✏️ Change Org Admin
         </button>
         <button
           type="button"
-          className="w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-slate-50 flex items-center gap-2"
+          className="w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
           onClick={() => {
-            setSelectedOrgForAdmin(null);
+            setOpenOrgDropdownId(null);
             handleRemoveOrgAdmin(org.id, orgAdminUser.id);
           }}
         >
@@ -111,6 +127,12 @@ export default function DashboardHome() {
   // My Tasks for Developer / QA Tester
   const [myTasks, setMyTasks] = useState([]);
   const [myTasksLoading, setMyTasksLoading] = useState(false);
+
+  // Selected project for activity feed
+  const [selectedActivityProjectId, setSelectedActivityProjectId] = useState(() => {
+    const cached = localStorage.getItem("neuroforge_current_project_id");
+    return cached && !isNaN(Number(cached)) ? Number(cached) : null;
+  });
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -206,7 +228,7 @@ export default function DashboardHome() {
   // OrgAdmin Action Methods
   const [copiedOrgId, setCopiedOrgId] = useState(false);
   const handleCopyOrgId = (id) => {
-    const val = id || (user?.orgId ? `ORG-${user.orgId}` : "");
+    const val = id || user?.orgSpecificId || (user?.orgId ? `ORG-${user.orgId}` : "");
     if (!val) return;
     navigator.clipboard.writeText(val).then(() => {
       setCopiedOrgId(true);
@@ -302,95 +324,6 @@ export default function DashboardHome() {
     }
   }
 
-  async function handleViewUser(id) {
-    setUserActionError("");
-    try {
-      const res = await adminApi.getUserById(id);
-      setSelectedUser(res.data);
-    } catch (err) {
-      setUserActionError(extractErrorMessage(err));
-    }
-  }
-
-  async function handleUpdateUserRole(id, newRole) {
-    setUserActionError("");
-    try {
-      await adminApi.updateUserRole(id, newRole);
-      loadData();
-    } catch (err) {
-      setUserActionError(extractErrorMessage(err));
-    }
-  }
-
-  async function handleDeleteUser(u) {
-    if (u.role === ROLES.SUPER_ADMIN || u.role === "SUPER_ADMIN") {
-      setUserActionError("SUPER_ADMIN account cannot be deleted.");
-      return;
-    }
-    if (
-      !confirm(
-        `Are you sure you want to delete user "${u.fullName || u.email}"?`,
-      )
-    )
-      return;
-    setUserActionError("");
-
-    // Optimistic UI removal
-    const previousUsers = [...allUsers];
-    setAllUsers((prev) => prev.filter((item) => item.id !== u.id));
-
-    try {
-      await adminApi.deleteUser(u.id);
-    } catch (err) {
-      setUserActionError(extractErrorMessage(err));
-      setAllUsers(previousUsers);
-    }
-  }
-
-  const [updatingUserId, setUpdatingUserId] = useState(null);
-
-  async function handleToggleUserStatus(u, currentEnabled) {
-    if (u.role === ROLES.SUPER_ADMIN || u.role === "SUPER_ADMIN") {
-      setUserActionError("SUPER_ADMIN account cannot be disabled.");
-      return;
-    }
-    setUserActionError("");
-    setUpdatingUserId(u.id);
-    const nextEnabledState = !currentEnabled;
-
-    // Optimistic UI update for smooth zero-flicker transition
-    setAllUsers((prevUsers) =>
-      prevUsers.map((item) =>
-        item.id === u.id
-          ? {
-            ...item,
-            enabled: nextEnabledState,
-            status: nextEnabledState ? "ACTIVE" : "INACTIVE",
-          }
-          : item,
-      ),
-    );
-
-    try {
-      await adminApi.updateUserStatus(u.id, nextEnabledState);
-    } catch (err) {
-      setUserActionError(extractErrorMessage(err));
-      // Rollback on failure
-      setAllUsers((prevUsers) =>
-        prevUsers.map((item) =>
-          item.id === u.id
-            ? {
-              ...item,
-              enabled: currentEnabled,
-              status: currentEnabled ? "ACTIVE" : "INACTIVE",
-            }
-            : item,
-        ),
-      );
-    } finally {
-      setUpdatingUserId(null);
-    }
-  }
 
   const [supportEmail, setSupportEmail] = useState("");
   const [deletingOrgId, setDeletingOrgId] = useState(null);
@@ -438,11 +371,22 @@ export default function DashboardHome() {
   }
 
   // Org Admin Assign State
+  const [openOrgDropdownId, setOpenOrgDropdownId] = useState(null);
   const [showAssignAdminModal, setShowAssignAdminModal] = useState(false);
   const [selectedOrgForAdmin, setSelectedOrgForAdmin] = useState(null);
+  const [currentAdminUserForOrg, setCurrentAdminUserForOrg] = useState(null);
   const [selectedAdminUserId, setSelectedAdminUserId] = useState("");
   const [assignAdminError, setAssignAdminError] = useState("");
   const [assigningAdmin, setAssigningAdmin] = useState(false);
+
+  function handleStartAssignAdmin(org, currentAdmin = null) {
+    setOpenOrgDropdownId(null);
+    setSelectedOrgForAdmin(org);
+    setCurrentAdminUserForOrg(currentAdmin);
+    setSelectedAdminUserId("");
+    setAssignAdminError("");
+    setShowAssignAdminModal(true);
+  }
 
   async function handleAssignAdminSubmit(e) {
     e.preventDefault();
@@ -456,6 +400,7 @@ export default function DashboardHome() {
       );
       setShowAssignAdminModal(false);
       setSelectedOrgForAdmin(null);
+      setCurrentAdminUserForOrg(null);
       setSelectedAdminUserId("");
       loadData();
     } catch (err) {
@@ -481,13 +426,21 @@ export default function DashboardHome() {
     }
   }
 
+
+
+  const orgAdminUsers = useMemo(() => {
+    return allUsers.filter(
+      (u) => u.role === "ORG_ADMIN" || u.role === ROLES.ORG_ADMIN
+    );
+  }, [allUsers]);
+
   const userStats = useMemo(() => {
-    const active = allUsers.filter(
+    const active = orgAdminUsers.filter(
       (u) => u.enabled !== false && u.status !== "INACTIVE",
     ).length;
-    const inactive = allUsers.length - active;
-    return { total: allUsers.length, active, inactive };
-  }, [allUsers]);
+    const inactive = orgAdminUsers.length - active;
+    return { total: orgAdminUsers.length, active, inactive };
+  }, [orgAdminUsers]);
 
   if (!isSuperAdmin && !user?.orgId) {
     return <UnassignedOrgNotice />;
@@ -507,11 +460,21 @@ export default function DashboardHome() {
           </h2>
           <p className="text-sm text-slate-700 mt-1">
             {isSuperAdmin
-              ? `Super Admin Overview · ${orgs.length} Organization(s) · ${allUsers.length} Platform User(s)`
+              ? `Super Admin Overview · ${orgs.length} Organization(s) · ${orgAdminUsers.length} Org Admin(s)`
               : `${user?.orgName || "NeuroForge"} · ${stats.totalProjects} active project(s)`}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          {!isSuperAdmin && role === ROLES.ORG_ADMIN && (
+            <Link
+              to="/activities"
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-slate-200 hover:border-orange-300 bg-white hover:bg-orange-50 text-slate-700 hover:text-orange-700 transition-all flex items-center gap-1.5 shadow-xs"
+              title="View full audit log & activities"
+            >
+              <Activity size={14} className="text-orange-600" />
+              <span>Recent Activities</span>
+            </Link>
+          )}
           {isSuperAdmin ? (
             <button
               onClick={() => setShowCreateOrgModal(true)}
@@ -554,20 +517,21 @@ export default function DashboardHome() {
                 {orgs.length}
               </div>
             </div>
-            <div
-              className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between"
+            <Link
+              to="/admin/org-admins"
+              className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between cursor-pointer hover:shadow-md hover:border-orange-200 transition-all"
             >
               <div className="text-sm font-medium text-slate-600 mb-2 flex items-center justify-between">
-                <span>Total Users</span>
+                <span>Total Org Admins</span>
                 <IconUsers className="w-5 h-5 text-slate-400" />
               </div>
               <div className="text-3xl font-bold text-slate-900">
                 {userStats.total}
               </div>
-            </div>
+            </Link>
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
               <div className="text-sm font-medium text-slate-600 mb-2 flex items-center justify-between">
-                <span>Active Users</span>
+                <span>Active Org Admins</span>
                 <IconCheckCircle className="w-5 h-5 text-green-500" />
               </div>
               <div className="text-3xl font-bold text-slate-900">
@@ -576,7 +540,7 @@ export default function DashboardHome() {
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
               <div className="text-sm font-medium text-slate-600 mb-2 flex items-center justify-between">
-                <span>Inactive Users</span>
+                <span>Inactive Org Admins</span>
                 <IconClock className="w-5 h-5 text-orange-400" />
               </div>
               <div className="text-3xl font-bold text-slate-900">
@@ -595,15 +559,33 @@ export default function DashboardHome() {
                 {stats.totalProjects}
               </div>
             </div>
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
-              <div className="text-sm font-medium text-slate-600 mb-2 flex items-center justify-between">
-                <span>Total Members</span>
-                <IconUsers className="w-5 h-5 text-slate-400" />
+            {role === ROLES.ORG_ADMIN ? (
+              <Link
+                to="/org/members"
+                className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between cursor-pointer hover:shadow-md hover:border-orange-200 transition-all group"
+              >
+                <div className="text-sm font-medium text-slate-600 mb-2 flex items-center justify-between">
+                  <span className="group-hover:text-orange-600 transition-colors">Total Members</span>
+                  <IconUsers className="w-5 h-5 text-slate-400 group-hover:text-orange-500 transition-colors" />
+                </div>
+                <div className="text-3xl font-bold text-slate-900 flex items-baseline justify-between">
+                  <span>{stats.totalMembers}</span>
+                  <span className="text-xs font-semibold text-orange-600 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    View Members →
+                  </span>
+                </div>
+              </Link>
+            ) : (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+                <div className="text-sm font-medium text-slate-600 mb-2 flex items-center justify-between">
+                  <span>Total Members</span>
+                  <IconUsers className="w-5 h-5 text-slate-400" />
+                </div>
+                <div className="text-3xl font-bold text-slate-900">
+                  {stats.totalMembers}
+                </div>
               </div>
-              <div className="text-3xl font-bold text-slate-900">
-                {stats.totalMembers}
-              </div>
-            </div>
+            )}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
               <div className="text-sm font-medium text-slate-600 mb-2 flex items-center justify-between">
                 <span>Total Teams</span>
@@ -623,18 +605,27 @@ export default function DashboardHome() {
                 </div>
                 <div className="flex items-baseline justify-between mt-1">
                   <div className="text-2xl font-mono font-bold text-orange-600">
-                    {user?.orgId ? `ORG-${user.orgId}` : "—"}
+                    {user?.orgSpecificId || (user?.orgId ? `ORG-${user.orgId}` : "—")}
                   </div>
-                  {user?.orgId && (
-                    <button
-                      type="button"
-                      onClick={() => handleCopyOrgId()}
-                      className="px-2.5 py-1 text-xs font-semibold rounded-md border border-orange-300 bg-white hover:bg-orange-50 text-orange-700 transition-colors shadow-xs cursor-pointer"
-                      title="Copy Organization Specific ID"
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to="/org/settings"
+                      className="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-colors shadow-xs"
+                      title="Edit Organization Specific ID"
                     >
-                      {copiedOrgId ? "✓ Copied" : "Copy ID"}
-                    </button>
-                  )}
+                      Edit ID
+                    </Link>
+                    {user?.orgId && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopyOrgId()}
+                        className="px-2.5 py-1 text-xs font-semibold rounded-md border border-orange-300 bg-white hover:bg-orange-50 text-orange-700 transition-colors shadow-xs cursor-pointer"
+                        title="Copy Organization Specific ID"
+                      >
+                        {copiedOrgId ? "✓ Copied" : "Copy ID"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -715,19 +706,16 @@ export default function DashboardHome() {
                               <OrgAdminCell
                                 org={org}
                                 orgAdminUser={orgAdminUser}
-                                selectedOrgForAdmin={selectedOrgForAdmin}
-                                setSelectedOrgForAdmin={setSelectedOrgForAdmin}
-                                setShowAssignAdminModal={setShowAssignAdminModal}
+                                openOrgDropdownId={openOrgDropdownId}
+                                setOpenOrgDropdownId={setOpenOrgDropdownId}
+                                onStartAssignAdmin={handleStartAssignAdmin}
                                 handleRemoveOrgAdmin={handleRemoveOrgAdmin}
                               />
                             ) : (
                               <button
                                 type="button"
-                                className="px-3 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-                                onClick={() => {
-                                  setSelectedOrgForAdmin(org);
-                                  setShowAssignAdminModal(true);
-                                }}
+                                className="px-3 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                                onClick={() => handleStartAssignAdmin(org, null)}
                               >
                                 + Assign Admin
                               </button>
@@ -751,144 +739,74 @@ export default function DashboardHome() {
             )}
           </div>
         </>
-      ) : (
-        <>
-          {/* Projects List for Standard Users */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold text-slate-800">
-                {role === ROLES.CLIENT ? "Project progress" : "Live Projects"}
-              </h3>
-              <Link
-                to="/projects"
-                className="text-sm font-medium text-orange-600 hover:text-orange-700 flex items-center gap-1"
-              >
-                View all <IconArrowRight size={13} />
-              </Link>
-            </div>
-
-            {loading ? (
-              <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
-                <IconProjects className="w-10 h-10 text-slate-300 mb-3" />
-                <p className="text-sm font-medium text-slate-600">Loading...</p>
-              </div>
-            ) : projects.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
-                <IconProjects className="w-10 h-10 text-slate-300 mb-3" />
-                <p className="text-sm font-medium text-slate-600">
-                  No projects found
-                </p>
-                <p className="text-xs text-slate-400 mt-1">
-                  Get started by creating a new project.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {projects.slice(0, 5).map((p) => {
-                  const pct = p.progressPercent ?? 0;
-                  return (
-                    <div key={p.id} className="block bg-slate-50 rounded-lg border border-slate-100 p-5 hover:border-orange-200 transition-colors group relative">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex-1 cursor-pointer" onClick={() => window.location.href = `/projects/${p.id}`}>
-                          <div className="flex items-center gap-3 mb-1">
-                            <span className="text-base font-semibold text-slate-900 group-hover:text-orange-600 transition-colors">
-                              {p.name}
-                            </span>
-                            <HealthBadge status={p.health} />
-                          </div>
-                          <span className="inline-block px-2 py-0.5 bg-slate-200 text-slate-700 text-[10px] font-bold uppercase tracking-wider rounded-sm mt-1">
-                            {formatEnum(p.methodology)}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                          <Link
-                            to={`/projects/${p.id}/specs`}
-                            className="px-3 py-1.5 bg-white border border-slate-200 shadow-sm hover:border-orange-300 hover:bg-orange-50 text-slate-700 hover:text-orange-700 text-xs font-semibold rounded-md transition-all z-10"
-                          >
-                            Generate / View Specs
-                          </Link>
-
-                          <div className="flex items-center gap-3 w-32 cursor-pointer" onClick={() => window.location.href = `/projects/${p.id}`}>
-                            <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-orange-500 rounded-full transition-all duration-500"
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-                            <span className="text-sm font-bold text-slate-700 w-10 text-right">
-                              {pct}%
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* My Tasks - Developer & QA Tester only */}
-          {([ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER].includes(role) || role === ROLES.QA_TESTER) && (
+      ) : role === ROLES.ORG_ADMIN ? (
+        <div className="space-y-6">
+            {/* Live Projects List */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                  My Tasks
-                </h3>
-                <span className="text-xs font-medium text-slate-500">{myTasks.length} task(s)</span>
+                <h3 className="text-lg font-semibold text-slate-800">Live Projects</h3>
+                <Link
+                  to="/projects"
+                  className="text-sm font-medium text-orange-600 hover:text-orange-700 flex items-center gap-1"
+                >
+                  View all <IconArrowRight size={13} />
+                </Link>
               </div>
-              {myTasksLoading ? (
+
+              {loading ? (
                 <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
-                  <svg className="w-8 h-8 text-slate-300 mb-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
-                  <p className="text-sm font-medium text-slate-600">Loading your tasks…</p>
+                  <IconProjects className="w-10 h-10 text-slate-300 mb-3" />
+                  <p className="text-sm font-medium text-slate-600">Loading...</p>
                 </div>
-              ) : myTasks.length === 0 ? (
+              ) : projects.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
-                  <svg className="w-10 h-10 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                  <p className="text-sm font-medium text-slate-600">No tasks assigned to you yet</p>
-                  <p className="text-xs text-slate-400 mt-1">Your Project Manager will assign tasks when they plan a sprint.</p>
+                  <IconProjects className="w-10 h-10 text-slate-300 mb-3" />
+                  <p className="text-sm font-medium text-slate-600">
+                    No projects found
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Get started by creating a new project.
+                  </p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-100">
-                  {myTasks.map((task) => {
-                    const statusColors = {
-                      TODO: 'bg-slate-100 text-slate-700',
-                      IN_PROGRESS: 'bg-blue-100 text-blue-700',
-                      CODE_REVIEW: 'bg-purple-100 text-purple-700',
-                      TESTING: 'bg-yellow-100 text-yellow-700',
-                      DONE: 'bg-green-100 text-green-700',
-                    };
-                    const priorityColors = {
-                      HIGH: 'bg-red-100 text-red-700',
-                      CRITICAL: 'bg-red-200 text-red-900',
-                      MEDIUM: 'bg-orange-100 text-orange-700',
-                      LOW: 'bg-slate-100 text-slate-600',
-                    };
-                    const sColor = statusColors[task.status] || 'bg-slate-100 text-slate-700';
-                    const pColor = priorityColors[task.priority] || 'bg-slate-100 text-slate-600';
-                    const fmtEnum = (v) => v ? v.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '—';
+                <div className="space-y-3">
+                  {projects.slice(0, 5).map((p) => {
+                    const pct = p.progressPercent ?? 0;
                     return (
-                      <div key={task.id} className="flex items-start gap-4 py-4 hover:bg-slate-50 transition-colors rounded-lg px-2">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-50 border border-orange-100 flex items-center justify-center text-xs font-bold text-orange-600">
-                          {task.storyPoints ?? '?'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 truncate">{task.title}</p>
-                          <div className="flex flex-wrap items-center gap-2 mt-1">
-                            <span className="text-xs text-slate-500">{task.projectName}</span>
-                            {task.sprintName && (
-                              <span className="text-xs text-slate-400 flex items-center gap-1">
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                {task.sprintName}
+                      <div key={p.id} className="block bg-slate-50 rounded-lg border border-slate-100 p-5 hover:border-orange-200 transition-colors group relative">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="flex-1 cursor-pointer" onClick={() => window.location.href = `/projects/${p.id}`}>
+                            <div className="flex items-center gap-3 mb-1">
+                              <span className="text-base font-semibold text-slate-900 group-hover:text-orange-600 transition-colors">
+                                {p.name}
                               </span>
-                            )}
+                              <HealthBadge status={p.health} />
+                            </div>
+                            <span className="inline-block px-2 py-0.5 bg-slate-200 text-slate-700 text-[10px] font-bold uppercase tracking-wider rounded-sm mt-1">
+                              {formatEnum(p.methodology)}
+                            </span>
                           </div>
-                        </div>
-                        <div className="flex-shrink-0 flex items-center gap-2">
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pColor}`}>{fmtEnum(task.priority)}</span>
-                          <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${sColor}`}>{fmtEnum(task.status)}</span>
+
+                          <div className="flex items-center gap-4">
+                            <Link
+                              to={`/projects/${p.id}/specs`}
+                              className="px-3 py-1.5 bg-white border border-slate-200 shadow-sm hover:border-orange-300 hover:bg-orange-50 text-slate-700 hover:text-orange-700 text-xs font-semibold rounded-md transition-all z-10"
+                            >
+                              Generate / View Specs
+                            </Link>
+
+                            <div className="flex items-center gap-3 w-32 cursor-pointer" onClick={() => window.location.href = `/projects/${p.id}`}>
+                              <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-orange-500 rounded-full transition-all duration-500"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-bold text-slate-700 w-10 text-right">
+                                {pct}%
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
@@ -896,64 +814,67 @@ export default function DashboardHome() {
                 </div>
               )}
             </div>
-          )}
 
-          {/* Organization Registration Key Info Banner for ORG_ADMIN */}
-          {role === ROLES.ORG_ADMIN && user?.orgId && (
-            <div className="bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50/50 border border-orange-200 rounded-xl p-5 mt-6 shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-orange-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
-                    #
+            {/* Organization Registration Key Info Banner for ORG_ADMIN */}
+            {user?.orgId && (
+              <div className="bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50/50 border border-orange-200 rounded-xl p-5 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-orange-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+                      #
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                          Organization Specific ID
+                        </h4>
+                        <span className="text-xs bg-orange-200/80 text-orange-800 font-semibold px-2 py-0.5 rounded-full">
+                          For Team Member Registration
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-2 mt-1">
+                        <span className="text-2xl font-mono font-extrabold text-orange-700 tracking-wider">
+                          {user?.orgSpecificId || (user?.orgId ? `ORG-${user.orgId}` : '—')}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
+                        Share this ID with new team members. When they register on the sign-up page, they enter this ID in the registration text box to join <strong>{user?.orgName || 'your organization'}</strong>. You will receive their join request below for approval.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                        Organization Specific ID
-                      </h4>
-                      <span className="text-xs bg-orange-200/80 text-orange-800 font-semibold px-2 py-0.5 rounded-full">
-                        For Team Member Registration
-                      </span>
-                    </div>
-                    <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-2xl font-mono font-extrabold text-orange-700 tracking-wider">
-                        {`ORG-${user.orgId}`}
-                      </span>
-                      <span className="text-xs font-mono text-slate-500">
-                        (or numeric: {user.orgId})
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
-                      Share this ID with new team members. When they register on the sign-up page, they enter this ID in the registration text box to join <strong>{user?.orgName || 'your organization'}</strong>. You will receive their join request below for approval.
-                    </p>
+                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                    <Link
+                      to="/org/settings"
+                      className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-300 rounded-lg shadow-xs transition-all flex items-center gap-1.5"
+                    >
+                      Edit ID
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyOrgId()}
+                      className="px-4 py-2 bg-white hover:bg-orange-50 text-orange-700 text-xs font-bold border border-orange-300 rounded-lg shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                      {copiedOrgId ? (
+                        <>
+                          <IconCheckCircle className="w-4 h-4 text-emerald-600" />
+                          <span>Copied to Clipboard!</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                          <span>Copy Org ID</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleCopyOrgId()}
-                  className="px-4 py-2 bg-white hover:bg-orange-50 text-orange-700 text-xs font-bold border border-orange-300 rounded-lg shadow-xs transition-all flex items-center gap-2 shrink-0 self-start sm:self-center cursor-pointer"
-                >
-                  {copiedOrgId ? (
-                    <>
-                      <IconCheckCircle className="w-4 h-4 text-emerald-600" />
-                      <span>Copied to Clipboard!</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                      <span>Copy Org ID</span>
-                    </>
-                  )}
-                </button>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Pending Join Requests for ORG_ADMIN */}
-          {role === ROLES.ORG_ADMIN && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mt-6">
+            {/* Pending Join Requests for ORG_ADMIN */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-semibold text-slate-800">
                   Pending Join Requests
@@ -1036,88 +957,192 @@ export default function DashboardHome() {
                 </div>
               )}
             </div>
+
+            {/* Recent Activities for Org Admin */}
+            <RecentActivities />
+        </div>
+      ) : (
+        <>
+          {/* Projects List for Standard Users */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-semibold text-slate-800">
+                {role === ROLES.CLIENT ? "Project progress" : "Live Projects"}
+              </h3>
+              <Link
+                to="/projects"
+                className="text-sm font-medium text-orange-600 hover:text-orange-700 flex items-center gap-1"
+              >
+                View all <IconArrowRight size={13} />
+              </Link>
+            </div>
+
+            {loading ? (
+              <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
+                <IconProjects className="w-10 h-10 text-slate-300 mb-3" />
+                <p className="text-sm font-medium text-slate-600">Loading...</p>
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
+                <IconProjects className="w-10 h-10 text-slate-300 mb-3" />
+                <p className="text-sm font-medium text-slate-600">
+                  No projects found
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Get started by creating a new project.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {projects.slice(0, 5).map((p) => {
+                  const pct = p.progressPercent ?? 0;
+                  return (
+                    <div key={p.id} className="block bg-slate-50 rounded-lg border border-slate-100 p-5 hover:border-orange-200 transition-colors group relative">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex-1 cursor-pointer" onClick={() => window.location.href = `/projects/${p.id}`}>
+                          <div className="flex items-center gap-3 mb-1">
+                            <span className="text-base font-semibold text-slate-900 group-hover:text-orange-600 transition-colors">
+                              {p.name}
+                            </span>
+                            <HealthBadge status={p.health} />
+                          </div>
+                          <span className="inline-block px-2 py-0.5 bg-slate-200 text-slate-700 text-[10px] font-bold uppercase tracking-wider rounded-sm mt-1">
+                            {formatEnum(p.methodology)}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                          <Link
+                            to={`/projects/${p.id}/specs`}
+                            className="px-3 py-1.5 bg-white border border-slate-200 shadow-sm hover:border-orange-300 hover:bg-orange-50 text-slate-700 hover:text-orange-700 text-xs font-semibold rounded-md transition-all z-10"
+                          >
+                            Generate / View Specs
+                          </Link>
+
+                          <div className="flex items-center gap-3 w-32 cursor-pointer" onClick={() => window.location.href = `/projects/${p.id}`}>
+                            <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-orange-500 rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-bold text-slate-700 w-10 text-right">
+                              {pct}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Recent Activities for Project Manager */}
+          {role === ROLES.PROJECT_MANAGER && (
+            <div className="space-y-3">
+              {projects.length > 1 && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Project Scope:</span>
+                    <select
+                      value={selectedActivityProjectId || ""}
+                      onChange={(e) => {
+                        const val = e.target.value ? Number(e.target.value) : null;
+                        setSelectedActivityProjectId(val);
+                        if (val) localStorage.setItem("neuroforge_current_project_id", val);
+                      }}
+                      className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500 font-medium text-slate-800 cursor-pointer"
+                    >
+                      <option value="">All My Projects</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <Link
+                    to="/activities"
+                    className="text-xs font-semibold text-orange-600 hover:text-orange-700 flex items-center gap-1 self-start sm:self-auto"
+                  >
+                    Full Activity Log <IconArrowRight size={13} />
+                  </Link>
+                </div>
+              )}
+              <RecentActivities projectId={selectedActivityProjectId || (projects.length === 1 ? projects[0].id : null)} />
+            </div>
           )}
 
-          {/* Pending User Approvals for ORG_ADMIN */}
-          {role === ROLES.ORG_ADMIN && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mt-6">
+          {/* My Tasks - Developer & QA Tester only */}
+          {([ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER].includes(role) || role === ROLES.QA_TESTER) && (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-slate-800">
-                  Pending User Approvals
+                <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                  My Tasks
                 </h3>
-                <span className="text-xs font-medium text-slate-500">
-                  {pendingUsers.length} total
-                </span>
+                <span className="text-xs font-medium text-slate-500">{myTasks.length} task(s)</span>
               </div>
-
-              {loading ? (
+              {myTasksLoading ? (
                 <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
-                  <IconUsers className="w-10 h-10 text-slate-300 mb-3" />
-                  <p className="text-sm font-medium text-slate-600">
-                    Loading...
-                  </p>
+                  <svg className="w-8 h-8 text-slate-300 mb-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
+                  <p className="text-sm font-medium text-slate-600">Loading your tasks…</p>
                 </div>
-              ) : pendingUsers.length === 0 ? (
+              ) : myTasks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
-                  <IconUsers className="w-10 h-10 text-slate-300 mb-3" />
-                  <p className="text-sm font-medium text-slate-600">
-                    No pending user approvals
-                  </p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    You're all caught up.
-                  </p>
+                  <svg className="w-10 h-10 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                  <p className="text-sm font-medium text-slate-600">No tasks assigned to you yet</p>
+                  <p className="text-xs text-slate-400 mt-1">Your Project Manager will assign tasks when they plan a sprint.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-700">
-                    <thead className="text-xs font-medium text-slate-500 uppercase border-b border-slate-200">
-                      <tr>
-                        <th className="pb-3 px-2">Name</th>
-                        <th className="pb-3 px-2">Email</th>
-                        <th className="pb-3 px-2">Role</th>
-                        <th className="pb-3 px-2 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {pendingUsers.map((req) => (
-                        <tr key={req.id} className="hover:bg-slate-50">
-                          <td className="py-4 px-2 font-medium text-slate-900">
-                            {req.fullName || req.name}
-                          </td>
-                          <td className="py-4 px-2 text-slate-500">{req.email}</td>
-                          <td className="py-4 px-2">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
-                              {req.role.replaceAll("_", " ")}
-                            </span>
-                          </td>
-                          <td className="py-4 px-2 text-right">
-                            <div className="flex justify-end gap-2">
-                              <button
-                                type="button"
-                                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-md transition-colors"
-                                onClick={() => handleApproveUser(req.id)}
-                              >
-                                Approve
-                              </button>
-                              <button
-                                type="button"
-                                className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-md transition-colors"
-                                onClick={() => handleRejectUser(req.id)}
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="divide-y divide-slate-100">
+                  {myTasks.map((task) => {
+                    const statusColors = {
+                      TODO: 'bg-slate-100 text-slate-700',
+                      IN_PROGRESS: 'bg-blue-100 text-blue-700',
+                      CODE_REVIEW: 'bg-purple-100 text-purple-700',
+                      TESTING: 'bg-yellow-100 text-yellow-700',
+                      DONE: 'bg-green-100 text-green-700',
+                    };
+                    const priorityColors = {
+                      HIGH: 'bg-red-100 text-red-700',
+                      CRITICAL: 'bg-red-200 text-red-900',
+                      MEDIUM: 'bg-orange-100 text-orange-700',
+                      LOW: 'bg-slate-100 text-slate-600',
+                    };
+                    const sColor = statusColors[task.status] || 'bg-slate-100 text-slate-700';
+                    const pColor = priorityColors[task.priority] || 'bg-slate-100 text-slate-600';
+                    const fmtEnum = (v) => v ? v.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '—';
+                    return (
+                      <div key={task.id} className="flex items-start gap-4 py-4 hover:bg-slate-50 transition-colors rounded-lg px-2">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-50 border border-orange-100 flex items-center justify-center text-xs font-bold text-orange-600">
+                          {task.storyPoints ?? '?'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 truncate">{task.title}</p>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className="text-xs text-slate-500">{task.projectName}</span>
+                            {task.sprintName && (
+                              <span className="text-xs text-slate-400 flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                {task.sprintName}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0 flex items-center gap-2">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pColor}`}>{fmtEnum(task.priority)}</span>
+                          <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${sColor}`}>{fmtEnum(task.status)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
           )}
-
-          <RecentActivities />
         </>
       )}
 
@@ -1323,70 +1348,34 @@ export default function DashboardHome() {
         </div>
       )}
 
-      {/* View User Details Modal */}
-      {selectedUser && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">
-              User Details
-            </h3>
-            <div className="space-y-3 text-sm text-slate-700 bg-slate-50 p-4 rounded-lg border border-slate-100">
-              <p>
-                <strong className="text-slate-900">ID:</strong>{" "}
-                <span className="font-mono text-xs">{selectedUser.id}</span>
-              </p>
-              <p>
-                <strong className="text-slate-900">Full Name:</strong>{" "}
-                {selectedUser.fullName || selectedUser.name || "—"}
-              </p>
-              <p>
-                <strong className="text-slate-900">Email:</strong>{" "}
-                {selectedUser.email}
-              </p>
-              <p>
-                <strong className="text-slate-900">Phone:</strong>{" "}
-                {selectedUser.phoneNumber || selectedUser.phone || "—"}
-              </p>
-              <p>
-                <strong className="text-slate-900">Role:</strong>{" "}
-                {formatEnum(selectedUser.role)}
-              </p>
-              <p>
-                <strong className="text-slate-900">Status:</strong>{" "}
-                {selectedUser.enabled !== false ? "Active" : "Inactive"}
-              </p>
-              {selectedUser.organizationName && (
-                <p>
-                  <strong className="text-slate-900">Organization:</strong>{" "}
-                  {selectedUser.organizationName}
-                </p>
-              )}
-            </div>
-            <div className="flex justify-end mt-6">
-              <button
-                type="button"
-                className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-                onClick={() => setSelectedUser(null)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Assign Org Admin Modal */}
+      {/* Assign / Change Org Admin Modal */}
       {showAssignAdminModal && selectedOrgForAdmin && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">
-              Assign Org Admin
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">
+              {currentAdminUserForOrg ? "Change Organization Admin" : "Assign Organization Admin"}
             </h3>
             <p className="text-sm text-slate-600 mb-4">
-              Select an admin for{" "}
-              <strong className="text-slate-900">
-                {selectedOrgForAdmin.name}
-              </strong>
+              {currentAdminUserForOrg ? (
+                <>
+                  Select a new admin for{" "}
+                  <strong className="text-slate-900">{selectedOrgForAdmin.name}</strong>.
+                  The previous admin (
+                  <span className="font-semibold text-slate-800">
+                    {currentAdminUserForOrg.fullName ||
+                      currentAdminUserForOrg.name ||
+                      currentAdminUserForOrg.email}
+                  </span>
+                  ) will be demoted to Developer.
+                </>
+              ) : (
+                <>
+                  Select an admin for{" "}
+                  <strong className="text-slate-900">
+                    {selectedOrgForAdmin.name}
+                  </strong>.
+                </>
+              )}
             </p>
             {assignAdminError && (
               <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-lg border border-red-200 text-sm">
@@ -1396,44 +1385,66 @@ export default function DashboardHome() {
             <form onSubmit={handleAssignAdminSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Select User *
+                  Select Org Admin *
                 </label>
-                <select
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
-                  value={selectedAdminUserId}
-                  onChange={(e) => setSelectedAdminUserId(e.target.value)}
-                  required
-                >
-                  <option value="" disabled>
-                    Select a user...
-                  </option>
-                  {allUsers
-                    .filter(
-                      (u) =>
-                        u.role !== "SUPER_ADMIN" &&
-                        u.role !== ROLES.SUPER_ADMIN &&
-                        !u.organizationId &&
-                        !u.organizationName,
-                    )
-                    .map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.fullName || u.name} ({u.email}) -{" "}
-                        {formatEnum(u.role)}
-                      </option>
-                    ))}
-                </select>
-                <p className="text-xs text-slate-500 mt-2">
-                  Assigning this user will grant them full Org Admin control for{" "}
-                  {selectedOrgForAdmin.name}.
-                </p>
+                {(() => {
+                  const candidateOrgAdmins = allUsers.filter((u) => {
+                    const role = (u.role || "").toUpperCase();
+                    const isOrgAdmin = role === "ORG_ADMIN" || u.role === ROLES.ORG_ADMIN;
+                    if (!isOrgAdmin) return false;
+                    // Only suggest unassigned Org Admins
+                    const isAssigned = Boolean(u.organizationId || u.organizationName || u.orgId);
+                    if (isAssigned) return false;
+                    if (
+                      currentAdminUserForOrg &&
+                      Number(u.id) === Number(currentAdminUserForOrg.id)
+                    ) {
+                      return false;
+                    }
+                    return true;
+                  });
+
+                  return (
+                    <>
+                      <select
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
+                        value={selectedAdminUserId}
+                        onChange={(e) => setSelectedAdminUserId(e.target.value)}
+                        required
+                        disabled={candidateOrgAdmins.length === 0}
+                      >
+                        <option value="" disabled>
+                          {candidateOrgAdmins.length === 0
+                            ? "No unassigned Org Admins available"
+                            : "Select an unassigned Org Admin..."}
+                        </option>
+                        {candidateOrgAdmins.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.fullName || u.name} ({u.email}) — Unassigned Org Admin
+                          </option>
+                        ))}
+                      </select>
+                      {candidateOrgAdmins.length === 0 ? (
+                        <p className="text-xs text-amber-600 mt-2 font-medium">
+                          ⚠️ No unassigned accounts with the Org Admin role are available. Only unassigned Org Admins can be selected.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-500 mt-2">
+                          Only unassigned users with the Org Admin role are suggested. Assigning will grant them full admin control for {selectedOrgForAdmin.name}.
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                  className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
                   onClick={() => {
                     setShowAssignAdminModal(false);
                     setSelectedOrgForAdmin(null);
+                    setCurrentAdminUserForOrg(null);
                     setSelectedAdminUserId("");
                   }}
                 >
@@ -1441,10 +1452,14 @@ export default function DashboardHome() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-70"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-70 cursor-pointer"
                   disabled={assigningAdmin || !selectedAdminUserId}
                 >
-                  {assigningAdmin ? "Assigning..." : "Assign Admin"}
+                  {assigningAdmin
+                    ? "Saving..."
+                    : currentAdminUserForOrg
+                    ? "Change Admin"
+                    : "Assign Admin"}
                 </button>
               </div>
             </form>

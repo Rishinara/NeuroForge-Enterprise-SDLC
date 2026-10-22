@@ -7,24 +7,39 @@ import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import PortalDropdown from '../components/PortalDropdown.jsx'
 import UnassignedOrgNotice from '../components/UnassignedOrgNotice.jsx'
 
-const OrgAdminCell = ({ org, orgAdminUser, selectedOrgForAdmin, setSelectedOrgForAdmin, setShowAssignAdminModal, handleRemoveOrgAdmin }) => {
+const OrgAdminCell = ({
+  org,
+  orgAdminUser,
+  openOrgDropdownId,
+  setOpenOrgDropdownId,
+  onStartAssignAdmin,
+  handleRemoveOrgAdmin,
+}) => {
   const triggerRef = useRef(null);
-  const isOpen = selectedOrgForAdmin?.id === org.id;
+  const isOpen = openOrgDropdownId === org.id;
 
   return (
     <div className="relative inline-block">
       <button
         ref={triggerRef}
         type="button"
-        className="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700 flex items-center gap-1 hover:bg-green-200 transition-colors"
-        onClick={() => setSelectedOrgForAdmin((prev) => (prev?.id === org.id ? null : org))}
+        className="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700 flex items-center gap-1 hover:bg-green-200 transition-colors cursor-pointer"
+        onClick={() =>
+          setOpenOrgDropdownId((prev) => (prev === org.id ? null : org.id))
+        }
       >
         <span>✅ Assigned</span>
-        <span className="text-[10px]">▼</span>
+        <span
+          className={`text-[10px] transition-transform ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        >
+          ▼
+        </span>
       </button>
       <PortalDropdown
         isOpen={isOpen}
-        onClose={() => setSelectedOrgForAdmin(null)}
+        onClose={() => setOpenOrgDropdownId(null)}
         triggerRef={triggerRef}
       >
         <div className="px-3 py-2 border-b border-slate-100">
@@ -37,19 +52,19 @@ const OrgAdminCell = ({ org, orgAdminUser, selectedOrgForAdmin, setSelectedOrgFo
         </div>
         <button
           type="button"
-          className="w-full text-left px-3 py-2 text-xs font-medium text-blue-600 hover:bg-slate-50 flex items-center gap-2"
+          className="w-full text-left px-3 py-2 text-xs font-medium text-blue-600 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
           onClick={() => {
-            setSelectedOrgForAdmin(org);
-            setShowAssignAdminModal(true);
+            setOpenOrgDropdownId(null);
+            onStartAssignAdmin(org, orgAdminUser);
           }}
         >
           ✏️ Change Org Admin
         </button>
         <button
           type="button"
-          className="w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-slate-50 flex items-center gap-2"
+          className="w-full text-left px-3 py-2 text-xs font-medium text-red-600 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
           onClick={() => {
-            setSelectedOrgForAdmin(null);
+            setOpenOrgDropdownId(null);
             handleRemoveOrgAdmin(org.id, orgAdminUser.id);
           }}
         >
@@ -78,11 +93,22 @@ export default function OrganizationsPage() {
   const [createOrgError, setCreateOrgError] = useState('')
   const [deletingOrgId, setDeletingOrgId] = useState(null)
 
+  const [openOrgDropdownId, setOpenOrgDropdownId] = useState(null)
   const [showAssignAdminModal, setShowAssignAdminModal] = useState(false)
   const [selectedOrgForAdmin, setSelectedOrgForAdmin] = useState(null)
+  const [currentAdminUserForOrg, setCurrentAdminUserForOrg] = useState(null)
   const [selectedAdminUserId, setSelectedAdminUserId] = useState('')
   const [assignAdminError, setAssignAdminError] = useState('')
   const [assigningAdmin, setAssigningAdmin] = useState(false)
+
+  function handleStartAssignAdmin(org, currentAdmin = null) {
+    setOpenOrgDropdownId(null)
+    setSelectedOrgForAdmin(org)
+    setCurrentAdminUserForOrg(currentAdmin)
+    setSelectedAdminUserId('')
+    setAssignAdminError('')
+    setShowAssignAdminModal(true)
+  }
 
   const loadData = useCallback(async () => {
     if (!isSuperAdmin) {
@@ -155,6 +181,7 @@ export default function OrganizationsPage() {
       await orgApi.assignOrgAdmin(selectedOrgForAdmin.id, Number(selectedAdminUserId))
       setShowAssignAdminModal(false)
       setSelectedOrgForAdmin(null)
+      setCurrentAdminUserForOrg(null)
       setSelectedAdminUserId('')
       loadData()
     } catch (err) {
@@ -278,19 +305,16 @@ export default function OrganizationsPage() {
                           <OrgAdminCell
                             org={org}
                             orgAdminUser={orgAdminUser}
-                            selectedOrgForAdmin={selectedOrgForAdmin}
-                            setSelectedOrgForAdmin={setSelectedOrgForAdmin}
-                            setShowAssignAdminModal={setShowAssignAdminModal}
+                            openOrgDropdownId={openOrgDropdownId}
+                            setOpenOrgDropdownId={setOpenOrgDropdownId}
+                            onStartAssignAdmin={handleStartAssignAdmin}
                             handleRemoveOrgAdmin={handleRemoveOrgAdmin}
                           />
                         ) : (
                           <button
                             type="button"
-                            className="px-3 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-colors"
-                            onClick={() => {
-                              setSelectedOrgForAdmin(org)
-                              setShowAssignAdminModal(true)
-                            }}
+                            className="px-3 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-colors cursor-pointer"
+                            onClick={() => handleStartAssignAdmin(org, null)}
                           >
                             + Assign Admin
                           </button>
@@ -389,32 +413,85 @@ export default function OrganizationsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-              <h2 className="text-lg font-bold text-slate-900">Assign Organization Admin</h2>
-              <p className="text-xs text-slate-500 mt-1">For {selectedOrgForAdmin.name}</p>
+              <h2 className="text-lg font-bold text-slate-900">
+                {currentAdminUserForOrg ? 'Change Organization Admin' : 'Assign Organization Admin'}
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                {currentAdminUserForOrg ? (
+                  <>
+                    Select a new admin for <strong className="text-slate-900">{selectedOrgForAdmin.name}</strong>. The previous admin (<span className="font-semibold text-slate-700">{currentAdminUserForOrg.fullName || currentAdminUserForOrg.email}</span>) will be demoted to Developer.
+                  </>
+                ) : (
+                  <>For {selectedOrgForAdmin.name}</>
+                )}
+              </p>
             </div>
             <form onSubmit={handleAssignAdminSubmit} className="p-6">
               {assignAdminError && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">{assignAdminError}</div>}
               <div className="mb-6">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Select User</label>
-                <select
-                  required
-                  className="w-full text-sm border-slate-300 rounded-lg shadow-sm focus:border-orange-500 focus:ring-orange-500"
-                  value={selectedAdminUserId}
-                  onChange={(e) => setSelectedAdminUserId(e.target.value)}
-                >
-                  <option value="">-- Choose a user --</option>
-                  {allUsers
-                    .filter((u) => u.organizationName === selectedOrgForAdmin.name && u.role !== 'SUPER_ADMIN' && u.role !== 'ORG_ADMIN')
-                    .map((u) => (
-                      <option key={u.id} value={u.id}>{u.fullName || u.name || u.email}</option>
-                    ))}
-                </select>
-                <p className="text-xs text-slate-500 mt-2">Only unassigned members belonging to this organization are shown.</p>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Select Org Admin</label>
+                {(() => {
+                  const candidateOrgAdmins = allUsers.filter((u) => {
+                    const role = (u.role || '').toUpperCase()
+                    const isOrgAdmin = role === 'ORG_ADMIN' || u.role === ROLES.ORG_ADMIN
+                    if (!isOrgAdmin) return false
+                    // Only suggest unassigned Org Admins
+                    const isAssigned = Boolean(u.organizationId || u.organizationName || u.orgId)
+                    if (isAssigned) return false
+                    if (currentAdminUserForOrg && Number(u.id) === Number(currentAdminUserForOrg.id)) return false
+                    return true
+                  })
+
+                  return (
+                    <>
+                      <select
+                        required
+                        className="w-full text-sm border-slate-300 rounded-lg shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                        value={selectedAdminUserId}
+                        onChange={(e) => setSelectedAdminUserId(e.target.value)}
+                        disabled={candidateOrgAdmins.length === 0}
+                      >
+                        <option value="">
+                          {candidateOrgAdmins.length === 0 ? '-- No unassigned Org Admins available --' : '-- Choose an unassigned Org Admin --'}
+                        </option>
+                        {candidateOrgAdmins.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.fullName || u.name || u.email} ({u.email}) — Unassigned Org Admin
+                          </option>
+                        ))}
+                      </select>
+                      {candidateOrgAdmins.length === 0 ? (
+                        <p className="text-xs text-amber-600 mt-2 font-medium">
+                          ⚠️ No unassigned accounts with the Org Admin role are available. Only unassigned Org Admins can be selected.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-500 mt-2">
+                          Only unassigned users with the Org Admin role are suggested. Assigning will grant them full admin control for {selectedOrgForAdmin.name}.
+                        </p>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
               <div className="flex justify-end gap-3">
-                <button type="button" className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" onClick={() => setShowAssignAdminModal(false)}>Cancel</button>
-                <button type="submit" disabled={assigningAdmin || !selectedAdminUserId} className="px-4 py-2 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg shadow-sm transition-colors disabled:opacity-70">
-                  {assigningAdmin ? 'Assigning...' : 'Assign Admin'}
+                <button
+                  type="button"
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  onClick={() => {
+                    setShowAssignAdminModal(false)
+                    setSelectedOrgForAdmin(null)
+                    setCurrentAdminUserForOrg(null)
+                    setSelectedAdminUserId('')
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={assigningAdmin || !selectedAdminUserId}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg shadow-sm transition-colors disabled:opacity-70 cursor-pointer"
+                >
+                  {assigningAdmin ? 'Saving...' : currentAdminUserForOrg ? 'Change Admin' : 'Assign Admin'}
                 </button>
               </div>
             </form>

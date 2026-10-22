@@ -54,6 +54,11 @@ export function AuthProvider({ children }) {
       const res = await api.get('/auth/me')
       const userData = res.data?.user || res.data
       setUser(userData)
+      if (userData?.lastLoginAt) {
+        localStorage.setItem('neuroforge_last_login_at', userData.lastLoginAt)
+      } else if (!localStorage.getItem('neuroforge_last_login_at')) {
+        localStorage.setItem('neuroforge_last_login_at', new Date().toISOString())
+      }
       if (userData?.orgId) {
         localStorage.setItem('neuroforge_org_id', userData.orgId)
       } else {
@@ -78,6 +83,8 @@ export function AuthProvider({ children }) {
 
       setToken(res.data.token)
       setUser(res.data.user)
+      const loginTime = res.data.user?.lastLoginAt || new Date().toISOString()
+      localStorage.setItem('neuroforge_last_login_at', loginTime)
       return res.data.user
     },
     [setToken]

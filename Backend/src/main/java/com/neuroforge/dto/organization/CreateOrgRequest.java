@@ -13,6 +13,8 @@ public class CreateOrgRequest {
     @Email(message = "Invalid email format")
     private String supportEmail;
 
+    private String orgSpecificId;
+
     public CreateOrgRequest() {
     }
 
@@ -38,5 +40,13 @@ public class CreateOrgRequest {
 
     public void setSupportEmail(String supportEmail) {
         this.supportEmail = supportEmail;
+    }
+
+    public String getOrgSpecificId() {
+        return orgSpecificId;
+    }
+
+    public void setOrgSpecificId(String orgSpecificId) {
+        this.orgSpecificId = orgSpecificId;
     }
 }

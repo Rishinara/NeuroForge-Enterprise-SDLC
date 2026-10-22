@@ -14,5 +14,13 @@ public class BurndownResponse {
 
     private String sprintName;
 
+    private java.time.LocalDate startDate;
+
+    private java.time.LocalDate endDate;
+
+    private Integer totalStoryPoints;
+
+    private Integer remainingStoryPoints;
+
     private List<StoryPointSnapshotResponse> snapshots = new ArrayList<>();
 }

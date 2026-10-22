@@ -8,6 +8,7 @@ import com.neuroforge.entity.*;
 import com.neuroforge.enums.HealthStatus;
 import com.neuroforge.enums.ProjectRole;
 import com.neuroforge.enums.ProjectStatus;
+import com.neuroforge.enums.Role;
 import com.neuroforge.exception.DuplicateResourceException;
 import com.neuroforge.exception.ResourceNotFoundException;
 import com.neuroforge.repository.OrganizationRepository;
@@ -60,23 +61,28 @@ public class ProjectServiceImpl implements ProjectService {
                     dto.setId(member.getUser().getId());
                     dto.setFullName(member.getUser().getFullName());
                     dto.setEmail(member.getUser().getEmail());
-                    
-                    if (member.getRole().isDeveloper()) {
-                        if (member.getUser().getRole() == com.neuroforge.enums.Role.ORG_ADMIN) {
-                            dto.setProjectRole(ProjectRole.ORG_ADMIN);
-                        } else if (member.getUser().getRole() == com.neuroforge.enums.Role.SUPER_ADMIN) {
-                            dto.setProjectRole(ProjectRole.SUPER_ADMIN);
-                        } else if (member.getUser().getRole() == com.neuroforge.enums.Role.PROJECT_MANAGER) {
-                            dto.setProjectRole(ProjectRole.PROJECT_MANAGER);
-                        } else if (member.getUser().getRole() == com.neuroforge.enums.Role.QA_TESTER) {
-                            dto.setProjectRole(ProjectRole.QA);
-                        } else if (member.getUser().getRole() == com.neuroforge.enums.Role.CLIENT) {
-                            dto.setProjectRole(ProjectRole.CLIENT);
-                        } else {
-                            dto.setProjectRole(member.getRole());
-                        }
+
+                    Role userRole = member.getUser().getRole();
+                    dto.setRole(userRole);
+
+                    if (userRole == Role.ORG_ADMIN) {
+                        dto.setProjectRole(ProjectRole.ORG_ADMIN);
+                    } else if (userRole == Role.SUPER_ADMIN) {
+                        dto.setProjectRole(ProjectRole.SUPER_ADMIN);
+                    } else if (userRole == Role.PROJECT_MANAGER) {
+                        dto.setProjectRole(ProjectRole.PROJECT_MANAGER);
+                    } else if (userRole == Role.QA_TESTER) {
+                        dto.setProjectRole(ProjectRole.QA);
+                    } else if (userRole == Role.CLIENT) {
+                        dto.setProjectRole(ProjectRole.CLIENT);
+                    } else if (userRole == Role.FRONTEND_DEVELOPER) {
+                        dto.setProjectRole(ProjectRole.FRONTEND_DEVELOPER);
+                    } else if (userRole == Role.BACKEND_DEVELOPER) {
+                        dto.setProjectRole(ProjectRole.BACKEND_DEVELOPER);
+                    } else if (userRole == Role.DEVELOPER) {
+                        dto.setProjectRole(ProjectRole.DEVELOPER);
                     } else {
-                        dto.setProjectRole(member.getRole());
+                        dto.setProjectRole(member.getRole() != null ? member.getRole() : ProjectRole.DEVELOPER);
                     }
 
                     return dto;
@@ -117,16 +123,20 @@ public class ProjectServiceImpl implements ProjectService {
         member.setProject(project);
         member.setUser(user);
         
-        if (user.getRole() == com.neuroforge.enums.Role.PROJECT_MANAGER) {
+        if (user.getRole() == Role.PROJECT_MANAGER) {
             member.setRole(ProjectRole.PROJECT_MANAGER);
-        } else if (user.getRole() == com.neuroforge.enums.Role.QA_TESTER) {
+        } else if (user.getRole() == Role.QA_TESTER) {
             member.setRole(ProjectRole.QA);
-        } else if (user.getRole() == com.neuroforge.enums.Role.CLIENT) {
+        } else if (user.getRole() == Role.CLIENT) {
             member.setRole(ProjectRole.CLIENT);
-        } else if (user.getRole() == com.neuroforge.enums.Role.ORG_ADMIN) {
+        } else if (user.getRole() == Role.ORG_ADMIN) {
             member.setRole(ProjectRole.ORG_ADMIN);
-        } else if (user.getRole() == com.neuroforge.enums.Role.SUPER_ADMIN) {
+        } else if (user.getRole() == Role.SUPER_ADMIN) {
             member.setRole(ProjectRole.SUPER_ADMIN);
+        } else if (user.getRole() == Role.FRONTEND_DEVELOPER) {
+            member.setRole(ProjectRole.FRONTEND_DEVELOPER);
+        } else if (user.getRole() == Role.BACKEND_DEVELOPER) {
+            member.setRole(ProjectRole.BACKEND_DEVELOPER);
         } else {
             member.setRole(ProjectRole.DEVELOPER);
         }
@@ -217,7 +227,7 @@ public class ProjectServiceImpl implements ProjectService {
         // Build Response
         
         // Log Activity
-        activityService.logActivity(organization.getId(), "Project created", "Created project: " + savedProject.getName(), actorEmail);
+        activityService.logActivity(organization.getId(), savedProject.getId(), savedProject.getName(), "Project created", "Created project: " + savedProject.getName(), actorEmail);
         
         return mapToProjectResponse(savedProject);
     }
@@ -365,7 +375,7 @@ public class ProjectServiceImpl implements ProjectService {
         Project updatedProject = projectRepository.save(project);
         
         String actorEmail = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        activityService.logActivity(updatedProject.getOrganization().getId(), "Project updated", "Updated project: " + updatedProject.getName(), actorEmail);
+        activityService.logActivity(updatedProject.getOrganization().getId(), updatedProject.getId(), updatedProject.getName(), "Project updated", "Updated project: " + updatedProject.getName(), actorEmail);
 
         return mapToProjectResponse(updatedProject);
     }
@@ -386,7 +396,7 @@ public class ProjectServiceImpl implements ProjectService {
         projectRepository.delete(project);
         
         String actorEmail = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        activityService.logActivity(orgId, "Project deleted", "Deleted project: " + projectName, actorEmail);
+        activityService.logActivity(orgId, projectId, projectName, "Project deleted", "Deleted project: " + projectName, actorEmail);
     }
 
     @Override
@@ -440,6 +450,6 @@ public class ProjectServiceImpl implements ProjectService {
         projectRepository.save(project);
         
         String actorEmail = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        activityService.logActivity(project.getOrganization().getId(), "Project member role updated", "Updated role for user ID " + userId + " to " + newRole, actorEmail);
+        activityService.logActivity(project.getOrganization().getId(), project.getId(), project.getName(), "Project member role updated", "Updated role for user ID " + userId + " to " + newRole, actorEmail);
     }
 }

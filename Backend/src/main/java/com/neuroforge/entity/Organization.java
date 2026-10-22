@@ -19,6 +19,9 @@ public class Organization {
     @Column(name = "support_email")
     private String supportEmail;
 
+    @Column(name = "org_specific_id", unique = true)
+    private String orgSpecificId;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -33,6 +36,8 @@ public class Organization {
     public void setDescription(String description) { this.description = description; }
     public String getSupportEmail() { return supportEmail; }
     public void setSupportEmail(String supportEmail) { this.supportEmail = supportEmail; }
+    public String getOrgSpecificId() { return orgSpecificId; }
+    public void setOrgSpecificId(String orgSpecificId) { this.orgSpecificId = orgSpecificId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

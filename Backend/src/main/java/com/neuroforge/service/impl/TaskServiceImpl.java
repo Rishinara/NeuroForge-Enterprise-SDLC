@@ -31,6 +31,7 @@ public class TaskServiceImpl implements TaskService {
     private final TeamRepository teamRepository;
     private final com.neuroforge.service.NotificationService notificationService;
     private final com.neuroforge.service.ActivityService activityService;
+    private final com.neuroforge.service.MilestoneService milestoneService;
 
     private TaskResponse mapToResponse(Task task) {
 
@@ -514,6 +515,8 @@ public class TaskServiceImpl implements TaskService {
         taskStatusHistoryRepository.save(history);
 
         activityService.logActivity(task.getProject().getOrganization().getId(), 
+                                    task.getProject().getId(),
+                                    task.getProject().getName(),
                                     "Task Status Updated", 
                                     "Moved task '" + task.getTitle() + "' to " + request.getStatus(), 
                                     loggedInEmail);
@@ -616,11 +619,17 @@ public class TaskServiceImpl implements TaskService {
             if (sprint.getStatus() != SprintStatus.COMPLETED) {
                 sprint.setStatus(SprintStatus.COMPLETED);
                 sprintRepository.save(sprint);
+                if (sprint.getProject() != null) {
+                    milestoneService.evaluateProjectMilestonesAndHealth(sprint.getProject().getId());
+                }
             }
         } else {
             if (sprint.getStatus() == SprintStatus.COMPLETED) {
                 sprint.setStatus(SprintStatus.ACTIVE);
                 sprintRepository.save(sprint);
+                if (sprint.getProject() != null) {
+                    milestoneService.evaluateProjectMilestonesAndHealth(sprint.getProject().getId());
+                }
             }
         }
     }

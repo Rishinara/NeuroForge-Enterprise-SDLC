@@ -19,5 +19,6 @@ public class ProfileResponse {
     private com.neuroforge.enums.Role role;
     private String organizationName;
     private LocalDateTime createdAt;
+    private LocalDateTime lastLoginAt;
 
 }

@@ -55,6 +55,8 @@ public class AuthenticationService {
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email or password."));
+        user.setLastLoginAt(java.time.LocalDateTime.now());
+        userRepository.save(user);
         String jwt = jwtService.generateToken(user);
         var refreshToken = refreshTokenService.createRefreshToken(user.getId());
         return new JwtAuthenticationResponse(jwt, refreshToken.getToken());

@@ -7,7 +7,7 @@ import { extractErrorMessage } from '../api/client.js'
 import Can from '../components/Can.jsx'
 import UnassignedOrgNotice from '../components/UnassignedOrgNotice.jsx'
 
-const FILTERS = ['All', 'On Track', 'At Risk', 'Delayed']
+const FILTERS = ['All', 'On Track', 'Completed', 'At Risk', 'Delayed']
 
 const formatEnum = (val) => val ? val.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown';
 
@@ -67,6 +67,7 @@ export default function ProjectsPortfolioPage() {
         if (filter === 'All') return true
         const healthVal = String(p.health || '').toUpperCase()
         if (filter === 'On Track') return healthVal === 'ON_TRACK' || healthVal === 'ON TRACK'
+        if (filter === 'Completed') return healthVal === 'COMPLETED'
         if (filter === 'At Risk') return healthVal === 'AT_RISK' || healthVal === 'AT RISK'
         if (filter === 'Delayed') return healthVal === 'DELAYED'
         return true
@@ -200,7 +201,7 @@ export default function ProjectsPortfolioPage() {
             
             // Map health status to colors
             let statusColor = "bg-slate-100 text-slate-700";
-            if (p.health === 'ON_TRACK') statusColor = "bg-emerald-100 text-emerald-700";
+            if (p.health === 'ON_TRACK' || p.health === 'COMPLETED') statusColor = "bg-emerald-100 text-emerald-700";
             if (p.health === 'AT_RISK') statusColor = "bg-amber-100 text-amber-700";
             if (p.health === 'DELAYED') statusColor = "bg-red-100 text-red-700";
 

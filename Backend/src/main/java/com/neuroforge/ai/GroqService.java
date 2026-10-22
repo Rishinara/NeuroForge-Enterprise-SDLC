@@ -77,22 +77,18 @@ public class GroqService {
 
         String prompt = """
                 You are an Agile Scrum expert.
+                Estimate story points for the following task using Fibonacci points (1, 2, 3, 5, 8, 13).
 
-                Estimate story points for the following task.
+                Title: %s
+                Description: %s
 
-                Title:
-                %s
-
-                Description:
-                %s
-
-                Return ONLY in this format:
-
+                Format your response clearly as:
                 Story Points: <number>
-                Reason: <short explanation>
-
-                Allowed story points:
-                1,2,3,5,8,13
+                ### Rationale
+                <Concise explanation of complexity, effort, and uncertainty>
+                ### Key Considerations
+                - <bullet point 1>
+                - <bullet point 2>
                 """.formatted(title, description);
 
         return askGroq(prompt);
@@ -106,21 +102,17 @@ public class GroqService {
 
         String prompt = """
                 You are an Agile Project Manager.
+                Recommend the priority for this task: LOW, MEDIUM, HIGH, or CRITICAL.
 
-                Recommend the priority for this task.
+                Title: %s
+                Description: %s
 
-                Title:
-                %s
-
-                Description:
-                %s
-
-                Return:
-
-                Priority:
-                LOW / MEDIUM / HIGH / CRITICAL
-
-                Reason:
+                Format your response clearly as:
+                Priority: <LOW | MEDIUM | HIGH | CRITICAL>
+                ### Impact Assessment
+                <Why this priority is recommended based on business impact and urgency>
+                ### Suggested Timeline
+                - <When this should be scheduled in the backlog or active sprint>
                 """.formatted(title, description);
 
         return askGroq(prompt);
@@ -133,15 +125,19 @@ public class GroqService {
     public String generateTaskBreakdown(String title, String description) {
 
         String prompt = """
-                Break down the following task into smaller subtasks.
+                You are a Senior Software Architect.
+                Break down the following task into clear, actionable subtasks.
 
-                Title:
-                %s
+                Title: %s
+                Description: %s
 
-                Description:
-                %s
-
-                Return only a numbered list.
+                Format your response with:
+                ### Subtasks Breakdown
+                1. <Subtask 1 with brief action>
+                2. <Subtask 2 with brief action>
+                3. <Subtask 3 with brief action>
+                ### Technical Considerations
+                - <Consideration or prerequisite>
                 """.formatted(title, description);
 
         return askGroq(prompt);
@@ -154,15 +150,19 @@ public class GroqService {
     public String generateAcceptanceCriteria(String title, String description) {
 
         String prompt = """
-                Generate acceptance criteria for the following task.
+                You are a Lead QA Engineer and Scrum Product Owner.
+                Generate comprehensive acceptance criteria in Given-When-Then or clear testable bullet points for the following task.
 
-                Title:
-                %s
+                Title: %s
+                Description: %s
 
-                Description:
-                %s
-
-                Return a bullet list.
+                Format your response as:
+                ### Acceptance Criteria
+                - <Criteria 1>
+                - <Criteria 2>
+                - <Criteria 3>
+                ### Edge Cases & Validation
+                - <Validation or boundary condition to check>
                 """.formatted(title, description);
 
         return askGroq(prompt);
@@ -176,31 +176,20 @@ public class GroqService {
 
         String prompt = """
                 You are an experienced Agile Product Owner.
+                Improve and expand the following task description for enterprise software engineering.
 
-                Improve the following task description.
+                Title: %s
+                Description: %s
 
-                Title:
-                %s
-
-                Description:
-                %s
-
-                Return the response in the following format:
-
-                Enhanced Description:
-                <Improved Description>
-
-                Requirements:
-                - Requirement 1
-                - Requirement 2
-                - Requirement 3
-
-                Acceptance Criteria:
-                - Criteria 1
-                - Criteria 2
-                - Criteria 3
-
-                Keep the response professional and concise.
+                Format your response with these exact markdown sections:
+                ### Enhanced Description
+                <Clear, professional description explaining context and objective>
+                ### Functional Requirements
+                - <Requirement 1>
+                - <Requirement 2>
+                ### Acceptance Criteria
+                - <Criteria 1>
+                - <Criteria 2>
                 """.formatted(title, description);
 
         return askGroq(prompt);
@@ -219,25 +208,27 @@ public class GroqService {
         }
 
         String prompt = """
-                You are an experienced Scrum Master.
+                You are an experienced Scrum Master and Delivery Lead.
+                Analyze the following active sprint and provide a structured health assessment.
 
-                Analyze the following sprint.
-
-                Sprint:
-                %s
-
+                Sprint: %s
                 Tasks:
                 %s
 
-                Provide:
+                Format your response with these exact sections:
+                Sprint Health: <HEALTHY | AT RISK | CRITICAL>
 
-                1. Sprint Summary
-                2. Workload Analysis
-                3. Risks
-                4. Recommendations
-                5. Sprint Health
+                ### Sprint Summary
+                <2-3 concise sentences on scope, focus, and progress>
 
-                Keep the response concise.
+                ### Workload & Task Distribution
+                - <Insight on workload distribution and story point density>
+
+                ### Identified Risks & Bottlenecks
+                - <Key delivery, technical, or dependency risk>
+
+                ### Actionable Recommendations
+                - <Immediate recommendation for the team to achieve the sprint goal>
                 """.formatted(sprintName, taskList);
 
         return askGroq(prompt);
@@ -256,25 +247,25 @@ public class GroqService {
         }
 
         String prompt = """
-                You are a Software Project Manager.
+                You are an Enterprise Software Project Director.
+                Analyze the delivery risks for the following project.
 
-                Analyze the following project.
-
-                Project:
-                %s
-
+                Project: %s
                 Tasks:
                 %s
 
-                Identify:
+                Format your response with these exact sections:
+                ### High Risk Tasks & Delivery Bottlenecks
+                - <Specific high-risk task or area>
 
-                1. High Risk Tasks
-                2. Possible Delays
-                3. Dependency Issues
-                4. Testing Risks
-                5. Suggestions to reduce risks
+                ### Dependency & Resource Risks
+                - <Potential blocker, cross-team or environment dependency>
 
-                Return a professional report.
+                ### Testing & Quality Risks
+                - <QA, regression, or validation challenge>
+
+                ### Risk Mitigation Plan
+                - <Concrete mitigation action to protect delivery deadlines>
                 """.formatted(projectName, taskList);
 
         return askGroq(prompt);

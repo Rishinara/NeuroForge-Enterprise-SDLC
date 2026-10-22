@@ -4,5 +4,6 @@ public enum MilestoneStatus {
     PENDING,
     IN_PROGRESS,
     ACHIEVED,
+    COMPLETED,
     DELAYED
 }

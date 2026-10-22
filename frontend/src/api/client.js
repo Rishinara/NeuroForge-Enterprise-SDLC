@@ -25,12 +25,15 @@ api.interceptors.request.use((config) => {
 })
 
 
+let isRedirecting = false
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem('neuroforge_token')
-      if (window.location.pathname !== '/login') {
+      localStorage.removeItem('neuroforge_user')
+      if (window.location.pathname !== '/login' && !isRedirecting) {
+        isRedirecting = true
         window.location.href = '/login'
       }
     }

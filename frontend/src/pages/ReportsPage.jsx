@@ -167,14 +167,14 @@ export default function ReportsPage() {
           </div>
 
           <div className="flex-1 flex flex-col items-center justify-center py-4">
-             <div className={`text-4xl font-extrabold mb-2 ${healthStatus === 'ON_TRACK' ? 'text-emerald-600' : healthStatus === 'AT_RISK' ? 'text-amber-500' : healthStatus === 'UNKNOWN' ? 'text-slate-400' : 'text-red-500'}`}>
+             <div className={`text-4xl font-extrabold mb-2 ${healthStatus === 'COMPLETED' || healthStatus === 'ON_TRACK' ? 'text-emerald-600' : healthStatus === 'AT_RISK' ? 'text-amber-500' : healthStatus === 'UNKNOWN' ? 'text-slate-400' : 'text-red-500'}`}>
                  {formatEnum(healthStatus)}
              </div>
              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Current Health Status</p>
           </div>
 
           <div className="p-3 bg-slate-50 rounded-lg text-xs text-slate-500 flex items-center justify-between border border-slate-100">
-            <span>Overall project delivery status based on milestone progress.</span>
+            <span>{healthStatus === 'COMPLETED' ? 'All project milestones successfully completed. Project delivery finished!' : 'Overall project delivery status based on milestone progress.'}</span>
           </div>
         </div>
 

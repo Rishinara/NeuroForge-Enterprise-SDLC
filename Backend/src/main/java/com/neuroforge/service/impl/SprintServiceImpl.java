@@ -34,6 +34,8 @@ public class SprintServiceImpl implements SprintService {
     private final TaskRepository taskRepository;
     private final TaskMapper taskMapper;
     private final StoryPointSnapshotRepository storyPointSnapshotRepository;
+    private final com.neuroforge.service.MilestoneService milestoneService;
+    private final com.neuroforge.repository.MilestoneRepository milestoneRepository;
 
     //<---------------------sprint------------------------------>
 
@@ -79,6 +81,11 @@ public class SprintServiceImpl implements SprintService {
         sprint.setProject(project);
         sprint.setCreatedBy(loggedInUser);
 
+        if (request.getMilestoneId() != null) {
+            com.neuroforge.entity.Milestone milestone = milestoneRepository.findById(request.getMilestoneId()).orElse(null);
+            sprint.setMilestone(milestone);
+        }
+
         Sprint savedSprint = sprintRepository.save(sprint);
 
         Sprint loadedSprint = sprintRepository.findSprintById(savedSprint.getId())
@@ -106,6 +113,11 @@ public class SprintServiceImpl implements SprintService {
 
         response.setCreatedById(sprint.getCreatedBy().getId());
         response.setCreatedByName(sprint.getCreatedBy().getFullName());
+
+        if (sprint.getMilestone() != null) {
+            response.setMilestoneId(sprint.getMilestone().getId());
+            response.setMilestoneTitle(sprint.getMilestone().getTitle());
+        }
 
         return response;
     }
@@ -151,6 +163,11 @@ public class SprintServiceImpl implements SprintService {
         sprint.setGoal(request.getGoal());
         sprint.setStartDate(request.getStartDate());
         sprint.setEndDate(request.getEndDate());
+
+        if (request.getMilestoneId() != null) {
+            com.neuroforge.entity.Milestone milestone = milestoneRepository.findById(request.getMilestoneId()).orElse(null);
+            sprint.setMilestone(milestone);
+        }
 
         sprintRepository.save(sprint);
 
@@ -257,6 +274,8 @@ public class SprintServiceImpl implements SprintService {
 
         sprintRepository.save(sprint);
 
+        captureStoryPointSnapshot(sprint.getId(), loggedInEmail);
+
         Sprint updatedSprint = sprintRepository.findSprintById(sprint.getId())
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Sprint not found"));
@@ -336,6 +355,10 @@ public class SprintServiceImpl implements SprintService {
 
         captureStoryPointSnapshot(sprintId, loggedInEmail);
 
+        if (sprint.getProject() != null) {
+            milestoneService.evaluateProjectMilestonesAndHealth(sprint.getProject().getId());
+        }
+
         return response;
     }
     @Override
@@ -402,31 +425,23 @@ public class SprintServiceImpl implements SprintService {
 
         LocalDate today = LocalDate.now();
 
-        if (storyPointSnapshotRepository
-                .findBySprintIdAndSnapshotDate(sprintId, today)
-                .isPresent()) {
-
-            throw new DuplicateResourceException(
-                    "Snapshot already captured for today");
-        }
-
         List<Task> tasks = taskRepository.findBySprintIdOrderByPriorityAscCreatedAtAsc(sprintId);
 
         int totalStoryPoints = 0;
         int completedStoryPoints = 0;
 
         for (Task task : tasks) {
-
             int points = task.getStoryPoints() == null ? 0 : task.getStoryPoints();
-
             totalStoryPoints += points;
-
             if (task.getStatus() == TaskStatus.DONE) {
                 completedStoryPoints += points;
             }
         }
 
-        StoryPointSnapshot snapshot = new StoryPointSnapshot();
+        java.util.Optional<StoryPointSnapshot> existingOpt = storyPointSnapshotRepository
+                .findBySprintIdAndSnapshotDate(sprintId, today);
+
+        StoryPointSnapshot snapshot = existingOpt.orElseGet(StoryPointSnapshot::new);
 
         snapshot.setSprint(sprint);
         snapshot.setSnapshotDate(today);
@@ -466,14 +481,45 @@ public class SprintServiceImpl implements SprintService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Sprint not found"));
 
+        List<Task> tasks = taskRepository.findBySprintIdOrderByPriorityAscCreatedAtAsc(sprintId);
+
+        int totalStoryPoints = 0;
+        int completedStoryPoints = 0;
+
+        for (Task task : tasks) {
+            int points = task.getStoryPoints() == null ? 0 : task.getStoryPoints();
+            totalStoryPoints += points;
+            if (task.getStatus() == TaskStatus.DONE) {
+                completedStoryPoints += points;
+            }
+        }
+
         List<StoryPointSnapshot> snapshots =
-                storyPointSnapshotRepository
-                        .findBySprintIdOrderBySnapshotDateAsc(sprintId);
+                new java.util.ArrayList<>(storyPointSnapshotRepository
+                        .findBySprintIdOrderBySnapshotDateAsc(sprintId));
+
+        LocalDate today = LocalDate.now();
+        boolean hasToday = snapshots.stream()
+                .anyMatch(s -> today.equals(s.getSnapshotDate()));
+
+        if (!hasToday) {
+            StoryPointSnapshot todayVirtual = new StoryPointSnapshot();
+            todayVirtual.setSprint(sprint);
+            todayVirtual.setSnapshotDate(today);
+            todayVirtual.setTotalStoryPoints(totalStoryPoints);
+            todayVirtual.setCompletedStoryPoints(completedStoryPoints);
+            todayVirtual.setRemainingStoryPoints(totalStoryPoints - completedStoryPoints);
+            snapshots.add(todayVirtual);
+        }
 
         BurndownResponse response = new BurndownResponse();
 
         response.setSprintId(sprint.getId());
         response.setSprintName(sprint.getName());
+        response.setStartDate(sprint.getStartDate());
+        response.setEndDate(sprint.getEndDate());
+        response.setTotalStoryPoints(totalStoryPoints);
+        response.setRemainingStoryPoints(totalStoryPoints - completedStoryPoints);
 
         response.setSnapshots(
                 snapshots.stream()

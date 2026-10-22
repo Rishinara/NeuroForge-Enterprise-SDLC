@@ -4,6 +4,7 @@ import com.neuroforge.dto.auth.AuthResponse;
 import com.neuroforge.dto.organization.*;
 import com.neuroforge.entity.*;
 import com.neuroforge.enums.InviteStatus;
+import com.neuroforge.enums.ProjectRole;
 import com.neuroforge.enums.Role;
 import com.neuroforge.exception.DuplicateResourceException;
 import com.neuroforge.exception.InvalidRequestException;
@@ -158,11 +159,22 @@ public class OrgService {
         organization.setName(cleanName);
         organization.setDescription(request.getDescription() != null ? request.getDescription().trim() : null);
         organization.setSupportEmail(request.getSupportEmail() != null ? request.getSupportEmail().trim() : null);
+        if (request.getOrgSpecificId() != null && !request.getOrgSpecificId().trim().isEmpty()) {
+            String cleanSpecId = request.getOrgSpecificId().trim();
+            if (organizationRepository.existsByOrgSpecificIdIgnoreCase(cleanSpecId)) {
+                throw new DuplicateResourceException("Organization Specific ID '" + cleanSpecId + "' already exists.");
+            }
+            organization.setOrgSpecificId(cleanSpecId);
+        }
         organization.setCreatedAt(LocalDateTime.now());
 
         Organization saved;
         try {
             saved = organizationRepository.save(organization);
+            if (saved.getOrgSpecificId() == null || saved.getOrgSpecificId().trim().isEmpty()) {
+                saved.setOrgSpecificId("ORG-" + saved.getId());
+                saved = organizationRepository.save(saved);
+            }
             ensureDefaultTeams(saved);
         } catch (org.springframework.dao.DataIntegrityViolationException ex) {
             log.error("DataIntegrityViolationException creating organization {}: {}", cleanName, ex.getMessage(), ex);
@@ -224,13 +236,13 @@ public class OrgService {
             throw new InvalidRequestException("SUPER_ADMIN user cannot be assigned as Org Admin.");
         }
 
-        // Check if organization already has an ORG_ADMIN
+        // If organization already has an ORG_ADMIN, demote previous Org Admin(s) to DEVELOPER to allow reassigning
         List<User> existingOrgUsers = userRepository.findByOrganizationId(orgId);
-        boolean hasOrgAdmin = existingOrgUsers.stream()
-                .anyMatch(u -> u.getRole() == Role.ORG_ADMIN && !u.getId().equals(userId));
-
-        if (hasOrgAdmin) {
-            throw new InvalidRequestException("This organization already has an Org Admin assigned. Only 1 Org Admin per organization is allowed.");
+        for (User u : existingOrgUsers) {
+            if (u.getRole() == Role.ORG_ADMIN && !u.getId().equals(userId)) {
+                u.setRole(Role.DEVELOPER);
+                userRepository.save(u);
+            }
         }
 
         // Link user to organization and set role to ORG_ADMIN
@@ -627,6 +639,27 @@ public class OrgService {
         assignUserToDefaultTeam(user, user.getOrganization());
 
         List<ProjectMember> userPms = projectMemberRepository.findByUserId(user.getId());
+        for (ProjectMember pm : userPms) {
+            if (role == Role.PROJECT_MANAGER) {
+                pm.setRole(ProjectRole.PROJECT_MANAGER);
+            } else if (role == Role.QA_TESTER) {
+                pm.setRole(ProjectRole.QA);
+            } else if (role == Role.CLIENT) {
+                pm.setRole(ProjectRole.CLIENT);
+            } else if (role == Role.FRONTEND_DEVELOPER) {
+                pm.setRole(ProjectRole.FRONTEND_DEVELOPER);
+            } else if (role == Role.BACKEND_DEVELOPER) {
+                pm.setRole(ProjectRole.BACKEND_DEVELOPER);
+            } else if (role == Role.ORG_ADMIN) {
+                pm.setRole(ProjectRole.ORG_ADMIN);
+            } else if (role == Role.SUPER_ADMIN) {
+                pm.setRole(ProjectRole.SUPER_ADMIN);
+            } else {
+                pm.setRole(ProjectRole.DEVELOPER);
+            }
+            projectMemberRepository.save(pm);
+        }
+
         java.util.Map<Long, String> map = new java.util.HashMap<>();
         if (!userPms.isEmpty()) {
             map.put(user.getId(), userPms.get(0).getProject().getName());
@@ -937,6 +970,7 @@ public class OrgService {
         dto.setName(org.getName());
         dto.setDescription(org.getDescription());
         dto.setSupportEmail(org.getSupportEmail());
+        dto.setOrgSpecificId(org.getOrgSpecificId() != null ? org.getOrgSpecificId() : "ORG-" + org.getId());
         return dto;
     }
 
@@ -954,11 +988,24 @@ public class OrgService {
         }
         if (request.getDescription() != null) org.setDescription(request.getDescription().trim());
         if (request.getSupportEmail() != null) org.setSupportEmail(request.getSupportEmail().trim());
+        if (request.getOrgSpecificId() != null) {
+            String cleanSpecificId = request.getOrgSpecificId().trim();
+            if (cleanSpecificId.isEmpty()) {
+                throw new InvalidRequestException("Organization Specific ID cannot be empty.");
+            }
+            if (org.getOrgSpecificId() == null || !cleanSpecificId.equalsIgnoreCase(org.getOrgSpecificId())) {
+                if (organizationRepository.existsByOrgSpecificIdIgnoreCase(cleanSpecificId)) {
+                    throw new DuplicateResourceException("Organization Specific ID '" + cleanSpecificId + "' is already in use by another organization.");
+                }
+            }
+            org.setOrgSpecificId(cleanSpecificId);
+        }
         try {
             organizationRepository.save(org);
         } catch (org.springframework.dao.DataIntegrityViolationException ex) {
-            throw new DuplicateResourceException("An organization with this name already exists.");
+            throw new DuplicateResourceException("An organization with this name or specific ID already exists.");
         }
+        request.setOrgSpecificId(org.getOrgSpecificId());
         return request;
     }
 }

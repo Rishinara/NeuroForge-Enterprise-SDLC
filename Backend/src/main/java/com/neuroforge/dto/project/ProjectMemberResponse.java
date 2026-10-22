@@ -1,6 +1,7 @@
 package com.neuroforge.dto.project;
 
 import com.neuroforge.enums.ProjectRole;
+import com.neuroforge.enums.Role;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,5 +20,7 @@ public class ProjectMemberResponse {
     private String email;
 
     private ProjectRole projectRole;
+
+    private Role role;
 
 }

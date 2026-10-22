@@ -231,7 +231,7 @@ public class SpecServiceImpl implements SpecService {
         }
 
         String logMsg = "Created spec: " + savedSpec.getTitle() + (request.getTone() != null ? " (AI Generated)" : "");
-        activityService.logActivity(project.getOrganization().getId(), "Spec Created", logMsg, username);
+        activityService.logActivity(project.getOrganization().getId(), project.getId(), project.getName(), "Spec Created", logMsg, username);
 
         return mapToSpecResponse(savedSpec);
     }
@@ -270,7 +270,7 @@ public class SpecServiceImpl implements SpecService {
                 userStoryRepository.saveAll(stories);
                 savedNextSpec.setUserStories(stories);
             }
-            activityService.logActivity(existingSpec.getProject().getOrganization().getId(), "Spec Version Created", "Created new version for spec: " + savedNextSpec.getTitle(), username);
+            activityService.logActivity(existingSpec.getProject().getOrganization().getId(), existingSpec.getProject().getId(), existingSpec.getProject().getName(), "Spec Version Created", "Created new version for spec: " + savedNextSpec.getTitle(), username);
             return mapToSpecResponse(savedNextSpec);
         } else {
             // Update in-place
@@ -300,7 +300,7 @@ public class SpecServiceImpl implements SpecService {
                 specRepository.save(savedSpec);
             }
 
-            activityService.logActivity(existingSpec.getProject().getOrganization().getId(), "Spec Edited", "Edited spec: " + savedSpec.getTitle(), username);
+            activityService.logActivity(existingSpec.getProject().getOrganization().getId(), existingSpec.getProject().getId(), existingSpec.getProject().getName(), "Spec Edited", "Edited spec: " + savedSpec.getTitle(), username);
 
             return mapToSpecResponse(savedSpec);
         }
@@ -339,7 +339,7 @@ public class SpecServiceImpl implements SpecService {
         }
         spec.setStatus(SpecStatus.In_Review);
         spec.setReviewNote(null);
-        activityService.logActivity(spec.getProject().getOrganization().getId(), "Spec Submitted", "Submitted spec for review: " + spec.getTitle(), username);
+        activityService.logActivity(spec.getProject().getOrganization().getId(), spec.getProject().getId(), spec.getProject().getName(), "Spec Submitted", "Submitted spec for review: " + spec.getTitle(), username);
         return mapToSpecResponse(specRepository.save(spec));
     }
 
@@ -351,7 +351,7 @@ public class SpecServiceImpl implements SpecService {
             throw new InvalidRequestException("Only In Review specs can be approved");
         }
         spec.setStatus(SpecStatus.Approved);
-        activityService.logActivity(spec.getProject().getOrganization().getId(), "Spec Approved", "Approved spec: " + spec.getTitle(), username);
+        activityService.logActivity(spec.getProject().getOrganization().getId(), spec.getProject().getId(), spec.getProject().getName(), "Spec Approved", "Approved spec: " + spec.getTitle(), username);
         return mapToSpecResponse(specRepository.save(spec));
     }
 
@@ -365,7 +365,7 @@ public class SpecServiceImpl implements SpecService {
         spec.setStatus(SpecStatus.Draft);
         spec.setReviewNote(note);
         String excerpt = note != null && note.length() > 50 ? note.substring(0, 47) + "..." : note;
-        activityService.logActivity(spec.getProject().getOrganization().getId(), "Spec Changes Requested", "Requested changes on spec: " + spec.getTitle() + " - " + excerpt, username);
+        activityService.logActivity(spec.getProject().getOrganization().getId(), spec.getProject().getId(), spec.getProject().getName(), "Spec Changes Requested", "Requested changes on spec: " + spec.getTitle() + " - " + excerpt, username);
         return mapToSpecResponse(specRepository.save(spec));
     }
 

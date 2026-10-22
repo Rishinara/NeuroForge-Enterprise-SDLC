@@ -8,6 +8,7 @@ import { api, extractErrorMessage } from '../api/client.js'
 import { orgApi } from '../api/orgApi.js'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import Can from '../components/Can.jsx'
+import AiResponseFormatter, { extractCleanText } from '../components/AiResponseFormatter.jsx'
 
 const formatEnum = (val) => val ? val.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown';
 
@@ -35,7 +36,7 @@ export default function BacklogPage() {
   const [error, setError] = useState('')
   const [endpointMissing, setEndpointMissing] = useState(false)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ title: '', points: 3, priority: 'Medium', labels: '', teamId: '', assigneeId: '' })
+  const [form, setForm] = useState({ title: '', points: 3, priority: 'Medium', labels: '', teamId: 'FRONTEND_DEVELOPER', assigneeId: '' })
   const [teams, setTeams] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
 
@@ -111,34 +112,58 @@ export default function BacklogPage() {
       .catch(() => setTeams([]))
   }, [user?.orgId, projectData])
 
-  // When team selection changes, update assignee list
+  // When team selection changes, update assignee list based on the chosen team
   useEffect(() => {
-    if (!form.teamId) {
-      const devRoles = ['DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER'];
-      const projDevs = (projectData?.team || []).filter(m => devRoles.includes(m.projectRole) || devRoles.includes(m.role) || devRoles.includes(m.user?.role))
-      setTeamMembers(projDevs)
-      setForm((f) => ({ ...f, assigneeId: '' }))
-      return
+    const projMembers = projectData?.team || []
+    let members = []
+
+    if (form.teamId === 'FRONTEND_DEVELOPER') {
+      members = projMembers.filter((m) => {
+        const r = String(m.role || m.projectRole || '').toUpperCase()
+        return r === 'FRONTEND_DEVELOPER' || r.includes('FRONTEND')
+      })
+    } else if (form.teamId === 'BACKEND_DEVELOPER') {
+      members = projMembers.filter((m) => {
+        const r = String(m.role || m.projectRole || '').toUpperCase()
+        return r === 'BACKEND_DEVELOPER' || r.includes('BACKEND')
+      })
+    } else {
+      // Fullstack Developers
+      members = projMembers.filter((m) => {
+        const r = String(m.role || m.projectRole || '').toUpperCase()
+        return (
+          r === 'DEVELOPER' ||
+          r === 'FULLSTACK_DEVELOPER' ||
+          r === 'FULLSTACK' ||
+          (!r.includes('FRONTEND') &&
+            !r.includes('BACKEND') &&
+            !r.includes('QA') &&
+            !r.includes('CLIENT') &&
+            !r.includes('MANAGER') &&
+            !r.includes('ADMIN'))
+        )
+      })
     }
-    const selectedTeam = teams.find((t) => String(t.id) === String(form.teamId))
-    const rawMembers = selectedTeam?.members || selectedTeam?.users || []
-    const devRoles = ['DEVELOPER', 'FRONTEND_DEVELOPER', 'BACKEND_DEVELOPER'];
-    const members = rawMembers.filter(m => devRoles.includes(m.role) || devRoles.includes(m.user?.role))
+
     setTeamMembers(members)
-    setForm((f) => ({ ...f, assigneeId: '' }))
-  }, [form.teamId, teams, projectData])
+
+    if (form.assigneeId && !members.some((m) => String(m.id) === String(form.assigneeId))) {
+      setForm((f) => ({ ...f, assigneeId: '' }))
+    }
+  }, [form.teamId, projectData])
 
   async function handleAdd(e) {
     e.preventDefault()
     if (!form.title.trim()) return
     const numericProjId = Number(projectId)
+    const isCustomTeam = form.teamId && !isNaN(Number(form.teamId))
     const payload = {
       title: form.title.trim(),
       storyPoints: Math.max(1, Math.min(13, Number(form.points) || 1)),
       priority: (form.priority || 'MEDIUM').toUpperCase(),
       labels: form.labels.split(',').map((l) => l.trim()).filter(Boolean),
       sprintId: null,
-      teamId: form.teamId ? Number(form.teamId) : null,
+      teamId: isCustomTeam ? Number(form.teamId) : null,
       assigneeId: form.assigneeId ? Number(form.assigneeId) : null,
     }
     try {
@@ -148,7 +173,7 @@ export default function BacklogPage() {
       setError(extractErrorMessage(err))
       return
     }
-    setForm({ title: '', points: 3, priority: 'Medium', labels: '', teamId: '', assigneeId: '' })
+    setForm({ title: '', points: 3, priority: 'Medium', labels: '', teamId: 'DEVELOPER', assigneeId: '' })
     setShowForm(false)
   }
 
@@ -174,17 +199,7 @@ export default function BacklogPage() {
         res = await aiApi.enhanceTaskDescription(aiForm.title, aiForm.description)
       }
 
-      let resStr = ''
-      if (res && res.data) {
-        if (res.data.response) {
-          resStr = res.data.response
-        } else if (res.data.enhancedDescription) {
-          resStr = `Enhanced Description:\n${res.data.enhancedDescription}\n\nRequirements:\n${(res.data.requirements || []).join('\n')}\n\nAcceptance Criteria:\n${(res.data.acceptanceCriteria || []).join('\n')}`
-        } else {
-          resStr = JSON.stringify(res.data)
-        }
-      }
-      setAiResult(resStr || 'No response from AI.')
+      setAiResult(extractCleanText(res?.data) || 'No response from AI.')
     } catch (err) {
       setAiError(extractErrorMessage(err))
     } finally {
@@ -253,7 +268,7 @@ export default function BacklogPage() {
     try {
       const taskTitles = items.map(t => t.title)
       const res = await aiApi.analyzeProjectRisk(projectId, taskTitles)
-      setAiResult(res.data.response || JSON.stringify(res.data))
+      setAiResult(extractCleanText(res?.data) || 'No response from AI.')
     } catch (err) {
       setAiError(extractErrorMessage(err))
     } finally {
@@ -359,29 +374,34 @@ export default function BacklogPage() {
                 </div>
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Assign Team</label>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Developer Team</label>
                     <select
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white cursor-pointer"
                       value={form.teamId}
                       onChange={(e) => setForm((f) => ({ ...f, teamId: e.target.value }))}
                     >
-                      <option value="">— No team —</option>
-                      {teams.map((t) => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                      ))}
+                      <option value="FRONTEND_DEVELOPER">Frontend Developers</option>
+                      <option value="BACKEND_DEVELOPER">Backend Developers</option>
+                      <option value="DEVELOPER">Fullstack Developers</option>
                     </select>
                   </div>
                   <div className="flex-1">
                     <label className="block text-xs font-medium text-slate-500 mb-1">Assignee</label>
                     <select
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white cursor-pointer"
                       value={form.assigneeId}
                       onChange={(e) => setForm((f) => ({ ...f, assigneeId: e.target.value }))}
                     >
                       <option value="">— Unassigned —</option>
-                      {teamMembers.map((m) => (
-                        <option key={m.id} value={m.id}>{m.fullName || m.name}</option>
-                      ))}
+                      {teamMembers.length === 0 ? (
+                        <option value="" disabled>No members found in this team</option>
+                      ) : (
+                        teamMembers.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.fullName || m.name || m.email} {m.role || m.projectRole ? `(${formatEnum(m.role || (m.projectRole === 'QA' ? 'QA_TESTER' : m.projectRole))})` : ''}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
                 </div>
@@ -419,28 +439,28 @@ export default function BacklogPage() {
                       <label className="block text-xs font-medium text-slate-500 mb-1">
                         Start Date * {projectData?.startDate ? `(Min: ${projectData.startDate})` : ''}
                       </label>
-                      <input 
-                        type="date" 
-                        required 
+                      <input
+                        type="date"
+                        required
                         min={projectData?.startDate || undefined}
                         max={sprintForm.endDate || projectData?.endDate || undefined}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white" 
-                        value={sprintForm.startDate} 
-                        onChange={e => setSprintForm(f => ({ ...f, startDate: e.target.value }))} 
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                        value={sprintForm.startDate}
+                        onChange={e => setSprintForm(f => ({ ...f, startDate: e.target.value }))}
                       />
                     </div>
                     <div className="flex-1">
                       <label className="block text-xs font-medium text-slate-500 mb-1">
                         End Date * {projectData?.endDate ? `(Max Deadline: ${projectData.endDate})` : ''}
                       </label>
-                      <input 
-                        type="date" 
-                        required 
+                      <input
+                        type="date"
+                        required
                         min={sprintForm.startDate || projectData?.startDate || undefined}
                         max={projectData?.endDate || undefined}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white" 
-                        value={sprintForm.endDate} 
-                        onChange={e => setSprintForm(f => ({ ...f, endDate: e.target.value }))} 
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                        value={sprintForm.endDate}
+                        onChange={e => setSprintForm(f => ({ ...f, endDate: e.target.value }))}
                       />
                     </div>
                   </div>
@@ -646,15 +666,20 @@ export default function BacklogPage() {
               )}
 
               <div className="border-t border-slate-200 pt-4">
-                <label className="block text-xs font-medium text-slate-500 mb-2">AI Response</label>
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-[120px] max-h-[250px] overflow-y-auto text-sm font-mono whitespace-pre-wrap text-slate-800">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 min-h-[140px] max-h-[360px] overflow-y-auto">
                   {aiLoading ? (
-                    <div className="animate-pulse flex flex-col gap-2">
-                      <div className="h-2.5 bg-slate-200 rounded w-full"></div>
-                      <div className="h-2.5 bg-slate-200 rounded w-4/5"></div>
-                      <div className="h-2.5 bg-slate-200 rounded w-3/5"></div>
+                    <div className="animate-pulse flex flex-col gap-2.5 py-2">
+                      <div className="h-3 bg-slate-200 rounded w-full"></div>
+                      <div className="h-3 bg-slate-200 rounded w-4/5"></div>
+                      <div className="h-3 bg-slate-200 rounded w-3/5"></div>
                     </div>
-                  ) : aiResult ? aiResult : <span className="text-slate-400">Run a tool to see AI insights here.</span>}
+                  ) : aiResult ? (
+                    <AiResponseFormatter content={aiResult} title="AI Assistant Recommendation" />
+                  ) : (
+                    <div className="text-center py-6 text-slate-400 text-xs">
+                      Run an AI action above to see structured recommendations here.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -127,7 +127,6 @@ export default function EditProjectModal({ open, onClose, project, onUpdated }) 
               onChange={(e) => update('methodology', e.target.value)}
             >
               <option value="AGILE">Agile (Scrum / Kanban)</option>
-              <option value="WATERFALL">Waterfall</option>
             </select>
           </div>
           <div className="space-y-1.5">

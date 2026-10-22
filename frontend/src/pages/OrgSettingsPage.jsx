@@ -8,13 +8,13 @@ import { getThemeMode, applyThemeMode } from '../utils/theme.js'
 import './workspace.css'
 
 export default function OrgSettingsPage() {
-  const { user, role } = useAuth()
+  const { user, role, setUser } = useAuth()
   const navigate = useNavigate()
 
   const [activeTab, setActiveTab] = useState('org_info')
 
   // Organization Information form
-  const [form, setForm] = useState({ name: '', description: '', supportEmail: '' })
+  const [form, setForm] = useState({ name: '', description: '', supportEmail: '', orgSpecificId: '' })
   
   // Theme state
   const [themeMode, setThemeMode] = useState(() => getThemeMode())
@@ -68,7 +68,12 @@ export default function OrgSettingsPage() {
         orgApi.listInvites(user.orgId).catch(() => ({ data: [] }))
       ])
       
-      setForm(settingsRes.data)
+      setForm({
+        name: settingsRes.data?.name || user?.orgName || '',
+        description: settingsRes.data?.description || '',
+        supportEmail: settingsRes.data?.supportEmail || '',
+        orgSpecificId: settingsRes.data?.orgSpecificId || user?.orgSpecificId || (user?.orgId ? `ORG-${user.orgId}` : ''),
+      })
       setCounts({
         members: Array.isArray(membersRes.data) ? membersRes.data.length : 0,
         pendingRequests: (Array.isArray(requestsRes.data) ? requestsRes.data.length : 0) + 
@@ -77,11 +82,16 @@ export default function OrgSettingsPage() {
       })
     } catch (err) {
       setError(extractErrorMessage(err))
-      setForm({ name: user?.orgName || '', description: '', supportEmail: '' })
+      setForm({
+        name: user?.orgName || '',
+        description: '',
+        supportEmail: '',
+        orgSpecificId: user?.orgSpecificId || (user?.orgId ? `ORG-${user.orgId}` : ''),
+      })
     } finally {
       setLoading(false)
     }
-  }, [user?.orgId, user?.orgName])
+  }, [user?.orgId, user?.orgName, user?.orgSpecificId])
 
   useEffect(() => {
     load()
@@ -112,8 +122,11 @@ export default function OrgSettingsPage() {
 
     try {
       if (activeTab === 'org_info') {
-        await orgApi.updateOrgSettings(user.orgId, form)
-        setSuccessMsg('Organization information saved successfully.')
+        const res = await orgApi.updateOrgSettings(user.orgId, form)
+        if (res?.data?.orgSpecificId && setUser) {
+          setUser((prev) => ({ ...prev, orgSpecificId: res.data.orgSpecificId }))
+        }
+        setSuccessMsg('Organization information and Specific ID saved successfully.')
       } else if (activeTab === 'preferences') {
         localStorage.setItem('nf_org_pref_language', prefForm.language)
         localStorage.setItem('nf_org_pref_timezone', prefForm.timezone)
@@ -196,8 +209,8 @@ export default function OrgSettingsPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                            Organization Specific ID
+                          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider" htmlFor="org-specific-id">
+                            Organization Specific ID (String / Editable)
                           </label>
                           <span className="text-[11px] text-orange-600 dark:text-orange-400 font-medium">
                             Share for Member Registration
@@ -205,15 +218,19 @@ export default function OrgSettingsPage() {
                         </div>
                         <div className="flex gap-2">
                           <input 
-                            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-200 font-mono font-bold cursor-text" 
-                            value={user?.orgId ? `ORG-${user.orgId}` : 'ORG-001'} 
-                            readOnly 
+                            id="org-specific-id"
+                            type="text"
+                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-mono font-bold focus:ring-2 focus:ring-orange-500" 
+                            value={form.orgSpecificId || ''} 
+                            onChange={(e) => setForm({ ...form, orgSpecificId: e.target.value })}
+                            placeholder="e.g. ACME-TECH, ORG-1, MY_TEAM"
+                            required
                           />
-                          {user?.orgId && (
+                          {form.orgSpecificId && (
                             <button
                               type="button"
                               onClick={() => {
-                                navigator.clipboard.writeText(`ORG-${user.orgId}`);
+                                navigator.clipboard.writeText(form.orgSpecificId);
                                 setSuccessMsg("Organization Specific ID copied to clipboard!");
                                 setTimeout(() => setSuccessMsg(""), 3000);
                               }}
@@ -224,7 +241,7 @@ export default function OrgSettingsPage() {
                           )}
                         </div>
                         <p className="text-[11px] text-slate-400 mt-1">
-                          New team members enter this ID on the sign-up page to request to join your organization.
+                          You can edit this to any custom string (accepts all characters). New team members enter this exact ID on sign-up to join your organization.
                         </p>
                       </div>
                       <div>

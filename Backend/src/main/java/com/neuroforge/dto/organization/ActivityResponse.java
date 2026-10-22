@@ -17,4 +17,7 @@ public class ActivityResponse {
     private String details;
     private String actorEmail;
     private LocalDateTime createdAt;
+    private Long projectId;
+    private String projectName;
+    private String actorRole;
 }

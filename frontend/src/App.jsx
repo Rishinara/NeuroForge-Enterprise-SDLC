@@ -14,6 +14,9 @@ import PendingInvitesPage from './pages/PendingInvitesPage.jsx'
 import TeamDetailPage from './pages/TeamDetailPage.jsx'
 import OrgSettingsPage from './pages/OrgSettingsPage.jsx'
 import OrganizationsPage from './pages/OrganizationsPage.jsx'
+import OrgAdminsPage from './pages/OrgAdminsPage.jsx'
+import OrgMembersPage from './pages/OrgMembersPage.jsx'
+import UnassignedOrgAdminsPage from './pages/UnassignedOrgAdminsPage.jsx'
 import SuperAdminSettingsPage from './pages/SuperAdminSettingsPage.jsx'
 import ProjectsPortfolioPage from './pages/ProjectsPortfolioPage.jsx'
 import CreateProjectPage from './pages/CreateProjectPage.jsx'
@@ -28,6 +31,7 @@ import MilestonesPage from './pages/MilestonesPage.jsx'
 import ApprovalsPage from './pages/ApprovalsPage.jsx'
 import ReportsPage from './pages/ReportsPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import ActivitiesPage from './pages/ActivitiesPage.jsx'
 export default function App() {
   return (
     <AuthProvider>
@@ -48,7 +52,15 @@ export default function App() {
             }
           >
             <Route path="/dashboard" element={<DashboardHome />} />
+            <Route path="/activities" element={<ActivitiesPage />} />
             <Route path="/organizations" element={<OrganizationsPage />} />
+            <Route path="/admin/unassigned-admins" element={<UnassignedOrgAdminsPage />} />
+            <Route path="/admin/new-org-admins" element={<UnassignedOrgAdminsPage />} />
+            <Route path="/unassigned-admins" element={<UnassignedOrgAdminsPage />} />
+            <Route path="/admin/org-admins" element={<OrgAdminsPage />} />
+            <Route path="/org-admins" element={<OrgAdminsPage />} />
+            <Route path="/org/members" element={<OrgMembersPage />} />
+            <Route path="/members" element={<OrgMembersPage />} />
             <Route path="/org/teams" element={<TeamsPage />} />
             <Route path="/org/teams/:teamId" element={<TeamDetailPage />} />
             <Route path="/org/invites" element={<PendingInvitesPage />} />

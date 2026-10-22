@@ -5,5 +5,7 @@ public enum HealthStatus {
 
     AT_RISK,
 
-    DELAYED
+    DELAYED,
+
+    COMPLETED
 }

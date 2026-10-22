@@ -14,8 +14,6 @@ import {
   AlertCircle,
   Edit3,
   Save,
-  Copy,
-  Check,
   Lock,
   Eye,
   EyeOff,
@@ -32,11 +30,73 @@ import { useAuth } from '../context/AuthContext.jsx'
 import Avatar from '../components/Avatar.jsx'
 import { getThemeMode, applyThemeMode } from '../utils/theme.js'
 
+export function formatRealLastLogin(dateInput) {
+  const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('neuroforge_last_login_at') : null
+  const date = dateInput ? new Date(dateInput) : (stored ? new Date(stored) : new Date())
+  const validDate = isNaN(date.getTime()) ? new Date() : date
+
+  // Time part with 24-hr format and timezone abbreviation (e.g. 18:45 IST)
+  let timeStr = ''
+  try {
+    timeStr = new Intl.DateTimeFormat('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZoneName: 'short',
+    }).format(validDate)
+  } catch {
+    const hh = String(validDate.getHours()).padStart(2, '0')
+    const mm = String(validDate.getMinutes()).padStart(2, '0')
+    timeStr = `${hh}:${mm} IST`
+  }
+
+  // Day prefix (Today, Yesterday, or formatted date)
+  const now = new Date()
+  const isToday =
+    validDate.getDate() === now.getDate() &&
+    validDate.getMonth() === now.getMonth() &&
+    validDate.getFullYear() === now.getFullYear()
+
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  const isYesterday =
+    validDate.getDate() === yesterday.getDate() &&
+    validDate.getMonth() === yesterday.getMonth() &&
+    validDate.getFullYear() === yesterday.getFullYear()
+
+  let dayPrefix = ''
+  if (isToday) {
+    dayPrefix = 'Today'
+  } else if (isYesterday) {
+    dayPrefix = 'Yesterday'
+  } else {
+    dayPrefix = validDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+
+  // Real client browser and operating system detection
+  let browser = 'Chrome'
+  let os = 'Windows'
+  if (typeof navigator !== 'undefined') {
+    const ua = navigator.userAgent || ''
+    if (ua.includes('Edg/')) browser = 'Edge'
+    else if (ua.includes('Chrome/')) browser = 'Chrome'
+    else if (ua.includes('Safari/') && !ua.includes('Chrome/')) browser = 'Safari'
+    else if (ua.includes('Firefox/')) browser = 'Firefox'
+
+    if (ua.includes('Win')) os = 'Windows'
+    else if (ua.includes('Mac')) os = 'macOS'
+    else if (ua.includes('Linux')) os = 'Linux'
+    else if (ua.includes('Android')) os = 'Android'
+    else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS'
+  }
+
+  return `${dayPrefix} at ${timeStr} (from ${browser} on ${os})`
+}
+
 // Initial template metadata
 const INITIAL_ACCOUNT_DATA = {
   fullName: 'Mowneesh V',
   email: 'mowneesh.v@neuroforge.io',
-  loginId: 'vmmow',
   phoneNumber: '+91 98765 43210',
   role: 'ORG_ADMIN',
   roleLabel: 'Organization Administrator & Lead Engineer',
@@ -49,12 +109,7 @@ const INITIAL_ACCOUNT_DATA = {
   language: 'en-IN (English - India)',
   dateFormat: 'DD/MM/YYYY (24-Hour)',
   status: 'Active & Verified',
-  lastLogin: 'Today at 18:45 IST (from Chrome on Windows)',
-
-  // Security Configuration
-  twoFactorEnabled: true,
-  twoFactorMethod: 'Authenticator App (TOTP - Google / 1Password)',
-  recoveryCodesRemaining: 8,
+  lastLogin: formatRealLastLogin(),
 
   // Notification Preferences
   notifications: {
@@ -77,12 +132,16 @@ export default function ProfilePage() {
   const currentOrgName = user?.orgName || user?.organization || INITIAL_ACCOUNT_DATA.organization
 
   // Data State
-  const [account, setAccount] = useState({
-    ...INITIAL_ACCOUNT_DATA,
-    fullName: user?.fullName || INITIAL_ACCOUNT_DATA.fullName,
-    email: user?.email || INITIAL_ACCOUNT_DATA.email,
-    organization: currentOrgName,
-    role: user?.role || INITIAL_ACCOUNT_DATA.role,
+  const [account, setAccount] = useState(() => {
+    const rawLastLogin = user?.lastLoginAt || (typeof localStorage !== 'undefined' ? localStorage.getItem('neuroforge_last_login_at') : null)
+    return {
+      ...INITIAL_ACCOUNT_DATA,
+      fullName: user?.fullName || INITIAL_ACCOUNT_DATA.fullName,
+      email: user?.email || INITIAL_ACCOUNT_DATA.email,
+      organization: currentOrgName,
+      role: user?.role || INITIAL_ACCOUNT_DATA.role,
+      lastLogin: formatRealLastLogin(rawLastLogin),
+    }
   })
 
   const [isEditingProfile, setIsEditingProfile] = useState(false)
@@ -106,12 +165,10 @@ export default function ProfilePage() {
   const [savingProfile, setSavingProfile] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
   const [feedbackMessage, setFeedbackMessage] = useState({ type: '', text: '' })
-  const [copiedKey, setCopiedKey] = useState('')
 
   // Theme & Preferences State
   const [theme, setTheme] = useState(() => getThemeMode())
   const [notificationState, setNotificationState] = useState(INITIAL_ACCOUNT_DATA.notifications)
-  const [twoFactorActive, setTwoFactorActive] = useState(INITIAL_ACCOUNT_DATA.twoFactorEnabled)
 
   // Listen to theme mode changes across application
   useEffect(() => {
@@ -132,6 +189,7 @@ export default function ProfilePage() {
         if (res.data) {
           const org = res.data.orgName || res.data.organization || user?.orgName || user?.organization || INITIAL_ACCOUNT_DATA.organization
           const rawDate = res.data.createdAt || user?.createdAt
+          const rawLastLogin = res.data.lastLoginAt || user?.lastLoginAt || (typeof localStorage !== 'undefined' ? localStorage.getItem('neuroforge_last_login_at') : null)
           
           setAccount((prev) => {
             const formattedDate = rawDate ? new Date(rawDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : prev.accountCreatedAt
@@ -143,6 +201,7 @@ export default function ProfilePage() {
               role: res.data.role || user?.role || prev.role,
               organization: org,
               accountCreatedAt: formattedDate,
+              lastLogin: formatRealLastLogin(rawLastLogin),
             }
           })
           setProfileForm((prev) => ({
@@ -157,6 +216,7 @@ export default function ProfilePage() {
         if (user) {
           const org = user.orgName || user.organization || INITIAL_ACCOUNT_DATA.organization
           const rawDate = user.createdAt
+          const rawLastLogin = user.lastLoginAt || (typeof localStorage !== 'undefined' ? localStorage.getItem('neuroforge_last_login_at') : null)
 
           setAccount((prev) => {
             const formattedDate = rawDate ? new Date(rawDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : prev.accountCreatedAt
@@ -167,6 +227,7 @@ export default function ProfilePage() {
               role: user.role || prev.role,
               organization: org,
               accountCreatedAt: formattedDate,
+              lastLogin: formatRealLastLogin(rawLastLogin),
             }
           })
           setProfileForm((prev) => ({
@@ -178,12 +239,7 @@ export default function ProfilePage() {
       })
   }, [user])
 
-  // Helper to copy text to clipboard
-  const handleCopy = (text, key) => {
-    navigator.clipboard.writeText(text)
-    setCopiedKey(key)
-    setTimeout(() => setCopiedKey(''), 2200)
-  }
+
 
   // Handle Profile Update
   async function handleSaveProfile(e) {
@@ -345,22 +401,6 @@ export default function ProfilePage() {
 
           {/* Quick Action Buttons */}
           <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
-            <button
-              onClick={() => handleCopy(account.loginId, 'loginId')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-xs border border-white/10"
-              title="Copy User ID"
-            >
-              {copiedKey === 'loginId' ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" /> Copied ID
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" /> ID: {account.loginId}
-                </>
-              )}
-            </button>
-
             <button
               onClick={() => {
                 setActiveTab('overview')
@@ -614,56 +654,8 @@ export default function ProfilePage() {
       {/* TAB CONTENT 2: SECURITY & ACCESS */}
       {activeTab === 'security' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Two-Factor Authentication & Password Updates */}
+          {/* Password Updates & Credentials */}
           <div className="lg:col-span-2 space-y-6">
-            {/* 2FA Card */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-7 shadow-xs">
-              <div className="flex items-start justify-between gap-4 pb-5 mb-5 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 rounded-xl border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400">
-                    <ShieldCheck className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                      Two-Factor Authentication (2FA)
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Adds an essential layer of protection to safeguard enterprise assets and code repositories.
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setTwoFactorActive(!twoFactorActive)
-                    setFeedbackMessage({
-                      type: 'info',
-                      text: twoFactorActive ? '2FA disabled (Testing mode)' : '2FA activated successfully.',
-                    })
-                    setTimeout(() => setFeedbackMessage({ type: '', text: '' }), 3500)
-                  }}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                    twoFactorActive
-                      ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300'
-                      : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-300'
-                  }`}
-                >
-                  {twoFactorActive ? 'Enabled' : 'Disabled'}
-                </button>
-              </div>
-
-              <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">Method</span>
-                  <span className="font-mono text-slate-600 dark:text-slate-400">{account.twoFactorMethod}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">Backup Recovery Codes</span>
-                  <span className="font-bold text-indigo-600 dark:text-indigo-400">{account.recoveryCodesRemaining} remaining</span>
-                </div>
-              </div>
-            </div>
-
             {/* Change Password Card */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-7 shadow-xs">
               <div className="pb-5 mb-5 border-b border-slate-100 dark:border-slate-800">
@@ -792,7 +784,7 @@ export default function ProfilePage() {
               <div className="space-y-3 text-xs">
                 <div className="flex items-start gap-2.5 text-slate-700 dark:text-slate-300">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                  <span>2FA Authenticator application bound</span>
+                  <span>Password policy compliance active</span>
                 </div>
                 <div className="flex items-start gap-2.5 text-slate-700 dark:text-slate-300">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
@@ -889,7 +881,7 @@ export default function ProfilePage() {
                   },
                   {
                     key: 'securityAlertsSms',
-                    title: 'Critical Outages & 2FA Tokens (SMS)',
+                    title: 'Critical Outages & Security Alerts (SMS)',
                     desc: 'Direct SMS to +91 98765 43210 for emergency system broadcasts.',
                   },
                 ].map((item) => (

@@ -10,4 +10,5 @@ public interface MilestoneService {
     MilestoneResponse updateMilestone(Long milestoneId, MilestoneRequest request, String loggedInEmail);
     List<MilestoneResponse> getMilestonesByProject(Long projectId, String loggedInEmail);
     void deleteMilestone(Long milestoneId, String loggedInEmail);
+    void evaluateProjectMilestonesAndHealth(Long projectId);
 }

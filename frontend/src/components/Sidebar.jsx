@@ -1,17 +1,27 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Folder, Users, Settings, LogOut, Plus, ChevronDown, Sparkles, CheckSquare, Flag, BarChart3, Layers } from 'lucide-react'
+import { LayoutDashboard, Folder, Users, Settings, LogOut, Plus, ChevronDown, Sparkles, CheckSquare, Flag, BarChart3, Layers, Activity, UserPlus } from 'lucide-react'
 import { useAuth, ROLES } from '../context/AuthContext.jsx'
 import { projectApi } from '../api/projectApi.js'
+import { orgApi } from '../api/orgApi.js'
+import { adminApi } from '../api/adminApi.js'
 import Avatar from './Avatar.jsx'
 
-function getNavSections(currentProjectId, role, hasProjects) {
+function getNavSections(currentProjectId, role, hasProjects, unassignedCount = 0) {
   if (role === ROLES.SUPER_ADMIN) {
     return [
       {
         label: 'Platform Administration',
         items: [
           { to: '/dashboard', label: 'Overview', icon: LayoutDashboard, roles: null },
+          {
+            to: '/admin/unassigned-admins',
+            label: 'New Org Admins',
+            icon: UserPlus,
+            badge: unassignedCount,
+            roles: null,
+          },
+          { to: '/admin/org-admins', label: 'Organization Administrators', icon: Users, roles: null },
           { to: '/organizations', label: 'Organizations', icon: Folder, roles: null },
         ],
       },
@@ -20,15 +30,22 @@ function getNavSections(currentProjectId, role, hasProjects) {
 
   const workspaceItems = [
     { to: '/dashboard', label: role === ROLES.CLIENT ? 'Client Dashboard' : 'Dashboard', icon: LayoutDashboard, roles: null },
+    {
+      to: '/activities',
+      label: 'Recent Activities',
+      icon: Activity,
+      roles: [ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER],
+      isActivities: true,
+    },
     { to: '/projects', label: 'Projects', icon: Folder, roles: null },
   ]
 
   if (hasProjects) {
     workspaceItems.push(
-      { to: `/projects/${currentProjectId}/approvals`, label: 'Request Approvals', icon: CheckSquare, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.CLIENT] },
-      { to: `/projects/${currentProjectId}/specs`, label: 'AI Spec Studio', icon: Sparkles, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER, ROLES.QA_TESTER, ROLES.CLIENT] },
-      { to: `/projects/${currentProjectId}/backlog`, label: 'Backlog & Board', icon: Layers, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER, ROLES.QA_TESTER] },
-      { to: `/projects/${currentProjectId}/bugs`, label: 'Bugs', icon: Folder, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER, ROLES.QA_TESTER] },
+      { to: `/projects/${currentProjectId}/approvals`, label: 'Request Approvals', icon: CheckSquare, roles: [ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.CLIENT] },
+      { to: `/projects/${currentProjectId}/specs`, label: 'AI Spec Studio', icon: Sparkles, roles: [ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER, ROLES.QA_TESTER, ROLES.CLIENT] },
+      { to: `/projects/${currentProjectId}/backlog`, label: 'Backlog & Board', icon: Layers, roles: [ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER, ROLES.QA_TESTER] },
+      { to: `/projects/${currentProjectId}/bugs`, label: 'Bugs', icon: Folder, roles: [ROLES.SUPER_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER, ROLES.QA_TESTER] },
       { to: `/projects/${currentProjectId}/milestones`, label: 'Milestones', icon: Flag, roles: [ROLES.SUPER_ADMIN, ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER, ROLES.DEVELOPER, ROLES.FRONTEND_DEVELOPER, ROLES.BACKEND_DEVELOPER, ROLES.QA_TESTER, ROLES.CLIENT] },
       { to: `/projects/${currentProjectId}/reports`, label: 'Reports', icon: BarChart3, roles: null }
     )
@@ -42,8 +59,10 @@ function getNavSections(currentProjectId, role, hasProjects) {
     {
       label: 'ORGANIZATION',
       items: [
-        { to: '/org/teams', label: 'Teams & Members', icon: Users, roles: [ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER] },
-        { to: '/org/invites', label: 'Pending Invites', icon: Users, roles: [ROLES.ORG_ADMIN] },
+        { to: '/org/members', label: 'Organization Members', icon: Users, roles: [ROLES.ORG_ADMIN] },
+        { to: '/org/teams', label: role === ROLES.ORG_ADMIN ? 'Teams' : 'Teams & Members', icon: Users, roles: [ROLES.ORG_ADMIN, ROLES.PROJECT_MANAGER] },
+        { to: '/org/invites', label: 'Pending Invites', icon: UserPlus, roles: [ROLES.ORG_ADMIN] },
+        { to: '/org/settings', label: 'Organization Settings', icon: Settings, roles: [ROLES.ORG_ADMIN] },
       ],
     },
   ]
@@ -63,6 +82,22 @@ export default function Sidebar({ width = 256, onMouseDown, isResizing }) {
     const cached = localStorage.getItem('neuroforge_current_project_id')
     return cached && !isNaN(Number(cached)) ? cached : 'p1'
   })
+
+  const [sidebarActivities, setSidebarActivities] = useState([])
+  const [isActivitiesExpanded, setIsActivitiesExpanded] = useState(false)
+
+  const currentProject = projects.find((p) => String(p.id) === String(currentProjectId))
+
+  useEffect(() => {
+    if (user?.orgId && (role === ROLES.ORG_ADMIN || role === ROLES.SUPER_ADMIN || role === ROLES.PROJECT_MANAGER)) {
+      const pId = currentProjectId && !isNaN(Number(currentProjectId)) ? Number(currentProjectId) : null
+      orgApi.listActivities(user.orgId, pId)
+        .then((res) => {
+          setSidebarActivities(Array.isArray(res.data) ? res.data.slice(0, 4) : [])
+        })
+        .catch(() => {})
+    }
+  }, [user?.orgId, role, currentProjectId])
 
   useEffect(() => {
     if (user?.orgId && role !== ROLES.SUPER_ADMIN) {
@@ -100,6 +135,28 @@ export default function Sidebar({ width = 256, onMouseDown, isResizing }) {
   const isSuperAdmin = role === ROLES.SUPER_ADMIN || user?.role === ROLES.SUPER_ADMIN
   const isUnassigned = !isSuperAdmin && !user?.orgId
 
+  const [unassignedAdminsCount, setUnassignedAdminsCount] = useState(0)
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      adminApi
+        .getAllUsers()
+        .then((res) => {
+          if (Array.isArray(res.data)) {
+            const count = res.data.filter(
+              (u) =>
+                (u.role === 'ORG_ADMIN' || u.role === ROLES.ORG_ADMIN) &&
+                !u.organizationId &&
+                !u.organizationName &&
+                !u.orgId
+            ).length
+            setUnassignedAdminsCount(count)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [isSuperAdmin, pathname])
+
   const visibleSections = isUnassigned
     ? [
       {
@@ -107,7 +164,7 @@ export default function Sidebar({ width = 256, onMouseDown, isResizing }) {
         items: [{ to: '/dashboard', label: 'Overview', icon: LayoutDashboard }],
       },
     ]
-    : getNavSections(currentProjectId, role, projects.length > 0)
+    : getNavSections(currentProjectId, role, projects.length > 0, unassignedAdminsCount)
       .map((section) => ({
         ...section,
         items: section.items.filter((item) => !item.roles || item.roles.includes(role)),
@@ -187,6 +244,110 @@ export default function Sidebar({ width = 256, onMouseDown, isResizing }) {
             <div className="space-y-1">
               {section.items.map((item) => {
                 const Icon = item.icon
+                if (item.isActivities) {
+                  const isActivitiesActive = pathname === '/activities'
+                  return (
+                    <div key={item.to} className="space-y-1">
+                      {/* Dropdown Toggle Trigger Button */}
+                      <button
+                        type="button"
+                        onClick={() => setIsActivitiesExpanded((prev) => !prev)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group text-left cursor-pointer ${
+                          isActivitiesActive
+                            ? 'bg-sidebar-active text-white relative'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-sidebar-hover/50'
+                        }`}
+                        title={isActivitiesExpanded ? 'Collapse Recent Activities' : 'Expand Recent Activities'}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {isActivitiesActive && (
+                            <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-accent rounded-r-full" />
+                          )}
+                          <Icon
+                            size={18}
+                            className={
+                              isActivitiesActive
+                                ? 'text-accent'
+                                : 'text-slate-500 group-hover:text-slate-400'
+                            }
+                          />
+                          <span className="truncate">{item.label}</span>
+                          {sidebarActivities.length > 0 && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                              {sidebarActivities.length}
+                            </span>
+                          )}
+                        </div>
+                        <ChevronDown
+                          size={14}
+                          className={`text-slate-500 group-hover:text-slate-300 transition-transform duration-200 shrink-0 ml-2 ${
+                            isActivitiesExpanded ? 'rotate-0' : '-rotate-90'
+                          }`}
+                        />
+                      </button>
+
+                      {/* Dropdown Content */}
+                      {isActivitiesExpanded && (
+                        <div className="ml-3 pl-3 border-l border-slate-800 space-y-1.5 py-1.5 pr-1 animate-in fade-in duration-150">
+                          {currentProject && (
+                            <div className="text-[10px] text-slate-400 font-medium mb-1 px-1 truncate flex items-center gap-1" title={currentProject.name}>
+                              <span>📁</span>
+                              <span className="truncate">{currentProject.name}</span>
+                            </div>
+                          )}
+                          {sidebarActivities.length === 0 ? (
+                            <div className="text-[11px] text-slate-500 italic py-1 px-1">
+                              No recent activities for this project
+                            </div>
+                          ) : (
+                            sidebarActivities.map((act) => {
+                              const isAccess =
+                                act.action?.toLowerCase().includes('approve') ||
+                                act.action?.toLowerCase().includes('join')
+                              const isTeam =
+                                act.action?.toLowerCase().includes('team') ||
+                                act.action?.toLowerCase().includes('member')
+                              const dotColor = isAccess ? 'bg-emerald-400' : isTeam ? 'bg-blue-400' : 'bg-orange-400'
+
+                              return (
+                                <Link
+                                  key={act.id}
+                                  to="/activities"
+                                  className="block p-1.5 rounded-md hover:bg-slate-800/80 transition-colors group/item"
+                                >
+                                  <div className="flex items-center gap-1.5 mb-0.5">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${dotColor} shrink-0`} />
+                                    <span className="text-[11px] font-medium text-slate-300 group-hover/item:text-orange-400 truncate leading-tight">
+                                      {act.action}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[10px] text-slate-500 pl-3">
+                                    <span className="truncate max-w-[110px]">{act.actorEmail?.split('@')[0] || 'user'}</span>
+                                    <span className="text-slate-500 font-mono">
+                                      {act.createdAt
+                                        ? new Date(act.createdAt).toLocaleTimeString([], {
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                          })
+                                        : ''}
+                                    </span>
+                                  </div>
+                                </Link>
+                              )
+                            })
+                          )}
+                          <Link
+                            to="/activities"
+                            className="block text-[10px] font-semibold text-orange-400 hover:text-orange-300 pl-1 pt-1 transition-colors"
+                          >
+                            View all activities →
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+
                 return (
                   <NavLink
                     key={item.to}
@@ -203,7 +364,12 @@ export default function Sidebar({ width = 256, onMouseDown, isResizing }) {
                       <>
                         {isActive && <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-accent rounded-r-full" />}
                         <Icon size={18} className={isActive ? 'text-accent' : 'text-slate-500 group-hover:text-slate-400'} />
-                        {item.label}
+                        <span className="flex-1 truncate">{item.label}</span>
+                        {item.badge != null && item.badge > 0 && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500 text-white shadow-xs">
+                            {item.badge}
+                          </span>
+                        )}
                       </>
                     )}
                   </NavLink>

@@ -62,13 +62,6 @@ const ROLE_OPTIONS = [
 const PHONE_PATTERN = /^[6-9]\d{9}$/
 const PASSWORD_PATTERN = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).*$/
 
-function parseOrgId(input) {
-  if (!input) return null
-  const cleaned = input.toString().trim().replace(/^org-?/i, '')
-  const num = parseInt(cleaned, 10)
-  return isNaN(num) || num <= 0 ? null : num
-}
-
 export default function SignupPage() {
   const { signup } = useAuth()
   const navigate = useNavigate()
@@ -93,7 +86,14 @@ export default function SignupPage() {
   const redirectTo = location.state?.from?.pathname || '/dashboard'
 
   function update(field) {
-    return (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
+    return (e) =>
+      setForm((f) => ({
+        ...f,
+        [field]: e.target.value,
+        ...(field === 'role' && (e.target.value === ROLES.ORG_ADMIN || e.target.value === ROLES.SUPER_ADMIN)
+          ? { orgId: '' }
+          : {}),
+      }))
   }
 
   function validate() {
@@ -107,14 +107,7 @@ export default function SignupPage() {
     
     if (form.role && form.role !== ROLES.SUPER_ADMIN && form.role !== ROLES.ORG_ADMIN) {
       if (!form.orgId.trim()) {
-        return 'Please enter your Organization Specific ID (e.g., ORG-1 or 1).'
-      }
-      if (!parseOrgId(form.orgId)) {
-        return 'Invalid Organization ID format. Please enter an ID like ORG-1 or 1.'
-      }
-    } else if (form.role === ROLES.ORG_ADMIN && form.orgId.trim()) {
-      if (!parseOrgId(form.orgId)) {
-        return 'Invalid Organization ID format. Please enter an ID like ORG-1 or 1.'
+        return 'Please enter your Organization Specific ID.'
       }
     }
     return ''
@@ -130,7 +123,10 @@ export default function SignupPage() {
 
     setError('')
     setSubmitting(true)
-    const parsedId = parseOrgId(form.orgId)
+    const specificId =
+      form.role !== ROLES.ORG_ADMIN && form.role !== ROLES.SUPER_ADMIN
+        ? form.orgId.trim()
+        : null
     try {
       await signup({
         fullName: form.fullName.trim(),
@@ -138,7 +134,7 @@ export default function SignupPage() {
         phone: form.phone.trim(),
         role: form.role,
         password: form.password,
-        ...(parsedId ? { orgId: parsedId } : {}),
+        ...(specificId ? { orgSpecificId: specificId } : {}),
       })
       navigate(redirectTo, { replace: true })
     } catch (err) {
@@ -226,24 +222,22 @@ export default function SignupPage() {
           {selectedRole && <p className="nf-role-hint">{selectedRole.hint}</p>}
         </div>
 
-        {form.role && form.role !== ROLES.SUPER_ADMIN && (
+        {form.role && form.role !== ROLES.SUPER_ADMIN && form.role !== ROLES.ORG_ADMIN && (
           <div className="nf-field">
             <label className="nf-label" htmlFor="orgId">
-              Organization Specific ID {form.role !== ROLES.ORG_ADMIN ? '*' : '(Optional)'}
+              Organization Specific ID *
             </label>
             <input
               id="orgId"
               type="text"
               className="nf-input"
               autoComplete="off"
-              placeholder="e.g. ORG-1 or 1"
+              placeholder="e.g. ACME-TECH, ORG-1, MY_TEAM"
               value={form.orgId}
               onChange={update('orgId')}
             />
             <p className="nf-role-hint">
-              {form.role === ROLES.ORG_ADMIN
-                ? 'Enter your Organization ID if already assigned by Super Admin, or leave blank.'
-                : 'Enter the Organization Specific ID given by your Org Admin to join that organization.'}
+              Enter the Organization Specific ID given by your Org Admin to join that organization (accepts letters, numbers, symbols).
             </p>
           </div>
         )}

@@ -17,6 +17,9 @@ public class MilestoneResponse {
     private LocalDate expectedDeliveryDate;
     private LocalDate actualDeliveryDate;
     
+    private Integer totalSprints;
+    private Integer completedSprints;
+    
     private Long projectId;
     private String projectName;
     

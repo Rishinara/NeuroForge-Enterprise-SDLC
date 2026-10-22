@@ -49,6 +49,11 @@ public class Sprint {
     @JoinColumn(name = "created_by", nullable = true)
     private User createdBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "milestone_id", nullable = true)
+    private Milestone milestone;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -9,6 +9,29 @@ import Tabs from '../components/Tabs.jsx'
 import EditProjectModal from '../components/EditProjectModal.jsx'
 import Can from '../components/Can.jsx'
 import ClientDashboard from './ClientDashboard.jsx'
+import { User } from 'lucide-react'
+
+const ROLE_LABELS = {
+  ORG_ADMIN: 'Org Admin',
+  PROJECT_MANAGER: 'Project Manager',
+  DEVELOPER: 'Fullstack Developer',
+  FRONTEND_DEVELOPER: 'Frontend Developer',
+  BACKEND_DEVELOPER: 'Backend Developer',
+  QA_TESTER: 'QA / Tester',
+  QA: 'QA / Tester',
+  CLIENT: 'Client / Stakeholder',
+}
+
+const ROLE_BADGE_COLOR = {
+  ORG_ADMIN: 'bg-orange-50 text-orange-700 border-orange-200',
+  PROJECT_MANAGER: 'bg-blue-50 text-blue-700 border-blue-200',
+  DEVELOPER: 'bg-sky-50 text-sky-700 border-sky-200',
+  FRONTEND_DEVELOPER: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  BACKEND_DEVELOPER: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  QA_TESTER: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  QA: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  CLIENT: 'bg-purple-50 text-purple-700 border-purple-200',
+}
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
@@ -330,39 +353,46 @@ export default function ProjectDetailPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {project.team.map((m) => (
-                      <tr key={m.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 sm:px-8 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs">
-                              {m.fullName.charAt(0).toUpperCase()}
+                    {project.team.map((m) => {
+                      const displayRole = m.role || (m.projectRole === 'QA' ? 'QA_TESTER' : m.projectRole) || 'DEVELOPER'
+                      const roleLabel = ROLE_LABELS[displayRole] || ROLE_LABELS[m.projectRole] || displayRole?.replaceAll('_', ' ')
+                      const badgeColor = ROLE_BADGE_COLOR[displayRole] || ROLE_BADGE_COLOR[m.projectRole] || 'bg-slate-100 text-slate-700 border-slate-200'
+                      return (
+                        <tr key={m.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 sm:px-8 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200/90 flex items-center justify-center text-slate-600 shadow-2xs">
+                                <User size={15} />
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold text-slate-900">{m.fullName}</div>
+                                <div className="text-xs text-slate-500">{m.email}</div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="text-sm font-bold text-slate-900">{m.fullName}</div>
-                              <div className="text-xs text-slate-500">{m.email}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 sm:px-8 py-4">
-                          {role === ROLES.ORG_ADMIN ? (
-                            <select
-                              value={m.projectRole}
-                              onChange={(e) => handleRoleChange(m.id, e.target.value)}
-                              className="px-2.5 py-1 bg-slate-50 border border-slate-300 text-slate-700 text-[10px] font-bold uppercase tracking-wider rounded-md focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
-                            >
-                              <option value="PROJECT_MANAGER">PROJECT MANAGER</option>
-                              <option value="DEVELOPER">DEVELOPER</option>
-                              <option value="QA">QA</option>
-                              <option value="CLIENT">CLIENT</option>
-                            </select>
-                          ) : (
-                            <span className="inline-block px-2.5 py-1 bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold uppercase tracking-wider rounded-md">
-                              {m.projectRole?.replaceAll('_', ' ')}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-6 sm:px-8 py-4">
+                            {role === ROLES.ORG_ADMIN ? (
+                              <select
+                                value={m.projectRole}
+                                onChange={(e) => handleRoleChange(m.id, e.target.value)}
+                                className="px-2.5 py-1 bg-slate-50 border border-slate-300 text-slate-700 text-[10px] font-bold uppercase tracking-wider rounded-md focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
+                              >
+                                <option value="PROJECT_MANAGER">PROJECT MANAGER</option>
+                                <option value="DEVELOPER">FULLSTACK DEVELOPER</option>
+                                <option value="FRONTEND_DEVELOPER">FRONTEND DEVELOPER</option>
+                                <option value="BACKEND_DEVELOPER">BACKEND DEVELOPER</option>
+                                <option value="QA">QA / TESTER</option>
+                                <option value="CLIENT">CLIENT</option>
+                              </select>
+                            ) : (
+                              <span className={`inline-block px-2.5 py-1 border text-[11px] font-semibold rounded-md ${badgeColor}`}>
+                                {roleLabel}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
